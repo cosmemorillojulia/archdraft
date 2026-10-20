@@ -200,6 +200,19 @@ describe('public-database', () => {
     ]);
   });
 
+  it('lists each client once even if it has several edges to the store', () => {
+    const graph = graphOf(
+      [node('web', 'web-client'), node('db', 'relational-db', { attributes: { multiAz: true } })],
+      [
+        edge('web', 'db', { protocol: 'https' }),
+        edge('web', 'db', { id: 'web-db-sql', protocol: 'sql' }),
+      ],
+    );
+    expect(findingsOf('public-database', graph)).toEqual([
+      expect.objectContaining({ nodeIds: ['db', 'web'], edgeIds: ['web-db', 'web-db-sql'] }),
+    ]);
+  });
+
   it('accepts data stores reached through services or private', () => {
     const graph = graphOf(
       [

@@ -94,7 +94,7 @@ const publicDatabase: LintRule = {
         ...(fromClients.length > 0 ? ['is called directly by clients'] : []),
       ];
       findings.push({
-        nodeIds: [node.id, ...fromClients.map(({ caller }) => caller.id)],
+        nodeIds: [...new Set([node.id, ...fromClients.map(({ caller }) => caller.id)])],
         edgeIds: fromClients.map(({ edge }) => edge.id),
         message: `Data store "${node.label}" ${reasons.join(' and ')}`,
         suggestion:
