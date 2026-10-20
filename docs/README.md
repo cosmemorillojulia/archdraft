@@ -12,7 +12,7 @@ Referencia:
 
 - [Guía de desarrollo](desarrollo.md): herramientas, configuración, CI y convenciones.
 - [Operaciones](operaciones.md): entornos, acciones manuales, límites de los planes gratuitos y secretos.
-- Módulos: [core](modulos/core.md).
+- Módulos: [core](modulos/core.md), [motor de reglas de diseño](modulos/lint.md).
 
 ## Decisiones registradas
 
@@ -29,5 +29,6 @@ Referencia:
 | [0009](adr/0009-idioma.md)                       | Inglés en código, español en la documentación de diseño       |
 | [0010](adr/0010-estrategia-de-calidad.md)        | Estrategia de calidad: tests, evaluaciones y puertas en CI    |
 | [0011](adr/0011-flujo-de-trabajo-y-commits.md)   | Una rama por tarea integrada con merge --no-ff                |
+| [0012](adr/0012-severidad-por-hallazgo.md)       | Severidad por hallazgo con un valor por defecto por regla     |
 
 Cada nueva página de módulo o ADR se añade a este índice.
