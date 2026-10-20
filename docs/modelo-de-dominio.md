@@ -119,18 +119,22 @@ Los componentes pueden estar en el nivel superior o dentro de cualquier contened
 
 La zona de disponibilidad puede ir dentro de la red o directamente de la región porque los proveedores lo modelan distinto: en AWS una subred pertenece a una zona y a una VPC; en Google Cloud las subredes son regionales. Ambas formas de dibujarlo son válidas.
 
+## Modo de las aristas
+
+`mode` es opcional. Cuando falta, `resolveEdgeMode(edge)` lo deduce del protocolo: `amqp`, `kafka` y `event` implican `async`; cualquier otro protocolo, o ninguno, se lee como `sync`, porque una flecha sin anotar en un diagrama de arquitectura suele significar petición y respuesta. Las reglas de diseño, y más adelante los exportadores, usan siempre el modo efectivo.
+
 ## Atributos operativos
 
 Todos son opcionales y la ausencia significa desconocido, no falso. Una regla de diseño que necesite un atributo debe tratar el valor ausente como desconocido; por ejemplo, no puede afirmar que una base de datos no tiene alta disponibilidad si `multiAz` no está informado, solo sugerir revisarlo.
 
-| Atributo             | Significado                          | Usado por (planificado)               |
-| -------------------- | ------------------------------------ | ------------------------------------- |
-| `replicas`           | Número de instancias                 | Regla de punto único de fallo         |
-| `multiAz`            | Desplegado en varias zonas           | Regla de alta disponibilidad de datos |
-| `autoscaling`        | Escala con la carga                  | Regla de punto único de fallo         |
-| `publiclyAccessible` | Accesible desde internet             | Regla de datos expuestos              |
-| `encryptedAtRest`    | Datos cifrados en reposo             | Regla de cifrado                      |
-| `managed`            | Servicio gestionado por el proveedor | Matiza la severidad de varias reglas  |
+| Atributo             | Significado                          | Usado por                            |
+| -------------------- | ------------------------------------ | ------------------------------------ |
+| `replicas`           | Número de instancias                 | `single-point-of-failure`            |
+| `multiAz`            | Desplegado en varias zonas           | `database-single-az`                 |
+| `autoscaling`        | Escala con la carga                  | `single-point-of-failure`            |
+| `publiclyAccessible` | Accesible desde internet             | `public-database`                    |
+| `encryptedAtRest`    | Datos cifrados en reposo             | `unencrypted-data`                   |
+| `managed`            | Servicio gestionado por el proveedor | `single-point-of-failure` lo excluye |
 
 ## Límites
 
@@ -172,7 +176,7 @@ Hay dos capas, ambas en `validate.ts`:
 
 `parseArchitectureGraph(input)` es el único punto de entrada para datos no confiables (ficheros, enlaces, respuestas del modelo): aplica las dos capas, nunca lanza excepciones y devuelve el grafo con sus avisos o la lista completa de problemas. Devolver todos los problemas a la vez, y no solo el primero, es lo que permite reintentar la generación pasando al modelo una lista de errores concreta.
 
-Validación estructural no es lo mismo que revisión de diseño. Un grafo válido puede ser una mala arquitectura; eso lo detecta el motor de reglas (T02).
+Validación estructural no es lo mismo que revisión de diseño. Un grafo válido puede ser una mala arquitectura; eso lo detecta el motor de reglas, documentado en [modulos/lint.md](modulos/lint.md).
 
 ## Índice del grafo
 

@@ -14,6 +14,7 @@ packages/core/
     graph.ts        # indexGraph, getAncestors, getDescendants, resolveProvider, resolveServiceName
     validate.ts     # validateGraph, parseArchitectureGraph, códigos de validación
     json-schema.ts  # architectureGraphJsonSchema
+    lint/           # motor de reglas de diseño, ver modulos/lint.md
   test/
     fixtures.ts     # grafo de ejemplo: tienda online de tres capas en AWS
     *.test.ts
@@ -21,20 +22,22 @@ packages/core/
 
 ## API pública
 
-| Export                                                        | Tipo                | Uso                                                                     |
-| ------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------- |
-| `ArchitectureGraphSchema`, `ArchNodeSchema`, `ArchEdgeSchema` | Esquemas Zod        | Validar o componer esquemas                                             |
-| `ArchitectureGraph`, `ArchNode`, `ArchEdge`, `NodeAttributes` | Tipos               | Tipar el resto del sistema                                              |
-| `createEmptyGraph(title, provider?)`                          | Función             | Documento nuevo                                                         |
-| `parseArchitectureGraph(input)`                               | Función             | Única entrada para datos no confiables                                  |
-| `validateGraph(graph)`                                        | Función             | Revalidar tras una modificación                                         |
-| `indexGraph(graph)`                                           | Función             | Consultas eficientes sobre el grafo                                     |
-| `getAncestors`, `getDescendants`                              | Funciones           | Recorrer contenedores                                                   |
-| `resolveProvider`, `resolveServiceName`                       | Funciones           | Etiquetas y exportaciones                                               |
-| `NODE_CATALOG`, `getNodeDefinition`                           | Constante y función | Paleta, iconos, leyenda                                                 |
-| `CONTAINMENT_RULES`                                           | Constante           | Validación y, en el editor, impedir anidamientos inválidos al arrastrar |
-| `architectureGraphJsonSchema()`                               | Función             | Prompt del modelo                                                       |
-| `LIMITS`, `SCHEMA_VERSION`                                    | Constantes          | Límites compartidos                                                     |
+| Export                                                        | Tipo                 | Uso                                                                     |
+| ------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------- |
+| `ArchitectureGraphSchema`, `ArchNodeSchema`, `ArchEdgeSchema` | Esquemas Zod         | Validar o componer esquemas                                             |
+| `ArchitectureGraph`, `ArchNode`, `ArchEdge`, `NodeAttributes` | Tipos                | Tipar el resto del sistema                                              |
+| `createEmptyGraph(title, provider?)`                          | Función              | Documento nuevo                                                         |
+| `parseArchitectureGraph(input)`                               | Función              | Única entrada para datos no confiables                                  |
+| `validateGraph(graph)`                                        | Función              | Revalidar tras una modificación                                         |
+| `indexGraph(graph)`                                           | Función              | Consultas eficientes sobre el grafo                                     |
+| `getAncestors`, `getDescendants`                              | Funciones            | Recorrer contenedores                                                   |
+| `resolveProvider`, `resolveServiceName`                       | Funciones            | Etiquetas y exportaciones                                               |
+| `resolveEdgeMode`                                             | Función              | Modo efectivo de una arista cuando `mode` no está informado             |
+| `lintGraph`, `LINT_RULES`, `LINT_RULE_IDS`                    | Función y constantes | Revisión de diseño, ver [lint.md](lint.md)                              |
+| `NODE_CATALOG`, `getNodeDefinition`                           | Constante y función  | Paleta, iconos, leyenda                                                 |
+| `CONTAINMENT_RULES`                                           | Constante            | Validación y, en el editor, impedir anidamientos inválidos al arrastrar |
+| `architectureGraphJsonSchema()`                               | Función              | Prompt del modelo                                                       |
+| `LIMITS`, `SCHEMA_VERSION`                                    | Constantes           | Límites compartidos                                                     |
 
 ## Decisiones de implementación
 
@@ -65,6 +68,6 @@ Añadir un código de validación:
 
 ## Tests
 
-- 92 tests en cinco ficheros; cobertura del 100 % de líneas, ramas y funciones a fecha de T01.
+- 127 tests en seis ficheros; cobertura del 100 % de líneas, ramas y funciones a fecha de T02.
 - Umbrales mínimos en `vitest.config.ts`: 90 % de líneas, funciones y sentencias y 85 % de ramas. CI falla si se incumplen.
 - `parseArchitectureGraph` se prueba con entradas arbitrarias (`null`, números, arrays) para garantizar que nunca lanza.
