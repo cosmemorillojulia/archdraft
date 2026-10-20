@@ -137,7 +137,11 @@ describe('single-point-of-failure', () => {
     ]);
     expect(
       findingsOf('single-point-of-failure', withApi({ replicas: 1, autoscaling: false })),
-    ).toHaveLength(1);
+    ).toEqual([
+      expect.objectContaining({
+        message: '"api" serves synchronous requests with a single replica and autoscaling disabled',
+      }),
+    ]);
   });
 
   it('asks to review when the replica count is unknown', () => {

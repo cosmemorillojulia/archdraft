@@ -65,7 +65,7 @@ const singlePointOfFailure: LintRule = {
             }
           : {
               ...details,
-              message: `"${node.label}" serves synchronous requests with a single replica and no autoscaling`,
+              message: `"${node.label}" serves synchronous requests with a single replica and ${autoscaling === false ? 'autoscaling disabled' : 'no autoscaling stated'}`,
               suggestion:
                 'Run at least two replicas behind a load balancer, or enable autoscaling with a minimum of two instances.',
             },
