@@ -1,5 +1,5 @@
 import { getNodeDefinition } from './catalog.ts';
-import { type CloudProvider, isContainerKind } from './kinds.ts';
+import { type CloudProvider, type EdgeMode, type EdgeProtocol, isContainerKind } from './kinds.ts';
 import type { ArchEdge, ArchitectureGraph, ArchNode } from './schema.ts';
 
 /**
@@ -112,4 +112,18 @@ export function resolveServiceName(node: ArchNode, graph: ArchitectureGraph): st
   const provider = resolveProvider(node, graph);
   if (provider === 'generic') return definition.label;
   return definition.services[provider] ?? definition.label;
+}
+
+/** Protocols that only make sense as fire-and-forget messaging. */
+const ASYNC_PROTOCOLS: ReadonlySet<EdgeProtocol> = new Set(['amqp', 'kafka', 'event']);
+
+/**
+ * Whether the source waits for the target. An explicit `mode` wins; otherwise
+ * messaging protocols imply `async` and anything else, including a missing
+ * protocol, is read as a plain request and response (`sync`), which is what
+ * an unannotated arrow usually means in an architecture diagram.
+ */
+export function resolveEdgeMode(edge: ArchEdge): EdgeMode {
+  if (edge.mode !== undefined) return edge.mode;
+  return edge.protocol !== undefined && ASYNC_PROTOCOLS.has(edge.protocol) ? 'async' : 'sync';
 }

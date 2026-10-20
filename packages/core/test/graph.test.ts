@@ -5,6 +5,7 @@ import {
   getDescendants,
   indexGraph,
   isContainer,
+  resolveEdgeMode,
   resolveProvider,
   resolveServiceName,
 } from '../src/index.ts';
@@ -143,5 +144,26 @@ describe('provider and service resolution', () => {
   it('identifies containers', () => {
     expect(isContainer(node('vpc'))).toBe(true);
     expect(isContainer(node('api'))).toBe(false);
+  });
+});
+
+describe('resolveEdgeMode', () => {
+  const edge = { id: 'e', source: 'a', target: 'b' };
+
+  it('keeps an explicit mode even if the protocol suggests otherwise', () => {
+    expect(resolveEdgeMode({ ...edge, protocol: 'kafka', mode: 'sync' })).toBe('sync');
+    expect(resolveEdgeMode({ ...edge, protocol: 'https', mode: 'async' })).toBe('async');
+  });
+
+  it('infers async from messaging protocols', () => {
+    expect(resolveEdgeMode({ ...edge, protocol: 'amqp' })).toBe('async');
+    expect(resolveEdgeMode({ ...edge, protocol: 'kafka' })).toBe('async');
+    expect(resolveEdgeMode({ ...edge, protocol: 'event' })).toBe('async');
+  });
+
+  it('defaults to sync for request protocols and missing information', () => {
+    expect(resolveEdgeMode({ ...edge, protocol: 'grpc' })).toBe('sync');
+    expect(resolveEdgeMode({ ...edge, protocol: 'other' })).toBe('sync');
+    expect(resolveEdgeMode(edge)).toBe('sync');
   });
 });
