@@ -16,7 +16,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | Id  | Tarea                                                            | Depende de    | Estado             |
 | --- | ---------------------------------------------------------------- | ------------- | ------------------ |
 | T01 | Fundamentos: monorepo, CI, modelo de dominio, documentación      |               | hecha (2026-10-20) |
-| T02 | Motor de reglas de diseño                                        | T01           | pendiente          |
+| T02 | Motor de reglas de diseño                                        | T01           | hecha (2026-10-20) |
 | T03 | Exportación a Mermaid y JSON, importación con migraciones        | T01           | pendiente          |
 | T04 | Paquete de disposición automática con ELK                        | T01           | pendiente          |
 | T05 | Exportación a draw.io                                            | T03, T04      | pendiente          |
@@ -51,6 +51,8 @@ Monorepo con pnpm, TypeScript estricto, ESLint con tipos, Prettier, Vitest con c
 ## Fase 1: núcleo
 
 ### T02. Motor de reglas de diseño
+
+Estado: hecha (2026-10-20). Documentado en `docs/modulos/lint.md` y ADR 0012.
 
 Objetivo: detectar riesgos de diseño en un grafo válido, con explicación y sugerencia.
 
