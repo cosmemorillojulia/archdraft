@@ -107,11 +107,11 @@ function edgeLine(edge: ArchEdge, ids: ReadonlyMap<string, string>): string {
 
 /**
  * Labels are written inside double quotes. Characters that would end the
- * string, start Mermaid entity or Markdown syntax, close an edge label or be
- * read as HTML are replaced with Mermaid entity codes (`#34;`), which render
+ * string, start Mermaid entity, directive (`%%{...}%%`) or Markdown syntax,
+ * close an edge label or be read as HTML are replaced with Mermaid entity codes (`#34;`), which render
  * as the literal character. Line breaks become `<br/>`.
  */
-const ESCAPED_CHARACTERS = /["#&<>`|]/g;
+const ESCAPED_CHARACTERS = /["#%&<>`|]/g;
 
 function escapeLabel(text: string): string {
   return text

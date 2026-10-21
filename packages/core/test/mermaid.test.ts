@@ -232,6 +232,10 @@ describe('toMermaid', () => {
       expect(labelOf('a [b] {c} (d)')).toBe('  n_a["a [b] {c} (d)"]');
     });
 
+    it('escapes percent signs so a label cannot hold a Mermaid directive', () => {
+      expect(labelOf('%%{init: {}}%% 50%')).toBe('  n_a["#37;#37;{init: {}}#37;#37; 50#37;"]');
+    });
+
     it('turns line breaks into <br/>', () => {
       expect(labelOf('one\ntwo\r\nthree\rfour')).toBe('  n_a["one<br/>two<br/>three<br/>four"]');
     });
