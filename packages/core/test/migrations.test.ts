@@ -124,11 +124,12 @@ describe('migrateDocument', () => {
       // eslint-disable-next-line @typescript-eslint/only-throw-error -- the chain must cope with it
       throw 'boom';
     };
-    expect(
-      migrateDocument(
-        { schemaVersion: 1 },
-        { migrations: new Map([[1, broken]]), targetVersion: 2 },
-      ),
-    ).toMatchObject({ success: false, issue: { message: expect.stringContaining(': boom') } });
+    const result = migrateDocument(
+      { schemaVersion: 1 },
+      { migrations: new Map([[1, broken]]), targetVersion: 2 },
+    );
+    expect(result.success === false && result.issue.message).toBe(
+      'Could not upgrade the diagram from format version 1 to 2: boom',
+    );
   });
 });

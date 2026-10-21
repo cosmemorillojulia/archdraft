@@ -110,14 +110,10 @@ describe('importJson', () => {
 
   it('reports text that is not JSON', () => {
     const result = importJson('{"schemaVersion": 1,');
-    expect(result.success).toBe(false);
-    expect(!result.success && result.issues).toEqual([
-      expect.objectContaining({
-        code: 'INVALID_JSON',
-        severity: 'error',
-        message: expect.stringMatching(/^Not valid JSON: /),
-      }),
-    ]);
+    if (result.success) throw new Error('expected a failure');
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]).toMatchObject({ code: 'INVALID_JSON', severity: 'error' });
+    expect(result.issues[0]?.message).toMatch(/^Not valid JSON: \S/);
   });
 
   it('reports an empty file as invalid JSON', () => {
