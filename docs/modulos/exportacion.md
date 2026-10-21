@@ -79,18 +79,19 @@ Por eso cada id se transforma en `n_` seguido del id con los guiones cambiados p
 
 Todas las etiquetas van entre comillas dobles, lo que permite corchetes, llaves y paréntesis sin escapar. Los caracteres que siguen siendo peligrosos se sustituyen por códigos de entidad de Mermaid (`#código;`), que se muestran como el carácter literal:
 
-| Carácter | Problema                           | Se escribe     |
-| -------- | ---------------------------------- | -------------- |
-| `"`      | Cierra la cadena                   | `#34;`         |
-| `#`      | Inicia un código de entidad        | `#35;`         |
-| `&`      | Se interpretaría como entidad HTML | `#38;`         |
-| `<`, `>` | Se interpretarían como HTML        | `#60;`, `#62;` |
-| `` ` ``  | Activa el modo Markdown de Mermaid | `#96;`         |
-| `\|`     | Cierra la etiqueta de una arista   | `#124;`        |
+| Carácter | Problema                                                        | Se escribe     |
+| -------- | --------------------------------------------------------------- | -------------- |
+| `"`      | Cierra la cadena                                                | `#34;`         |
+| `%`      | `%%{...}%%` es una directiva: Mermaid la elimina de la etiqueta | `#37;`         |
+| `#`      | Inicia un código de entidad                                     | `#35;`         |
+| `&`      | Se interpretaría como entidad HTML                              | `#38;`         |
+| `<`, `>` | Se interpretarían como HTML                                     | `#60;`, `#62;` |
+| `` ` ``  | Activa el modo Markdown de Mermaid                              | `#96;`         |
+| `\|`     | Cierra la etiqueta de una arista                                | `#124;`        |
 
 Los saltos de línea (`\n`, `\r\n`, `\r`) se convierten en `<br/>`; sin esa conversión Mermaid los descarta. La salida del modelo es un dato y nunca debe poder inyectar HTML en el diagrama renderizado.
 
-Verificación: el fixture de tres capas y un grafo con todos los casos anteriores (ids `end`, `a--b` y `a__b`, etiquetas con HTML, comillas, almohadillas, comillas invertidas, barras y saltos de línea, contenedor vacío) se renderizaron con Mermaid 12.2.0 en Chromium con `securityLevel: 'strict'`: sin errores, con los textos literales y sin elementos HTML inyectados. Los tests fijan la salida con instantáneas.
+Verificación: el fixture de tres capas y un grafo con todos los casos anteriores (ids `end`, `a--b` y `a__b`, etiquetas con HTML, directivas `%%{init}%%`, comillas, almohadillas, comillas invertidas, barras y saltos de línea, contenedor vacío) se renderizaron con Mermaid 12.2.0 en Chromium con `securityLevel: 'strict'`: sin errores, con los textos literales y sin elementos HTML inyectados. Los tests fijan la salida con instantáneas.
 
 ## JSON
 

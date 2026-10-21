@@ -177,7 +177,7 @@ Hay dos capas, ambas en `validate.ts`, precedidas al importar un fichero por el 
 | `PARENT_CYCLE`               | error     | Contenedores anidados en bucle; se informa una vez por ciclo               |
 | `INVALID_CONTAINMENT`        | error     | Anidamiento no permitido o contenedor que no puede ir en el nivel superior |
 
-`parseArchitectureGraph(input)` es el único punto de entrada para datos no confiables (ficheros, enlaces, respuestas del modelo): aplica las dos capas, nunca lanza excepciones y devuelve el grafo con sus avisos o la lista completa de problemas. Devolver todos los problemas a la vez, y no solo el primero, es lo que permite reintentar la generación pasando al modelo una lista de errores concreta.
+`parseArchitectureGraph(input)` es el punto de entrada para datos no confiables ya convertidos en objeto, como las respuestas del modelo; los ficheros y enlaces pasan antes por `importJson`, que parsea el texto, aplica las migraciones y termina llamándola. La función aplica las dos capas, nunca lanza excepciones y devuelve el grafo con sus avisos o la lista completa de problemas. Devolver todos los problemas a la vez, y no solo el primero, es lo que permite reintentar la generación pasando al modelo una lista de errores concreta.
 
 Validación estructural no es lo mismo que revisión de diseño. Un grafo válido puede ser una mala arquitectura; eso lo detecta el motor de reglas, documentado en [modulos/lint.md](modulos/lint.md).
 
