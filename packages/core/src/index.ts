@@ -5,3 +5,4 @@ export * from './graph.ts';
 export * from './validate.ts';
 export * from './json-schema.ts';
 export * from './lint/index.ts';
+export * from './migrations.ts';

@@ -13,6 +13,9 @@ import { type ArchitectureGraph, type ArchNode, ArchitectureGraphSchema } from '
  */
 
 export const VALIDATION_CODES = [
+  'INVALID_JSON',
+  'UNSUPPORTED_SCHEMA_VERSION',
+  'MIGRATION_FAILED',
   'SCHEMA',
   'DUPLICATE_NODE_ID',
   'DUPLICATE_EDGE_ID',
