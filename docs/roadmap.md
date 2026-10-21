@@ -17,7 +17,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | --- | ---------------------------------------------------------------- | ------------- | ------------------ |
 | T01 | Fundamentos: monorepo, CI, modelo de dominio, documentación      |               | hecha (2026-10-20) |
 | T02 | Motor de reglas de diseño                                        | T01           | hecha (2026-10-20) |
-| T03 | Exportación a Mermaid y JSON, importación con migraciones        | T01           | pendiente          |
+| T03 | Exportación a Mermaid y JSON, importación con migraciones        | T01           | hecha (2026-10-21) |
 | T04 | Paquete de disposición automática con ELK                        | T01           | pendiente          |
 | T05 | Exportación a draw.io                                            | T03, T04      | pendiente          |
 | T06 | Plantillas de arquitectura                                       | T02           | pendiente          |
@@ -79,6 +79,8 @@ Criterios de aceptación:
 Documentación: `docs/modulos/lint.md` con la tabla de reglas, severidades y justificación; ADR si se decide algo con alternativas (por ejemplo el modelo de severidades).
 
 ### T03. Exportación a Mermaid y JSON, importación con migraciones
+
+Estado: hecha (2026-10-21). Documentado en `docs/modulos/exportacion.md`.
 
 Objetivo: sacar el diagrama a formatos de texto e importarlo de forma segura.
 

@@ -154,13 +154,16 @@ Las cadenas se recortan (`trim`) al validar; una etiqueta compuesta solo de espa
 
 ## Validación
 
-Hay dos capas, ambas en `validate.ts`:
+Hay dos capas, ambas en `validate.ts`, precedidas al importar un fichero por el parseo del JSON y las migraciones (ver [exportación e importación](modulos/exportacion.md#importación)):
 
 1. Esquema (Zod): tipos, enumerados, longitudes y objetos estrictos. Una propiedad desconocida es un error.
 2. Estructura (`validateGraph`): lo que el esquema no puede expresar.
 
 | Código                       | Severidad | Cuándo                                                                     |
 | ---------------------------- | --------- | -------------------------------------------------------------------------- |
+| `INVALID_JSON`               | error     | Al importar, el texto no es JSON (`importJson`)                            |
+| `UNSUPPORTED_SCHEMA_VERSION` | error     | Al importar, la versión es más nueva que la actual o no tiene migración    |
+| `MIGRATION_FAILED`           | error     | Al importar, una migración falla                                           |
 | `SCHEMA`                     | error     | La entrada no cumple el esquema. Incluye `path`                            |
 | `DUPLICATE_NODE_ID`          | error     | Dos nodos con el mismo id                                                  |
 | `DUPLICATE_EDGE_ID`          | error     | Dos aristas con el mismo id                                                |
@@ -200,4 +203,6 @@ El grafo no contiene posiciones, tamaños ni colores. Esa información vive en e
 
 ## Versionado del formato
 
-`schemaVersion` vale 1. Cualquier cambio incompatible (renombrar un campo, eliminar un tipo) incrementa la versión y añade una función de migración desde la anterior. Añadir un campo opcional o un tipo nuevo es compatible hacia atrás y no cambia la versión. La cadena de migraciones se implementa con la importación de JSON (T03).
+`schemaVersion` vale 1. Cualquier cambio incompatible (renombrar un campo, eliminar un tipo) incrementa la versión y añade una función de migración desde la anterior. Añadir un campo opcional o un tipo nuevo es compatible hacia atrás y no cambia la versión.
+
+`importJson` aplica la cadena de migraciones (`MIGRATIONS` en `migrations.ts`) antes de validar: un fichero de la versión `n` pasa por las migraciones `n → n + 1` hasta la versión actual. Un fichero de una versión más nueva que la del código se rechaza con `UNSUPPORTED_SCHEMA_VERSION` en lugar de intentar leerlo. Hoy la cadena está vacía; su funcionamiento y cómo añadir una migración están en [exportación e importación](modulos/exportacion.md#migraciones).

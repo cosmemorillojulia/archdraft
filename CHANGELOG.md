@@ -12,3 +12,4 @@ All notable changes to this project are documented here. The format follows [Kee
 - Design documentation: vision, architecture, domain model, ADRs 0001–0011 and roadmap.
 - `@archdraft/core`: design lint engine (`lintGraph`) with eight rules covering availability, exposure, encryption, synchronous coupling and unconnected components, and `resolveEdgeMode` to infer the mode of unannotated edges.
 - ADR 0012: per-finding severity with a default per rule.
+- `@archdraft/core`: Mermaid flowchart export (`toMermaid`) with nested subgraphs, shapes by category, dashed async edges and safe ids and labels; stable JSON export (`toJson`); `importJson` with a schema version migration chain (`migrateDocument`) and the `INVALID_JSON`, `UNSUPPORTED_SCHEMA_VERSION` and `MIGRATION_FAILED` codes.
