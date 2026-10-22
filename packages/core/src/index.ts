@@ -7,3 +7,4 @@ export * from './json-schema.ts';
 export * from './lint/index.ts';
 export * from './migrations.ts';
 export * from './export/index.ts';
+export * from './document.ts';
