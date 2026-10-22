@@ -12,7 +12,7 @@ Referencia:
 
 - [Guía de desarrollo](desarrollo.md): herramientas, configuración, CI y convenciones.
 - [Operaciones](operaciones.md): entornos, acciones manuales, límites de los planes gratuitos y secretos.
-- Módulos: [core](modulos/core.md), [motor de reglas de diseño](modulos/lint.md), [exportación e importación](modulos/exportacion.md).
+- Módulos: [core](modulos/core.md), [motor de reglas de diseño](modulos/lint.md), [exportación e importación](modulos/exportacion.md), [disposición automática](modulos/layout.md).
 
 ## Decisiones registradas
 

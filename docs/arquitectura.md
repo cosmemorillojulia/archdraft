@@ -65,7 +65,7 @@ flowchart TB
 | Contenedor        | Responsabilidad                                                                                                            | Tecnología                                 | Despliegue                                               | Estado                                                                                    |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `packages/core`   | Modelo de dominio: esquema, catálogo, índice del grafo, validación, reglas de diseño, exportadores, plantillas             | TypeScript puro, Zod                       | Librería interna                                         | Esquema, validación, reglas y exportación de texto hechos (T01 a T03); resto en T05 y T06 |
-| `packages/layout` | Disposición automática de un grafo jerárquico                                                                              | ELK.js                                     | Librería interna, ejecutada en un Web Worker             | T04                                                                                       |
+| `packages/layout` | Disposición automática de un grafo jerárquico                                                                              | ELK.js                                     | Librería interna, ejecutada en un Web Worker             | Hecho (T04)                                                                               |
 | `packages/ai`     | Construcción del prompt, interfaz de proveedor LLM, proveedor compatible con OpenAI, pipeline de generación con reintentos | TypeScript puro                            | Librería interna, sin E/S propia salvo `fetch` inyectado | T14, T15, T18                                                                             |
 | `apps/web`        | Editor visual, revisión en vivo, exportación, persistencia local                                                           | React, Vite, Tailwind, React Flow, Zustand | GitHub Pages                                             | T07 a T12, T20, T23                                                                       |
 | `apps/api`        | Capa HTTP: rutas, validación de entrada, límites de uso, adaptador de Workers AI                                           | Hono, Cloudflare Workers, Workers AI       | Cloudflare Workers                                       | T13, T15, T18, T19                                                                        |
@@ -88,10 +88,11 @@ La regla de dependencias es estricta: `apps/*` y `evals/` dependen de `packages/
 | `lint/`          | Motor de reglas de diseño                                                                    | Hecho                                 |
 | `export/`        | Mermaid y JSON (T03), draw.io (T05)                                                          | Mermaid y JSON hechos; draw.io en T05 |
 | `migrations.ts`  | Cadena de migraciones por `schemaVersion`, aplicada por `importJson`                         | Hecho                                 |
+| `document.ts`    | Esquemas de `DiagramLayout` y `DiagramDocument`: grafo más posiciones y tamaños              | Hecho                                 |
 | `templates/`     | Arquitecturas de ejemplo                                                                     | T06                                   |
 | `patch.ts`       | Operaciones de edición (añadir, quitar, modificar) y su aplicación                           | T18                                   |
 
-Detalle en [modelo-de-dominio.md](modelo-de-dominio.md), [modulos/core.md](modulos/core.md), [modulos/lint.md](modulos/lint.md) y [modulos/exportacion.md](modulos/exportacion.md).
+Detalle en [modelo-de-dominio.md](modelo-de-dominio.md), [modulos/core.md](modulos/core.md), [modulos/lint.md](modulos/lint.md), [modulos/exportacion.md](modulos/exportacion.md) y, para la disposición, [modulos/layout.md](modulos/layout.md).
 
 ### 4.2 apps/web (planificado)
 
@@ -112,7 +113,7 @@ flowchart LR
 
 Decisiones de diseño del editor:
 
-- Un único documento en el store: `{ graph: ArchitectureGraph, layout: { positions, sizes } }`. El grafo es la fuente de verdad semántica; la disposición es presentación (ADR 0007).
+- Un único documento en el store: `DiagramDocument` (`{ graph, layout: { positions, sizes } }`, esquema en `core`). El grafo es la fuente de verdad semántica; la disposición es presentación (ADR 0007). `computeLayout` de `packages/layout` calcula la disposición y, con posiciones fijadas, coloca solo los nodos nuevos.
 - Toda modificación pasa por acciones del store que producen un nuevo documento inmutable, se validan con `validateGraph` y se apilan en el historial para deshacer.
 - React Flow es una vista: su estado de nodos y aristas se deriva del documento mediante un adaptador puro y testeable, y los cambios del lienzo vuelven al store como acciones.
 - La revisión de diseño se recalcula en cada cambio. Las reglas son funciones puras y el grafo tiene como mucho 200 nodos, así que basta con memoizar por versión del documento.
