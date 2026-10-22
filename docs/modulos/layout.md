@@ -71,4 +71,5 @@ Limitación conocida: si un contenedor fijado crece, puede llegar a solapar a un
 - Sin solapes entre hermanos e hijos dentro de los límites del padre, con contenedores anidados en tres niveles y un contenedor vacío.
 - Determinismo, inmutabilidad de la entrada y las cuatro direcciones.
 - 200 nodos en 20 redes con aristas dentro y entre redes en menos de 2 s y sin solapes (unos 400 ms en el entorno de desarrollo).
+- Ids que coinciden con miembros de `Object.prototype` (`constructor`, `toString`), que no deben leerse como tamaños ni posiciones heredados.
 - Posiciones fijadas: se conservan, los nodos nuevos no chocan, desplazamiento en ambos ejes, crecimiento de contenedores, contenedor fijado que no encoge y entradas obsoletas ignoradas.
