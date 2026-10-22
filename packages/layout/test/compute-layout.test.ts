@@ -5,6 +5,7 @@ import {
   type DiagramLayout,
   DiagramLayoutSchema,
   indexGraph,
+  layoutEntry,
   validateGraph,
 } from '@archdraft/core';
 import { describe, expect, it } from 'vitest';
@@ -308,7 +309,7 @@ describe('computeLayout with ids that match object members', () => {
 
   it('does not read inherited members as sizes', async () => {
     const layout = await computeLayout(graph, { pinned: { positions: {}, sizes: {} } });
-    expect(layout.sizes.constructor).toEqual(DEFAULT_NODE_SIZE);
+    expect(layoutEntry(layout.sizes, 'constructor')).toEqual(DEFAULT_NODE_SIZE);
     expect(DiagramLayoutSchema.safeParse(layout).success).toBe(true);
   });
 
@@ -316,7 +317,7 @@ describe('computeLayout with ids that match object members', () => {
     const layout = await computeLayout(graph, {
       pinned: { positions: { toString: { x: 0, y: 0 } }, sizes: {} },
     });
-    expect(layout.positions.toString).toEqual({ x: 0, y: 0 });
+    expect(layoutEntry(layout.positions, 'toString')).toEqual({ x: 0, y: 0 });
     expect(DiagramLayoutSchema.safeParse(layout).success).toBe(true);
     expectReadable(graph, layout);
   });
