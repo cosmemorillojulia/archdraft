@@ -201,6 +201,8 @@ El grafo no contiene posiciones, tamaños ni colores. Esa información vive en e
 - Una edición con IA no desplaza lo que el usuario colocó a mano.
 - Las reglas y exportadores semánticos no dependen de la disposición.
 
+La disposición tiene su propio esquema en `document.ts`: `DiagramLayout` guarda, por id de nodo, la posición de la esquina superior izquierda relativa al contenedor padre (`positions`) y el tamaño (`sizes`), con coordenadas finitas, tamaños positivos y como mucho `LIMITS.maxNodes` entradas en cada mapa. `DiagramDocument` une `{ graph, layout }` y es lo que el editor guarda y comparte. Una entrada de la disposición sin nodo correspondiente no invalida el documento: se ignora. Las entradas se leen con `layoutEntry(record, id)`, que solo devuelve propiedades propias: un id como `constructor` es válido y `record[id]` devolvería el miembro heredado de `Object.prototype`. La calcula `packages/layout` ([disposición automática](modulos/layout.md)).
+
 ## Versionado del formato
 
 `schemaVersion` vale 1. Cualquier cambio incompatible (renombrar un campo, eliminar un tipo) incrementa la versión y añade una función de migración desde la anterior. Añadir un campo opcional o un tipo nuevo es compatible hacia atrás y no cambia la versión.

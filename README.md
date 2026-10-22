@@ -47,6 +47,7 @@ apps/
   api/          # Cloudflare Worker (planned)
 packages/
   core/         # domain model: schema, catalog, graph utilities, validation
+  layout/       # automatic layout with ELK
 evals/          # generation quality benchmark (planned)
 docs/           # architecture, decisions (ADRs) and roadmap
 ```

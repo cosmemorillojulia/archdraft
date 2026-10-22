@@ -18,7 +18,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T01 | Fundamentos: monorepo, CI, modelo de dominio, documentación      |               | hecha (2026-10-20) |
 | T02 | Motor de reglas de diseño                                        | T01           | hecha (2026-10-20) |
 | T03 | Exportación a Mermaid y JSON, importación con migraciones        | T01           | hecha (2026-10-21) |
-| T04 | Paquete de disposición automática con ELK                        | T01           | pendiente          |
+| T04 | Paquete de disposición automática con ELK                        | T01           | hecha (2026-10-22) |
 | T05 | Exportación a draw.io                                            | T03, T04      | pendiente          |
 | T06 | Plantillas de arquitectura                                       | T02           | pendiente          |
 | T07 | Editor: estructura, sistema visual y despliegue en Pages         | T01           | pendiente          |
@@ -96,6 +96,8 @@ Criterios de aceptación: tests de instantánea, tests de escapado con comillas,
 Documentación: `docs/modulos/exportacion.md`; sección de versionado del modelo de dominio actualizada.
 
 ### T04. Paquete de disposición automática con ELK
+
+Estado: hecha (2026-10-22). Documentado en `docs/modulos/layout.md`.
 
 Objetivo: calcular posiciones legibles respetando contenedores.
 
