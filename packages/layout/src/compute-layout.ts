@@ -5,6 +5,7 @@ import {
   type GraphIndex,
   indexGraph,
   isContainer,
+  layoutEntry,
   type Point,
   type Size,
 } from '@archdraft/core';
@@ -66,7 +67,10 @@ export async function computeLayout(
   const { direction = 'LR', pinned } = options;
   const index = indexGraph(graph);
   const fresh = await runElk(index, direction, pinned?.sizes ?? {});
-  if (!pinned || !graph.nodes.some((node) => pinned.positions[node.id] !== undefined)) {
+  if (
+    !pinned ||
+    !graph.nodes.some((node) => layoutEntry(pinned.positions, node.id) !== undefined)
+  ) {
     return fresh;
   }
   return mergePinned(index, fresh, pinned, direction);
@@ -84,7 +88,8 @@ async function runElk(
     const children = (index.childrenOf.get(node.id) ?? []).map(toElkNode);
     if (children.length > 0) return { id: node.id, children, layoutOptions: CONTAINER_OPTIONS };
     const size =
-      knownSizes[node.id] ?? (isContainer(node) ? DEFAULT_CONTAINER_SIZE : DEFAULT_NODE_SIZE);
+      layoutEntry(knownSizes, node.id) ??
+      (isContainer(node) ? DEFAULT_CONTAINER_SIZE : DEFAULT_NODE_SIZE);
     return { id: node.id, ...size };
   };
 
@@ -155,7 +160,10 @@ function mergePinned(
   const crossAxisIsY = direction === 'LR' || direction === 'RL';
 
   const sizeOf = (id: string): Size =>
-    layout.sizes[id] ?? pinned.sizes[id] ?? fresh.sizes[id] ?? DEFAULT_NODE_SIZE;
+    layoutEntry(layout.sizes, id) ??
+    layoutEntry(pinned.sizes, id) ??
+    layoutEntry(fresh.sizes, id) ??
+    DEFAULT_NODE_SIZE;
 
   const settle = (siblings: readonly ArchNode[]): void => {
     for (const node of siblings) {
@@ -166,15 +174,18 @@ function mergePinned(
 
     const placed: Box[] = [];
     for (const node of siblings) {
-      const position = pinned.positions[node.id];
+      const position = layoutEntry(pinned.positions, node.id);
       if (position) {
         layout.positions[node.id] = { ...position };
         placed.push({ ...position, ...sizeOf(node.id) });
       }
     }
     for (const node of siblings) {
-      if (layout.positions[node.id]) continue;
-      const box: Box = { ...(fresh.positions[node.id] ?? { x: 0, y: 0 }), ...sizeOf(node.id) };
+      if (layoutEntry(layout.positions, node.id)) continue;
+      const box: Box = {
+        ...(layoutEntry(fresh.positions, node.id) ?? { x: 0, y: 0 }),
+        ...sizeOf(node.id),
+      };
       for (let hit = placed.find((other) => overlaps(box, other)); hit;) {
         if (crossAxisIsY) box.y = hit.y + hit.height + NODE_SPACING;
         else box.x = hit.x + hit.width + NODE_SPACING;
@@ -188,7 +199,7 @@ function mergePinned(
   const grow = (size: Size, children: readonly ArchNode[]): Size => {
     let { width, height } = size;
     for (const child of children) {
-      const position = layout.positions[child.id] ?? { x: 0, y: 0 };
+      const position = layoutEntry(layout.positions, child.id) ?? { x: 0, y: 0 };
       const childSize = sizeOf(child.id);
       width = Math.max(width, position.x + childSize.width + CONTAINER_PADDING.right);
       height = Math.max(height, position.y + childSize.height + CONTAINER_PADDING.bottom);

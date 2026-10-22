@@ -3,6 +3,7 @@ import {
   createEmptyLayout,
   DiagramDocumentSchema,
   DiagramLayoutSchema,
+  layoutEntry,
   LIMITS,
 } from '../src/index.ts';
 import { threeTierGraph } from './fixtures.ts';
@@ -52,4 +53,17 @@ describe('DiagramDocumentSchema', () => {
     };
     expect(DiagramDocumentSchema.safeParse(document).success).toBe(false);
   });
+});
+
+describe('layoutEntry', () => {
+  it('returns own entries', () => {
+    expect(layoutEntry({ api: { x: 1, y: 2 } }, 'api')).toEqual({ x: 1, y: 2 });
+  });
+
+  it.each(['constructor', 'toString', 'hasOwnProperty', 'missing'])(
+    'returns undefined for %s when it is not an own entry',
+    (id) => {
+      expect(layoutEntry<unknown>({}, id)).toBeUndefined();
+    },
+  );
 });

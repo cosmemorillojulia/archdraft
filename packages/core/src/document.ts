@@ -41,3 +41,12 @@ export type DiagramDocument = z.infer<typeof DiagramDocumentSchema>;
 export function createEmptyLayout(): DiagramLayout {
   return { positions: {}, sizes: {} };
 }
+
+/**
+ * Reads the entry of a layout record. Ids such as `constructor` are valid,
+ * so a plain `record[id]` could return an inherited `Object.prototype`
+ * member instead of `undefined`.
+ */
+export function layoutEntry<T>(record: Readonly<Record<string, T>>, id: string): T | undefined {
+  return Object.hasOwn(record, id) ? record[id] : undefined;
+}

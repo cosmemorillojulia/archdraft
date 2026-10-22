@@ -296,3 +296,28 @@ describe('computeLayout with pinned positions', () => {
     expect(layout).toEqual(await computeLayout(graph));
   });
 });
+
+describe('computeLayout with ids that match object members', () => {
+  const graph = graphOf(
+    [
+      { id: 'constructor', kind: 'service', label: 'A' },
+      { id: 'toString', kind: 'service', label: 'B' },
+    ],
+    [{ id: 'e1', source: 'constructor', target: 'toString' }],
+  );
+
+  it('does not read inherited members as sizes', async () => {
+    const layout = await computeLayout(graph, { pinned: { positions: {}, sizes: {} } });
+    expect(layout.sizes.constructor).toEqual(DEFAULT_NODE_SIZE);
+    expect(DiagramLayoutSchema.safeParse(layout).success).toBe(true);
+  });
+
+  it('does not read inherited members as pinned positions', async () => {
+    const layout = await computeLayout(graph, {
+      pinned: { positions: { toString: { x: 0, y: 0 } }, sizes: {} },
+    });
+    expect(layout.positions.toString).toEqual({ x: 0, y: 0 });
+    expect(DiagramLayoutSchema.safeParse(layout).success).toBe(true);
+    expectReadable(graph, layout);
+  });
+});
