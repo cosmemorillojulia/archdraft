@@ -1,6 +1,8 @@
 import {
   type ArchitectureGraph,
   type ArchNode,
+  DEFAULT_CONTAINER_SIZE,
+  DEFAULT_NODE_SIZE,
   type DiagramLayout,
   type GraphIndex,
   indexGraph,
@@ -28,9 +30,6 @@ export interface ComputeLayoutOptions {
    */
   readonly pinned?: DiagramLayout;
 }
-
-export const DEFAULT_NODE_SIZE: Size = { width: 180, height: 64 };
-export const DEFAULT_CONTAINER_SIZE: Size = { width: 240, height: 140 };
 
 /** Space between sibling nodes, also kept around new nodes in pinned mode. */
 export const NODE_SPACING = 40;
