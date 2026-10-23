@@ -19,7 +19,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T02 | Motor de reglas de diseño                                        | T01           | hecha (2026-10-20) |
 | T03 | Exportación a Mermaid y JSON, importación con migraciones        | T01           | hecha (2026-10-21) |
 | T04 | Paquete de disposición automática con ELK                        | T01           | hecha (2026-10-22) |
-| T05 | Exportación a draw.io                                            | T03, T04      | pendiente          |
+| T05 | Exportación a draw.io                                            | T03, T04      | hecha (2026-10-23) |
 | T06 | Plantillas de arquitectura                                       | T02           | pendiente          |
 | T07 | Editor: estructura, sistema visual y despliegue en Pages         | T01           | pendiente          |
 | T08 | Editor: lienzo que representa el grafo                           | T04, T06, T07 | pendiente          |
@@ -112,6 +112,8 @@ Criterios de aceptación: determinista; sin solapes entre hermanos; hijos dentro
 Documentación: `docs/modulos/layout.md` con las opciones de ELK elegidas y su motivo.
 
 ### T05. Exportación a draw.io
+
+Estado: hecha (2026-10-23). Documentado en `docs/modulos/exportacion.md`. La apertura en draw.io queda como acción manual en `operaciones.md`.
 
 Objetivo: abrir el diagrama en draw.io para quien prefiera esa herramienta.
 
