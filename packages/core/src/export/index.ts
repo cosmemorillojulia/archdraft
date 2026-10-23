@@ -5,3 +5,4 @@ export {
   toMermaid,
 } from './mermaid.ts';
 export { importJson, toJson } from './json.ts';
+export { toDrawio } from './drawio.ts';
