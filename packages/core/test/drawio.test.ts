@@ -227,6 +227,7 @@ describe('toDrawio', () => {
       'One\r\nTwo\tThree',
     );
     const xml = toDrawio(graph, createEmptyLayout());
+    // eslint-disable-next-line no-control-regex -- looking for control characters on purpose
     expect(xml).not.toMatch(/[\0-\x08\x0B\x0C\x0E-\x1F￾￿\p{Cs}]/u);
     expect(cell(xml, 'n-a').getAttribute('value')).toBe('ABCD 😀');
     expect(parse(xml).getElementsByTagName('diagram')[0]?.getAttribute('name')).toBe(
