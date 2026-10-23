@@ -1,13 +1,15 @@
 # Módulo: exportación e importación
 
-Vive en `packages/core/src/export/` y en `packages/core/src/migrations.ts`. Convierte un grafo a formatos de texto (Mermaid y JSON) y lee de vuelta los ficheros JSON de forma segura. Todo son funciones puras sin E/S: el editor (T11, T12) se encarga de copiar, descargar o leer ficheros.
+Vive en `packages/core/src/export/` y en `packages/core/src/migrations.ts`. Convierte un grafo a formatos de texto (Mermaid, draw.io y JSON) y lee de vuelta los ficheros JSON de forma segura. Todo son funciones puras sin E/S: el editor (T11, T12) se encarga de copiar, descargar o leer ficheros.
 
 ## Estructura
 
 ```
 packages/core/src/
   export/
+    labels.ts      # textos comunes: subtítulo del nodo y etiqueta de la arista
     mermaid.ts     # toMermaid
+    drawio.ts      # toDrawio
     json.ts        # toJson, importJson
     index.ts       # API pública del módulo
   migrations.ts    # cadena de migraciones por schemaVersion
@@ -19,12 +21,13 @@ packages/core/src/
 | ------------------------------------- | --------- | ------------------------------------------------------------------------------ |
 | `toMermaid(graph, { direction? })`    | Función   | Texto `flowchart` de Mermaid. Dirección `LR` (por defecto), `TB`, `RL` o `BT`  |
 | `MERMAID_DIRECTIONS`                  | Constante | Direcciones admitidas, para el selector de la interfaz                         |
+| `toDrawio(graph, layout)`             | Función   | Fichero `.drawio` sin comprimir, con las posiciones de un `DiagramLayout`      |
 | `toJson(graph)`                       | Función   | JSON indentado con orden de claves fijo                                        |
 | `importJson(text)`                    | Función   | Parseo, migración y validación de un fichero o enlace. Nunca lanza excepciones |
 | `migrateDocument(document, options?)` | Función   | Aplica la cadena de migraciones; lo usa `importJson`                           |
 | `MIGRATIONS`, `Migration`             | Constante | Migraciones registradas, indexadas por la versión de origen                    |
 
-`toMermaid` y `toJson` esperan un grafo válido. `toMermaid` lanza un error de programación si una arista apunta a un nodo inexistente, porque eso solo ocurre si alguien se salta `parseArchitectureGraph` o `validateGraph`.
+`toMermaid`, `toDrawio` y `toJson` esperan un grafo válido. `toMermaid` y `toDrawio` lanzan un error de programación si una arista apunta a un nodo inexistente, porque eso solo ocurre si alguien se salta `parseArchitectureGraph` o `validateGraph`.
 
 ## Mermaid
 
@@ -92,6 +95,73 @@ Todas las etiquetas van entre comillas dobles, lo que permite corchetes, llaves 
 Los saltos de línea (`\n`, `\r\n`, `\r`) se convierten en `<br/>`; sin esa conversión Mermaid los descarta. La salida del modelo es un dato y nunca debe poder inyectar HTML en el diagrama renderizado.
 
 Verificación: el fixture de tres capas y un grafo con todos los casos anteriores (ids `end`, `a--b` y `a__b`, etiquetas con HTML, directivas `%%{init}%%`, comillas, almohadillas, comillas invertidas, barras y saltos de línea, contenedor vacío) se renderizaron con Mermaid 12.2.0 en Chromium con `securityLevel: 'strict'`: sin errores, con los textos literales y sin elementos HTML inyectados. Los tests fijan la salida con instantáneas.
+
+## draw.io
+
+`toDrawio(graph, layout)` genera un `mxfile` sin comprimir, el formato que draw.io guarda por defecto, con una sola página que se llama como el diagrama. A diferencia de Mermaid, draw.io no calcula posiciones, así que el exportador recibe la disposición: la del editor o la de `computeLayout` (`packages/layout`). La función sigue en `core` porque solo escribe texto; no depende de ELK.
+
+Ejemplo abreviado:
+
+```xml
+<mxfile host="Archdraft">
+  <diagram id="archdraft" name="Online store">
+    <mxGraphModel>
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="n-vpc" value="VPC" style="...container=1;..." vertex="1" parent="n-region">
+          <mxGeometry x="24" y="48" width="700" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="e-e7" value="amqp" style="edgeStyle=orthogonalEdgeStyle;...dashed=1;" edge="1" parent="1" source="n-api" target="n-orders-queue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+```
+
+| Elemento del grafo | Representación en draw.io                                                                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contenedor         | Celda con `container=1`, borde discontinuo, sin relleno y título arriba a la izquierda                                                                |
+| Hijo               | Celda con `parent` igual a la celda de su contenedor; moverlo en draw.io mueve también su contenido                                                   |
+| Posición y tamaño  | `mxGeometry` con los valores del `DiagramLayout`; ambos usan coordenadas relativas al padre                                                           |
+| Componente         | Rectángulo redondeado con el color de su categoría; cilindro (`cylinder3`) para datos, estadio para actores, borde discontinuo para sistemas externos |
+| Etiqueta           | Nombre y, en una segunda línea, el producto con la misma regla que Mermaid (`nodeSubtitle`)                                                           |
+| Arista             | Celda `edge="1"` con estilo ortogonal; discontinua si el modo efectivo es asíncrono                                                                   |
+| Texto de arista    | El mismo que en Mermaid (`edgeText`): `"Reads · grpc"`                                                                                                |
+
+Decisiones:
+
+- Identificadores de celda: `n-<id>` para nodos y `e-<id>` para aristas. En draw.io nodos y aristas comparten espacio de nombres y las celdas `0` y `1` están reservadas para la raíz y la capa, mientras que en el dominio un nodo y una arista pueden llamarse igual (`e1`) y un slug puede ser `1`.
+- Los contenedores se escriben antes que sus hijos. draw.io pinta en el orden del documento, así que el contenido queda encima del marco.
+- Las aristas cuelgan de la capa (`parent="1"`) aunque sus extremos estén en contenedores distintos: draw.io calcula la posición absoluta de cada extremo.
+- Si a un nodo le falta la posición en la disposición se coloca en el origen de su padre, y si le falta el tamaño recibe `DEFAULT_NODE_SIZE` o `DEFAULT_CONTAINER_SIZE`. Una disposición desfasada respecto al grafo sigue exportándose en lugar de fallar.
+- Colores de la paleta estándar de draw.io, uno por categoría, para que el diagrama encaje con lo que el usuario ya dibuja allí. No se usan iconos de proveedor (ADR 0008).
+
+Uso desde Node.js, por ejemplo para generar un fichero de prueba:
+
+```ts
+import { toDrawio } from '@archdraft/core';
+import { computeLayout } from '@archdraft/layout';
+
+const xml = toDrawio(graph, await computeLayout(graph));
+```
+
+### Escapado
+
+Las etiquetas usan `html=1`, que permite que los nombres largos se partan dentro del nodo. Con esa opción draw.io interpreta el valor como HTML, de modo que el texto pasa por dos escapados:
+
+1. HTML: `&`, `<`, `>`, `"` y `'` se convierten en referencias numéricas (`&#60;`) y los saltos de línea en `<br>`. Una etiqueta nunca puede inyectar marcado.
+2. XML: el resultado se escribe como atributo escapando `&`, `<`, `>`, `"` y `'`. Tabuladores y saltos de línea en atributos sin HTML, como el nombre de la página, se escriben como referencias (`&#10;`) porque un parser XML los normalizaría a espacios.
+
+XML 1.0 no admite algunos caracteres ni siquiera como referencia: controles C0 salvo tabulador, salto de línea y retorno de carro, sustitutos sin pareja, U+FFFE y U+FFFF. El esquema no los excluye y uno solo basta para que draw.io rechace el fichero, así que se eliminan.
+
+### Verificación
+
+- Los tests analizan la salida con `@xmldom/xmldom` en modo estricto (cualquier aviso falla) y comprueban padres, orden, geometría, estilos, ids reservados y compartidos, escapado y caracteres no válidos. Una instantánea fija la salida del fixture de tres capas.
+- El fixture de tres capas con la disposición de `computeLayout` y una etiqueta con `<b>`, comillas, `&` y un salto de línea se cargó con `mxCodec` de mxGraph 4.2.2 (la librería sobre la que está construido draw.io) en Chromium: 26 celdas con los padres esperados, contenedores anidados en su sitio, aristas conectadas y el texto de la etiqueta mostrado de forma literal, sin elementos HTML inyectados. mxGraph no incluye la forma `cylinder3` de draw.io y la dibuja como rectángulo.
+- Pendiente: abrir el fichero en draw.io (app.diagrams.net o la aplicación de escritorio). Desde el entorno de desarrollo automatizado no hay acceso a draw.io; la comprobación está en la tabla de acciones pendientes de [operaciones](../operaciones.md).
 
 ## JSON
 

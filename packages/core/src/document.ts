@@ -38,6 +38,11 @@ export type Size = z.infer<typeof SizeSchema>;
 export type DiagramLayout = z.infer<typeof DiagramLayoutSchema>;
 export type DiagramDocument = z.infer<typeof DiagramDocumentSchema>;
 
+/** Size of a component that has not been measured or laid out yet. */
+export const DEFAULT_NODE_SIZE: Size = { width: 180, height: 64 };
+/** Size of an empty container, which has no children to grow around. */
+export const DEFAULT_CONTAINER_SIZE: Size = { width: 240, height: 140 };
+
 export function createEmptyLayout(): DiagramLayout {
   return { positions: {}, sizes: {} };
 }

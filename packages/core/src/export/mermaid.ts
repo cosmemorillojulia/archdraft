@@ -1,7 +1,8 @@
 import { getNodeDefinition } from '../catalog.ts';
-import { indexGraph, resolveEdgeMode, resolveServiceName } from '../graph.ts';
+import { indexGraph, resolveEdgeMode } from '../graph.ts';
 import { isContainerKind } from '../kinds.ts';
 import type { ArchEdge, ArchitectureGraph, ArchNode } from '../schema.ts';
+import { edgeText, nodeSubtitle } from './labels.ts';
 
 /**
  * Exports a graph as a Mermaid `flowchart`, the format GitHub, GitLab and
@@ -80,15 +81,12 @@ function idOf(ids: ReadonlyMap<string, string>, nodeId: string): string {
 }
 
 function nodeShape(node: ArchNode, graph: ArchitectureGraph): string {
-  const definition = getNodeDefinition(node.kind);
-  const service = resolveServiceName(node, graph);
-  // The product is worth a second line only when it says something the label
-  // and the generic kind name do not.
-  const showService = service !== definition.label && service !== node.label;
-  const label = showService
-    ? `${escapeLabel(node.label)}<br/>${escapeLabel(service)}`
-    : escapeLabel(node.label);
-  switch (definition.category) {
+  const subtitle = nodeSubtitle(node, graph);
+  const label =
+    subtitle === undefined
+      ? escapeLabel(node.label)
+      : `${escapeLabel(node.label)}<br/>${escapeLabel(subtitle)}`;
+  switch (getNodeDefinition(node.kind).category) {
     case 'data':
       return `[("${label}")]`;
     case 'actor':
@@ -100,7 +98,7 @@ function nodeShape(node: ArchNode, graph: ArchitectureGraph): string {
 
 function edgeLine(edge: ArchEdge, ids: ReadonlyMap<string, string>): string {
   const arrow = resolveEdgeMode(edge) === 'async' ? '-.->' : '-->';
-  const text = [edge.label, edge.protocol].filter((part) => part !== undefined).join(' · ');
+  const text = edgeText(edge);
   const label = text === '' ? '' : `|"${escapeLabel(text)}"|`;
   return `${idOf(ids, edge.source)} ${arrow}${label} ${idOf(ids, edge.target)}`;
 }

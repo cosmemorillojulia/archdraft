@@ -77,20 +77,20 @@ La regla de dependencias es estricta: `apps/*` y `evals/` dependen de `packages/
 
 ### 4.1 packages/core
 
-| Módulo           | Contenido                                                                                    | Estado                                |
-| ---------------- | -------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `kinds.ts`       | Vocabularios cerrados: proveedores, categorías, tipos de nodo, protocolos, modos             | Hecho                                 |
-| `schema.ts`      | Esquema Zod del diagrama, límites, tipos derivados                                           | Hecho                                 |
-| `catalog.ts`     | Definición de cada tipo de nodo, mapeo a productos, reglas de anidamiento                    | Hecho                                 |
-| `graph.ts`       | Índice del grafo y recorridos (ancestros, descendientes), resolución de proveedor y producto | Hecho                                 |
-| `validate.ts`    | Validación estructural y punto de entrada para datos no confiables                           | Hecho                                 |
-| `json-schema.ts` | JSON Schema derivado para el LLM                                                             | Hecho                                 |
-| `lint/`          | Motor de reglas de diseño                                                                    | Hecho                                 |
-| `export/`        | Mermaid y JSON (T03), draw.io (T05)                                                          | Mermaid y JSON hechos; draw.io en T05 |
-| `migrations.ts`  | Cadena de migraciones por `schemaVersion`, aplicada por `importJson`                         | Hecho                                 |
-| `document.ts`    | Esquemas de `DiagramLayout` y `DiagramDocument`: grafo más posiciones y tamaños              | Hecho                                 |
-| `templates/`     | Arquitecturas de ejemplo                                                                     | T06                                   |
-| `patch.ts`       | Operaciones de edición (añadir, quitar, modificar) y su aplicación                           | T18                                   |
+| Módulo           | Contenido                                                                                    | Estado |
+| ---------------- | -------------------------------------------------------------------------------------------- | ------ |
+| `kinds.ts`       | Vocabularios cerrados: proveedores, categorías, tipos de nodo, protocolos, modos             | Hecho  |
+| `schema.ts`      | Esquema Zod del diagrama, límites, tipos derivados                                           | Hecho  |
+| `catalog.ts`     | Definición de cada tipo de nodo, mapeo a productos, reglas de anidamiento                    | Hecho  |
+| `graph.ts`       | Índice del grafo y recorridos (ancestros, descendientes), resolución de proveedor y producto | Hecho  |
+| `validate.ts`    | Validación estructural y punto de entrada para datos no confiables                           | Hecho  |
+| `json-schema.ts` | JSON Schema derivado para el LLM                                                             | Hecho  |
+| `lint/`          | Motor de reglas de diseño                                                                    | Hecho  |
+| `export/`        | Mermaid y JSON (T03), draw.io (T05)                                                          | Hecho  |
+| `migrations.ts`  | Cadena de migraciones por `schemaVersion`, aplicada por `importJson`                         | Hecho  |
+| `document.ts`    | Esquemas de `DiagramLayout` y `DiagramDocument`: grafo más posiciones y tamaños              | Hecho  |
+| `templates/`     | Arquitecturas de ejemplo                                                                     | T06    |
+| `patch.ts`       | Operaciones de edición (añadir, quitar, modificar) y su aplicación                           | T18    |
 
 Detalle en [modelo-de-dominio.md](modelo-de-dominio.md), [modulos/core.md](modulos/core.md), [modulos/lint.md](modulos/lint.md), [modulos/exportacion.md](modulos/exportacion.md) y, para la disposición, [modulos/layout.md](modulos/layout.md).
 
@@ -188,7 +188,7 @@ El documento se serializa, se comprime y se codifica en el fragmento de la URL (
 - No hay secretos en el frontend. El modelo se invoca mediante binding dentro del Worker; los tokens de proveedores alternativos son secretos del Worker.
 - CORS restringido al dominio del editor.
 - Límites de tamaño en la entrada: prompt de 4.000 caracteres como máximo y cuerpo de 64 KB, más los límites del esquema (200 nodos, 400 aristas).
-- La salida del modelo es dato, nunca código: se valida con esquemas estrictos y se renderiza como texto. Los exportadores escapan las etiquetas según el formato de destino (XML en draw.io, comillas en Mermaid).
+- La salida del modelo es dato, nunca código: se valida con esquemas estrictos y se renderiza como texto. Los exportadores escapan las etiquetas según el formato de destino (XML y HTML en draw.io, comillas y entidades en Mermaid).
 - Límite de uso por IP para proteger la cuota diaria (T19).
 
 ### Privacidad

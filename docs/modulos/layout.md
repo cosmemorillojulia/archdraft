@@ -8,11 +8,10 @@ Calcula posiciones y tamaños legibles para un `ArchitectureGraph` con ELK.js (A
 | ----------------------------------------------- | -------------------------------------------------------------------- |
 | `computeLayout(graph, { direction?, pinned? })` | Devuelve una promesa con un `DiagramLayout`                          |
 | `LAYOUT_DIRECTIONS`, `LayoutDirection`          | `LR` (por defecto), `TB`, `RL`, `BT`: los mismos valores que Mermaid |
-| `DEFAULT_NODE_SIZE`, `DEFAULT_CONTAINER_SIZE`   | 180 × 64 para componentes; 240 × 140 para contenedores vacíos        |
 | `NODE_SPACING`, `CONTAINER_PADDING`             | Separación entre hermanos y relleno de los contenedores              |
 | `ComputeLayoutOptions`                          | Tipo de las opciones                                                 |
 
-Los tipos `DiagramLayout` y `DiagramDocument` y sus esquemas viven en `@archdraft/core` (`document.ts`), porque el editor los guarda, los comparte en la URL y los valida como cualquier entrada no confiable sin necesitar ELK.
+Los tipos `DiagramLayout` y `DiagramDocument`, sus esquemas y los tamaños por defecto (`DEFAULT_NODE_SIZE`, 180 × 64 para componentes; `DEFAULT_CONTAINER_SIZE`, 240 × 140 para contenedores vacíos) viven en `@archdraft/core` (`document.ts`), porque el editor los guarda, los comparte en la URL y los valida como cualquier entrada no confiable sin necesitar ELK, y la exportación a draw.io usa los mismos tamaños cuando falta una entrada.
 
 ## Formato del resultado
 

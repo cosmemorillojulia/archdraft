@@ -15,3 +15,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/core`: Mermaid flowchart export (`toMermaid`) with nested subgraphs, shapes by category, dashed async edges and safe ids and labels; stable JSON export (`toJson`); `importJson` with a schema version migration chain (`migrateDocument`) and the `INVALID_JSON`, `UNSUPPORTED_SCHEMA_VERSION` and `MIGRATION_FAILED` codes.
 - `@archdraft/core`: `DiagramLayout` and `DiagramDocument` schemas for the positions and sizes stored next to the graph.
 - `@archdraft/layout`: `computeLayout` with ELK `layered`, nested containers, configurable direction, default sizes and pinned positions that keep a previous layout and only place new nodes.
+- `@archdraft/core`: draw.io export (`toDrawio`) with containers as draw.io containers, layout positions, styles by category, dashed async edges and labels escaped for XML and HTML.
+
+### Changed
+
+- `DEFAULT_NODE_SIZE` and `DEFAULT_CONTAINER_SIZE` moved from `@archdraft/layout` to `@archdraft/core`.
