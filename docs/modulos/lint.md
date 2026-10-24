@@ -90,5 +90,5 @@ El último punto es una decisión consciente: una flecha sin anotar en un diagra
 
 1. Añadir su id a `LINT_RULE_IDS` en `types.ts`.
 2. Definirla en `rules.ts` y añadirla a `LINT_RULES` en la posición que le corresponda por gravedad. Un test comprueba que ids y reglas coinciden.
-3. Escribir al menos un test positivo y uno negativo en `test/lint.test.ts`, y revisar el test del fixture de tres capas.
+3. Escribir al menos un test positivo y uno negativo en `test/lint.test.ts`, y revisar el test del fixture de tres capas. Si la regla dispara sobre alguna plantilla, el test de plantillas falla: corregir la plantilla o justificar el hallazgo en [plantillas.md](plantillas.md).
 4. Añadirla a la tabla de reglas de esta página.

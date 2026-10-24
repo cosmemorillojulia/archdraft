@@ -20,7 +20,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T03 | Exportación a Mermaid y JSON, importación con migraciones        | T01           | hecha (2026-10-21) |
 | T04 | Paquete de disposición automática con ELK                        | T01           | hecha (2026-10-22) |
 | T05 | Exportación a draw.io                                            | T03, T04      | hecha (2026-10-23) |
-| T06 | Plantillas de arquitectura                                       | T02           | pendiente          |
+| T06 | Plantillas de arquitectura                                       | T02           | hecha (2026-10-24) |
 | T07 | Editor: estructura, sistema visual y despliegue en Pages         | T01           | pendiente          |
 | T08 | Editor: lienzo que representa el grafo                           | T04, T06, T07 | pendiente          |
 | T09 | Editor: edición, inspector, deshacer y rehacer                   | T08           | pendiente          |
@@ -124,6 +124,8 @@ Criterios de aceptación: XML bien formado (validado con un parser en tests), pa
 Documentación: ampliar `docs/modulos/exportacion.md`.
 
 ### T06. Plantillas de arquitectura
+
+Estado: hecha (2026-10-24). Documentado en `docs/modulos/plantillas.md`. Ninguna plantilla produce avisos de validación ni hallazgos de diseño.
 
 Objetivo: ejemplos de calidad para la galería y para el prompt (few-shot).
 

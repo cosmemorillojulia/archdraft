@@ -17,7 +17,8 @@ packages/core/
     migrations.ts   # cadena de migraciones por schemaVersion
     document.ts     # DiagramLayout y DiagramDocument
     lint/           # motor de reglas de diseño, ver modulos/lint.md
-    export/         # Mermaid y JSON, ver modulos/exportacion.md
+    export/         # Mermaid, JSON y draw.io, ver modulos/exportacion.md
+    templates/      # seis arquitecturas de referencia, ver modulos/plantillas.md
   test/
     fixtures.ts     # grafo de ejemplo: tienda online de tres capas en AWS
     *.test.ts
@@ -40,6 +41,7 @@ packages/core/
 | `toMermaid`, `toDrawio`, `toJson`                                                                                                 | Funciones                      | Exportación de texto, ver [exportacion.md](exportacion.md)              |
 | `importJson`, `migrateDocument`, `MIGRATIONS`                                                                                     | Funciones y mapa               | Importar ficheros y enlaces con migraciones                             |
 | `DiagramLayoutSchema`, `DiagramDocumentSchema`, `createEmptyLayout`, `layoutEntry`, `DEFAULT_NODE_SIZE`, `DEFAULT_CONTAINER_SIZE` | Esquemas, función y constantes | Disposición y documento del editor, ver [layout.md](layout.md)          |
+| `ARCHITECTURE_TEMPLATES`, `TEMPLATE_IDS`, `TemplateId`, `TemplateGraph`                                                           | Constantes y tipos             | Galería y ejemplos del prompt, ver [plantillas.md](plantillas.md)       |
 | `NODE_CATALOG`, `getNodeDefinition`                                                                                               | Constante y función            | Paleta, iconos, leyenda                                                 |
 | `CONTAINMENT_RULES`                                                                                                               | Constante                      | Validación y, en el editor, impedir anidamientos inválidos al arrastrar |
 | `architectureGraphJsonSchema()`                                                                                                   | Función                        | Prompt del modelo                                                       |
@@ -74,6 +76,6 @@ Añadir un código de validación:
 
 ## Tests
 
-- 186 tests en diez ficheros a fecha de T04; cobertura del 100 % de líneas y funciones y por encima del 99 % de ramas.
+- 220 tests en doce ficheros a fecha de T06; cobertura del 100 % de líneas y funciones y por encima del 99 % de ramas.
 - Umbrales mínimos en `vitest.config.ts`: 90 % de líneas, funciones y sentencias y 85 % de ramas. CI falla si se incumplen.
 - `parseArchitectureGraph` se prueba con entradas arbitrarias (`null`, números, arrays) para garantizar que nunca lanza.
