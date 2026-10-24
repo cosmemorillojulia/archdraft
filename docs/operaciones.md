@@ -2,27 +2,27 @@
 
 ## Entornos
 
-| Pieza        | Dónde              | URL                                              | Estado          |
-| ------------ | ------------------ | ------------------------------------------------ | --------------- |
-| Editor web   | GitHub Pages       | `https://cosmemorillojulia.github.io/archdraft/` | Pendiente (T07) |
-| API          | Cloudflare Workers | `https://archdraft-api.<subdominio>.workers.dev` | Pendiente (T13) |
-| Evaluaciones | GitHub Actions     | Pestaña Actions del repositorio                  | Pendiente (T17) |
+| Pieza        | Dónde              | URL                                              | Estado                                    |
+| ------------ | ------------------ | ------------------------------------------------ | ----------------------------------------- |
+| Editor web   | GitHub Pages       | `https://cosmemorillojulia.github.io/archdraft/` | Workflow listo (T07); falta activar Pages |
+| API          | Cloudflare Workers | `https://archdraft-api.<subdominio>.workers.dev` | Pendiente (T13)                           |
+| Evaluaciones | GitHub Actions     | Pestaña Actions del repositorio                  | Pendiente (T17)                           |
 
 ## Acciones manuales pendientes
 
 Pasos que requieren al propietario del repositorio porque necesitan permisos de administración o cuentas propias. Cada tarea del roadmap que dependa de uno de ellos lo indica.
 
-| Paso                                                                        | Necesario para                                | Cómo                                                                                                                                                 | Estado               |
-| --------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| Verificar `cosmemorillojulia@gmail.com` en GitHub                           | Que los commits aparezcan enlazados al perfil | GitHub > Settings > Emails                                                                                                                           | Por comprobar        |
-| Activar GitHub Pages con origen GitHub Actions                              | Publicar el editor (T07)                      | Settings > Pages > Build and deployment > Source: GitHub Actions                                                                                     | Pendiente            |
-| Crear cuenta gratuita de Cloudflare                                         | Desplegar la API (T13)                        | dash.cloudflare.com, plan Free, sin tarjeta                                                                                                          | Pendiente            |
-| Crear token de API de Cloudflare con permiso de edición de Workers          | Despliegue desde CI (T13)                     | My Profile > API Tokens > plantilla Edit Cloudflare Workers                                                                                          | Pendiente            |
-| Añadir secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`            | Despliegue desde CI (T13)                     | Settings > Secrets and variables > Actions                                                                                                           | Pendiente            |
-| Abrir en draw.io un fichero generado con `toDrawio` (fixture de tres capas) | Confirmar la exportación a draw.io (T05)      | Generar el fichero como indica `docs/modulos/exportacion.md`, abrirlo en app.diagrams.net y comprobar contenedores, cilindros y aristas discontinuas | Pendiente            |
-| Permitir lectura de modelos en Actions                                      | Evaluaciones (T17)                            | Lo declara el propio workflow con `permissions: models: read`; no requiere acción salvo que la organización lo bloquee                               | No aplica de momento |
+| Paso                                                                        | Necesario para                                | Cómo                                                                                                                                                                                                               | Estado               |
+| --------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| Verificar `cosmemorillojulia@gmail.com` en GitHub                           | Que los commits aparezcan enlazados al perfil | GitHub > Settings > Emails                                                                                                                                                                                         | Por comprobar        |
+| Activar GitHub Pages con origen GitHub Actions                              | Publicar el editor (T07)                      | Settings > Pages > Build and deployment > Source: GitHub Actions, con el repositorio público. Después, Actions > Deploy web > Run workflow para la primera publicación, comprobando que el job `deploy` se ejecuta | Pendiente            |
+| Crear cuenta gratuita de Cloudflare                                         | Desplegar la API (T13)                        | dash.cloudflare.com, plan Free, sin tarjeta                                                                                                                                                                        | Pendiente            |
+| Crear token de API de Cloudflare con permiso de edición de Workers          | Despliegue desde CI (T13)                     | My Profile > API Tokens > plantilla Edit Cloudflare Workers                                                                                                                                                        | Pendiente            |
+| Añadir secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`            | Despliegue desde CI (T13)                     | Settings > Secrets and variables > Actions                                                                                                                                                                         | Pendiente            |
+| Abrir en draw.io un fichero generado con `toDrawio` (fixture de tres capas) | Confirmar la exportación a draw.io (T05)      | Generar el fichero como indica `docs/modulos/exportacion.md`, abrirlo en app.diagrams.net y comprobar contenedores, cilindros y aristas discontinuas                                                               | Pendiente            |
+| Permitir lectura de modelos en Actions                                      | Evaluaciones (T17)                            | Lo declara el propio workflow con `permissions: models: read`; no requiere acción salvo que la organización lo bloquee                                                                                             | No aplica de momento |
 
-Hasta que estén los secretos de Cloudflare, el workflow de despliegue de la API se salta sin fallar.
+Hasta que Pages esté activado, el workflow `Deploy web` termina con un aviso sin publicar. Hasta que estén los secretos de Cloudflare, el workflow de despliegue de la API se salta sin fallar.
 
 ## Límites de los planes gratuitos
 

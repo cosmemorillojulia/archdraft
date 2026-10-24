@@ -21,7 +21,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T04 | Paquete de disposición automática con ELK                        | T01           | hecha (2026-10-22) |
 | T05 | Exportación a draw.io                                            | T03, T04      | hecha (2026-10-23) |
 | T06 | Plantillas de arquitectura                                       | T02           | hecha (2026-10-24) |
-| T07 | Editor: estructura, sistema visual y despliegue en Pages         | T01           | pendiente          |
+| T07 | Editor: estructura, sistema visual y despliegue en Pages         | T01           | hecha (2026-10-24) |
 | T08 | Editor: lienzo que representa el grafo                           | T04, T06, T07 | pendiente          |
 | T09 | Editor: edición, inspector, deshacer y rehacer                   | T08           | pendiente          |
 | T10 | Editor: panel de revisión de diseño                              | T02, T09      | pendiente          |
@@ -138,6 +138,8 @@ Documentación: `docs/modulos/plantillas.md`.
 ## Fase 2: editor
 
 ### T07. Estructura, sistema visual y despliegue en Pages
+
+Estado: hecha (2026-10-24). Documentado en `docs/modulos/web.md` y ADR 0013. La publicación queda pendiente de la acción manual de activar Pages (`operaciones.md`).
 
 Objetivo: la base del editor publicada en internet.
 

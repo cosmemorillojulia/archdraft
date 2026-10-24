@@ -21,6 +21,7 @@ pnpm check
 | `pnpm typecheck`                           | `tsc --noEmit` en cada paquete                                                                   |
 | `pnpm format` / `pnpm format:check`        | Prettier                                                                                         |
 | `pnpm --filter @archdraft/core test:watch` | Tests de un paquete en modo observación                                                          |
+| `pnpm --filter web dev`                    | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)           |
 
 ## Herramientas y por qué
 
@@ -37,6 +38,7 @@ Reglas de ESLint añadidas a la configuración recomendada:
 - `consistent-type-imports`: las importaciones solo de tipos usan `type`, necesario con `verbatimModuleSyntax`.
 - `no-unused-vars` con excepción para nombres que empiezan por `_`.
 - `eqeqeq` y aviso ante `console.log` (se permiten `console.warn` y `console.error`).
+- En `apps/web`, las reglas recomendadas de `eslint-plugin-react-hooks` y las variables globales del navegador.
 
 ## Configuración de TypeScript
 

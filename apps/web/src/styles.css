@@ -1,0 +1,111 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/archivo/wdth.css';
+
+/*
+ * Visual system, see docs/modulos/web.md.
+ * Light theme: drafting vellum, graphite and diazo ink.
+ * Dark theme: blueprint paper with light linework.
+ * Components use the semantic tokens below, never raw colours.
+ */
+:root {
+  --vellum: #eceeea;
+  --sheet: #f7f8f5;
+  --graphite: #22292b;
+  --lead: #5f6a68;
+  --rule: #c9cfcb;
+  --grid: #dfe4e0;
+  --diazo: #2f4bb8;
+  --diazo-strong: #233a94;
+  --on-diazo: #f7f8f5;
+  --redline: #c8352e;
+  --focus: #2f4bb8;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --vellum: #142330;
+  --sheet: #19293a;
+  --graphite: #e4eaef;
+  --lead: #9aabb9;
+  --rule: #2f465b;
+  --grid: #21364a;
+  --diazo: #93a9ff;
+  --diazo-strong: #b5c4ff;
+  --on-diazo: #142330;
+  --redline: #ff8a7f;
+  --focus: #b5c4ff;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-vellum: var(--vellum);
+  --color-sheet: var(--sheet);
+  --color-graphite: var(--graphite);
+  --color-lead: var(--lead);
+  --color-rule: var(--rule);
+  --color-grid: var(--grid);
+  --color-diazo: var(--diazo);
+  --color-diazo-strong: var(--diazo-strong);
+  --color-on-diazo: var(--on-diazo);
+  --color-redline: var(--redline);
+  --color-focus: var(--focus);
+}
+
+@theme {
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+  --radius-control: 3px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--vellum);
+    color: var(--graphite);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0s !important;
+      animation-duration: 0s !important;
+    }
+  }
+}
+
+@utility font-wide {
+  font-stretch: 125%;
+}
+
+@utility font-narrow {
+  font-stretch: 75%;
+}
+
+/* Drafting sheet: minor grid every 8px, major every 40px. */
+@utility drafting-grid {
+  background-color: var(--sheet);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    linear-gradient(color-mix(in srgb, var(--grid) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--grid) 45%, transparent) 1px, transparent 1px);
+  background-size:
+    40px 40px,
+    40px 40px,
+    8px 8px,
+    8px 8px;
+}
