@@ -202,7 +202,7 @@ const definitions = {
     category: 'messaging',
     label: 'Event stream',
     description: 'Ordered, replayable log of events',
-    icon: 'waves',
+    icon: 'waves-horizontal',
     services: {
       aws: 'Amazon Kinesis Data Streams',
       gcp: 'Managed Service for Apache Kafka',
