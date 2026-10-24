@@ -1,4 +1,5 @@
 import {
+  ARCHITECTURE_TEMPLATES,
   type ArchEdge,
   type ArchitectureGraph,
   type ArchNode,
@@ -8,6 +9,7 @@ import {
   DiagramLayoutSchema,
   indexGraph,
   layoutEntry,
+  TEMPLATE_IDS,
   validateGraph,
 } from '@archdraft/core';
 import { describe, expect, it } from 'vitest';
@@ -317,5 +319,12 @@ describe('computeLayout with ids that match object members', () => {
     expect(layoutEntry(layout.positions, 'toString')).toEqual({ x: 0, y: 0 });
     expect(DiagramLayoutSchema.safeParse(layout).success).toBe(true);
     expectReadable(graph, layout);
+  });
+});
+
+describe('computeLayout with the architecture templates', () => {
+  it.each(TEMPLATE_IDS)('lays out %s without overlaps', async (id) => {
+    const graph = ARCHITECTURE_TEMPLATES[id];
+    expectReadable(graph, await computeLayout(graph));
   });
 });
