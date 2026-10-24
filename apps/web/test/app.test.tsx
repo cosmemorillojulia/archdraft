@@ -7,7 +7,17 @@ import { WIDE_SCREEN } from '../src/media.ts';
 import { strings } from '../src/strings.ts';
 
 const diagramOf = (title: string) =>
-  screen.findByRole('img', { name: strings.canvas.diagramLabel(title) });
+  screen.findByRole('group', { name: strings.canvas.diagramLabel(title) });
+
+/** The React Flow node that shows a component with this label. */
+function flowNode(diagram: HTMLElement, label: string): HTMLElement {
+  const node = within(diagram).getByText(label).closest<HTMLElement>('.react-flow__node');
+  if (!node) throw new Error(`No canvas node for ${label}`);
+  return node;
+}
+
+const stateOf = (node: HTMLElement) =>
+  node.querySelector('[data-state]')?.getAttribute('data-state');
 
 describe('App', () => {
   it('has a header with only the product name, its purpose and the settings', () => {
@@ -37,20 +47,42 @@ describe('App', () => {
     expect(within(diagram).getByText('Amazon Aurora')).toBeInTheDocument();
   });
 
-  it('shows the labels of the connections of the component under the pointer', async () => {
+  it('highlights a component and what it connects to while the pointer is over it', async () => {
     render(<App />);
     const diagram = await diagramOf(ARCHITECTURE_TEMPLATES['three-tier-web'].title);
-    const node = within(diagram).getByText('Web application').closest('g[transform]');
-    if (!node) throw new Error('component group not found');
+    const app = flowNode(diagram, 'Web application');
 
-    fireEvent.pointerEnter(node);
-    expect(within(diagram).getByText('Read credentials')).toBeInTheDocument();
-    expect(within(diagram).getByText('SQL')).toBeInTheDocument();
+    fireEvent.mouseEnter(app);
+    expect(stateOf(app)).toBe('focused');
+    expect(stateOf(flowNode(diagram, 'Database'))).toBe('idle');
+    expect(stateOf(flowNode(diagram, 'DNS'))).toBe('dimmed');
 
-    fireEvent.pointerLeave(node);
-    await waitFor(() =>
-      expect(within(diagram).queryByText('Read credentials')).not.toBeInTheDocument(),
+    fireEvent.mouseLeave(app);
+    expect(stateOf(flowNode(diagram, 'DNS'))).toBe('idle');
+  });
+
+  it('marks components that run outside the provider of the diagram', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(
+      screen.getByRole('button', { name: strings.prompt.templateNames['serverless-api'] }),
     );
+    const diagram = await diagramOf(ARCHITECTURE_TEMPLATES['serverless-api'].title);
+    expect(flowNode(diagram, 'Email service')).toHaveTextContent(
+      strings.canvas.providerBadges.generic,
+    );
+    expect(flowNode(diagram, 'API handler')).not.toHaveTextContent(
+      strings.canvas.providerBadges.generic,
+    );
+  });
+
+  it('has zoom controls', async () => {
+    render(<App />);
+    await diagramOf(ARCHITECTURE_TEMPLATES['three-tier-web'].title);
+    const zoom = screen.getByRole('group', { name: strings.canvas.zoom.label });
+    for (const name of [strings.canvas.zoom.in, strings.canvas.zoom.out, strings.canvas.zoom.fit]) {
+      expect(within(zoom).getByRole('button', { name })).toBeInTheDocument();
+    }
   });
 
   it('switches the diagram from the template selector', async () => {

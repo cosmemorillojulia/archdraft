@@ -22,7 +22,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T05 | Exportación a draw.io                                            | T03, T04      | hecha (2026-10-23) |
 | T06 | Plantillas de arquitectura                                       | T02           | hecha (2026-10-24) |
 | T07 | Editor: estructura, sistema visual y despliegue en Pages         | T01           | hecha (2026-10-24) |
-| T08 | Editor: lienzo que representa el grafo                           | T04, T06, T07 | pendiente          |
+| T08 | Editor: lienzo que representa el grafo                           | T04, T06, T07 | hecha (2026-10-25) |
 | T09 | Editor: edición, inspector, deshacer y rehacer                   | T08           | pendiente          |
 | T10 | Editor: panel de revisión de diseño                              | T02, T09      | pendiente          |
 | T11 | Editor: persistencia local, importación y enlaces para compartir | T03, T09      | pendiente          |
@@ -44,6 +44,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T27 | Editor: cabecera fija y animaciones                              | T25           | hecha (2026-10-24) |
 | T28 | Editor: paleta de componentes en móvil                           | T27           | hecha (2026-10-25) |
 | T29 | Editor: diagrama legible en móvil y ajustes visuales             | T28           | hecha (2026-10-25) |
+| T30 | Editor: aristas que esquivan los nodos                           | T08           | pendiente          |
 
 ## Fase 0: fundamentos
 
@@ -163,6 +164,8 @@ Documentación: `docs/modulos/web.md`; ADR sobre la dirección visual si hay alt
 
 ### T08. Lienzo que representa el grafo
 
+Estado: hecha (2026-10-25). Documentado en `docs/modulos/web.md`. Incluye zoom con la rueda, con el pellizco del trackpad o de los dedos y con botones, a petición del usuario; los contenedores son opacos desde T29.
+
 Objetivo: ver un `DiagramDocument` en React Flow.
 
 Entregables:
@@ -258,6 +261,14 @@ Objetivo: corregir lo detectado al revisar T27 y T28: en móvil los componentes 
 Entregables: disposición de arriba abajo y escala mínima con desplazamiento en pantallas estrechas; resaltado al tocar en pantallas táctiles; grupos opacos con tinte por nivel de anidamiento; icono de brillos relleno; fundido de colores de toda la página al cambiar de tema, con el estado del tema en la cabecera.
 
 Criterios de aceptación: tests de la escala de dibujo y de la profundidad de anidamiento; capturas en móvil y escritorio; muestreo de colores durante el cambio de tema.
+
+### T30. Aristas que esquivan los nodos
+
+Objetivo: que ninguna arista pase por detrás de un nodo que no es su origen ni su destino, algo que la revisión de diseño de T08 detectó en varias plantillas porque las aristas son curvas directas entre conectores.
+
+Entregables: usar las rutas que ya calcula ELK (secciones con puntos de inflexión) en `@archdraft/layout`, exponerlas en `DiagramLayout` y dibujarlas en el lienzo como trazos suavizados, con la etiqueta en el punto medio de la ruta; mantener la animación de trazado y las partículas.
+
+Criterios de aceptación: tests de la ruta en la disposición y en el adaptador; capturas de las seis plantillas sin aristas que crucen nodos ajenos, revisadas con la skill `design-critique`.
 
 ## Fase 3: inteligencia artificial
 

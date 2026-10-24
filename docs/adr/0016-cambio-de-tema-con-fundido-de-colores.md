@@ -1,6 +1,6 @@
 # ADR 0016: Cambio de tema con fundido de colores
 
-- Estado: aceptada
+- Estado: aceptada; desde T08 la cuadrícula de puntos es el fondo de React Flow, un patrón SVG que se funde por su relleno
 - Fecha: 2026-10-25
 - Modifica: ADR 0015 (solo el modo de cambiar de tema)
 
