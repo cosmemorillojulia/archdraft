@@ -33,5 +33,6 @@ Referencia:
 | [0013](adr/0013-direccion-visual-hoja-de-dibujo.md)        | Dirección visual basada en la hoja de dibujo técnico (sustituida por 0014) |
 | [0014](adr/0014-interfaz-centrada-en-el-lienzo.md)         | Interfaz centrada en el lienzo con paneles flotantes                       |
 | [0015](adr/0015-animaciones-con-motion-y-cabecera-fija.md) | Animaciones con Motion y cabecera fija                                     |
+| [0016](adr/0016-cambio-de-tema-con-fundido-de-colores.md)  | Cambio de tema con fundido de colores                                      |
 
 Cada nueva página de módulo o ADR se añade a este índice.

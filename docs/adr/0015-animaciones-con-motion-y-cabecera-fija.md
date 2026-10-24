@@ -1,6 +1,6 @@
 # ADR 0015: Animaciones con Motion y cabecera fija
 
-- Estado: aceptada
+- Estado: aceptada; ADR 0016 sustituye el revelado circular del tema por un fundido de colores
 - Fecha: 2026-10-24
 - Modifica: ADR 0014 (la barra superior flotante vuelve a ser una cabecera fija)
 
