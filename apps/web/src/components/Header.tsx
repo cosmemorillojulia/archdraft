@@ -1,18 +1,18 @@
 import { Moon, Sun } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { strings } from '../strings.ts';
-import type { RevealOrigin, Theme } from '../theme.ts';
+import { useTheme } from '../theme.ts';
 import { Button } from './Button.tsx';
 
 const REPOSITORY_URL = 'https://github.com/cosmemorillojulia/archdraft';
 
-interface HeaderProps {
-  theme: Theme;
-  onToggleTheme: (origin: RevealOrigin) => void;
-}
-
-/** Fixed application bar: the product name, what it does, the code and the theme. */
-export function Header({ theme, onToggleTheme }: HeaderProps) {
+/**
+ * Fixed application bar: the product name, what it does, the code and the
+ * theme. The theme state lives here, so a theme change re-renders only the
+ * header while the page blends into the new colours.
+ */
+export function Header() {
+  const [theme, toggleTheme] = useTheme();
   const themeLabel = theme === 'dark' ? strings.header.themeToLight : strings.header.themeToDark;
   return (
     <header className="relative z-30 flex h-13 shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4">
@@ -32,10 +32,7 @@ export function Header({ theme, onToggleTheme }: HeaderProps) {
           size="icon"
           aria-label={themeLabel}
           title={themeLabel}
-          onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect();
-            onToggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-          }}
+          onClick={toggleTheme}
           className="overflow-hidden"
         >
           <AnimatePresence mode="popLayout" initial={false}>

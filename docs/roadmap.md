@@ -43,6 +43,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T26 | Revisión de diseño y pulido visual                               | T20, T23      | pendiente          |
 | T27 | Editor: cabecera fija y animaciones                              | T25           | hecha (2026-10-24) |
 | T28 | Editor: paleta de componentes en móvil                           | T27           | hecha (2026-10-25) |
+| T29 | Editor: diagrama legible en móvil y ajustes visuales             | T28           | hecha (2026-10-25) |
 
 ## Fase 0: fundamentos
 
@@ -247,6 +248,16 @@ Objetivo: que la paleta también esté disponible en pantallas estrechas, donde 
 Entregables: botón flotante y hoja modal que sube desde abajo, con fondo atenuado, resto de la página inerte, foco gestionado y cierre con botón, Escape, toque fuera o arrastre del asa; cierre con Escape también en el panel lateral; nota en T09 sobre cómo se añaden componentes en móvil.
 
 Criterios de aceptación: tests de la hoja y del panel lateral; capturas en móvil en claro y oscuro y prueba del arrastre para cerrar.
+
+### T29. Diagrama legible en móvil y ajustes visuales
+
+Estado: hecha (2026-10-25). Documentado en `docs/modulos/web.md` y ADR 0016.
+
+Objetivo: corregir lo detectado al revisar T27 y T28: en móvil los componentes del diagrama apenas se leían, los puntos del lienzo se veían dentro de los grupos, el icono de IA debía ir relleno y el cambio de tema tenía un tirón al final.
+
+Entregables: disposición de arriba abajo y escala mínima con desplazamiento en pantallas estrechas; resaltado al tocar en pantallas táctiles; grupos opacos con tinte por nivel de anidamiento; icono de brillos relleno; fundido de colores de toda la página al cambiar de tema, con el estado del tema en la cabecera.
+
+Criterios de aceptación: tests de la escala de dibujo y de la profundidad de anidamiento; capturas en móvil y escritorio; muestreo de colores durante el cambio de tema.
 
 ## Fase 3: inteligencia artificial
 

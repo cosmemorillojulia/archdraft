@@ -6,7 +6,9 @@ import {
   curveMidpoint,
   curvePath,
   curveSpan,
+  drawingScale,
   edgeCurve,
+  nestingDepths,
   truncate,
 } from '../src/diagram/geometry.ts';
 
@@ -57,6 +59,39 @@ describe('absoluteBoxes', () => {
     expect(boxes.has('vpc')).toBe(false);
     expect(boxes.has('api')).toBe(false);
     expect(boxes.has('region')).toBe(true);
+  });
+});
+
+describe('nestingDepths', () => {
+  it('counts the containers around each node', () => {
+    expect(Object.fromEntries(nestingDepths(graph))).toEqual({
+      region: 0,
+      vpc: 1,
+      api: 2,
+      user: 0,
+    });
+  });
+});
+
+describe('drawingScale', () => {
+  const limits = { min: 0.9, max: 1.5 };
+
+  it('fits the diagram when that keeps it readable', () => {
+    expect(drawingScale({ width: 1000, height: 500 }, { width: 950, height: 900 }, limits)).toBe(
+      0.95,
+    );
+  });
+
+  it('keeps the minimum scale when fitting would shrink the text too much', () => {
+    expect(drawingScale({ width: 1000, height: 500 }, { width: 390, height: 600 }, limits)).toBe(
+      0.9,
+    );
+  });
+
+  it('does not enlarge small diagrams beyond the maximum', () => {
+    expect(drawingScale({ width: 100, height: 100 }, { width: 1000, height: 1000 }, limits)).toBe(
+      1.5,
+    );
   });
 });
 

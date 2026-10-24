@@ -41,6 +41,39 @@ export function absoluteBoxes(graph: ArchitectureGraph, layout: DiagramLayout): 
   return boxes;
 }
 
+/**
+ * How many containers enclose each node: 0 at the top level. Expects a valid
+ * graph, where containers cannot nest in a cycle.
+ */
+export function nestingDepths(graph: ArchitectureGraph): Map<string, number> {
+  const parents = new Map(graph.nodes.map((node) => [node.id, node.parentId]));
+  const depths = new Map<string, number>();
+  const depthOf = (id: string): number => {
+    const known = depths.get(id);
+    if (known !== undefined) return known;
+    const parentId = parents.get(id);
+    const depth = parentId === undefined ? 0 : depthOf(parentId) + 1;
+    depths.set(id, depth);
+    return depth;
+  };
+  for (const node of graph.nodes) depthOf(node.id);
+  return depths;
+}
+
+/**
+ * Scale at which a diagram of `content` size is drawn in a `viewport`: the
+ * scale that fits it, raised to `min` so that text stays readable (the view
+ * then scrolls) and capped at `max` so that small diagrams do not balloon.
+ */
+export function drawingScale(
+  content: { width: number; height: number },
+  viewport: { width: number; height: number },
+  { min, max }: { min: number; max: number },
+): number {
+  const fit = Math.min(viewport.width / content.width, viewport.height / content.height);
+  return Math.min(Math.max(fit, min), max);
+}
+
 /** Smallest box that contains all the given boxes, or null if there are none. */
 export function boundsOf(boxes: Iterable<Box>): Box | null {
   let minX = Infinity;

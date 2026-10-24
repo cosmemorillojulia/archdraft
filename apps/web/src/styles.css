@@ -19,7 +19,6 @@
   --on-accent: #ffffff;
   --focus: #2e5bff;
   --edge: #9aa3b2;
-  --group-fill: rgb(46 91 255 / 0.035);
   --group-line: #c9d0db;
   --success: #0f7a50;
   --warning: #b45309;
@@ -62,7 +61,6 @@
   --on-accent: #0f1320;
   --focus: #a2b8ff;
   --edge: #5c6474;
-  --group-fill: rgb(124 155 255 / 0.04);
   --group-line: #3a404b;
   --success: #4cc38a;
   --warning: #f0a54a;
@@ -157,31 +155,36 @@
 }
 
 /*
- * Theme change: the new theme spreads as a circle from the toggle button.
- * theme.ts sets the origin and radius; browsers without View Transitions or
- * with reduced motion switch instantly.
+ * Theme change: theme.ts adds this class for the length of the change, so that
+ * every colour of the page blends into the new theme at once. It is not added
+ * when the system asks for reduced motion.
  */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
+.theme-fade,
+.theme-fade *,
+.theme-fade *::before,
+.theme-fade *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow !important;
+  transition-duration: 420ms !important;
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  transition-delay: 0s !important;
 }
 
-::view-transition-new(root) {
-  animation: theme-reveal 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes theme-reveal {
-  from {
-    clip-path: circle(0 at var(--reveal-x, 100%) var(--reveal-y, 0));
-  }
-  to {
-    clip-path: circle(var(--reveal-radius, 150vmax) at var(--reveal-x, 100%) var(--reveal-y, 0));
-  }
-}
-
+/*
+ * Dots are painted by a masked layer whose colour is a plain background, so
+ * that they blend smoothly when the theme changes (gradients cannot).
+ */
 @utility dot-grid {
   background-color: var(--canvas);
-  background-image: radial-gradient(var(--dots) 1px, transparent 1px);
-  background-size: 22px 22px;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--dots);
+    mask-image: radial-gradient(circle, #000 1px, transparent 1.5px);
+    mask-size: 22px 22px;
+  }
 }
