@@ -1,8 +1,9 @@
 import { ARCHITECTURE_TEMPLATES, NODE_CATALOG, isContainerKind } from '@archdraft/core';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App.tsx';
+import { WIDE_SCREEN } from '../src/media.ts';
 import { strings } from '../src/strings.ts';
 
 const diagramOf = (title: string) =>
@@ -98,7 +99,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: strings.components.open }));
-    const palette = await screen.findByRole('region', { name: strings.components.title });
+    const palette = await screen.findByRole('dialog', { name: strings.components.title });
     for (const definition of Object.values(NODE_CATALOG)) {
       expect(within(palette).getByText(definition.label)).toBeInTheDocument();
     }
@@ -108,7 +109,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: strings.components.open }));
-    const palette = await screen.findByRole('region', { name: strings.components.title });
+    const palette = await screen.findByRole('dialog', { name: strings.components.title });
     const search = within(palette).getByRole('searchbox', { name: strings.components.search });
 
     await user.type(search, 'data');
@@ -122,24 +123,99 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('hides and shows the palette', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    expect(
-      screen.queryByRole('region', { name: strings.components.title }),
-    ).not.toBeInTheDocument();
+  describe('on narrow screens', () => {
+    it('opens the palette as a modal sheet and makes the rest of the page inert', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const toggle = screen.getByRole('button', { name: strings.components.open });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
-    await user.click(screen.getByRole('button', { name: strings.components.open }));
-    expect(
-      await screen.findByRole('region', { name: strings.components.title }),
-    ).toBeInTheDocument();
+      await user.click(toggle);
+      const sheet = await screen.findByRole('dialog', { name: strings.components.title });
+      expect(sheet).toHaveAttribute('aria-modal', 'true');
+      expect(sheet).toHaveFocus();
+      expect(screen.getByRole('banner').closest('[inert]')).not.toBeNull();
+    });
 
-    await user.click(screen.getByRole('button', { name: strings.components.close }));
-    await waitFor(() =>
+    it('closes the sheet with Escape and returns the focus to its button', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const toggle = screen.getByRole('button', { name: strings.components.open });
+      await user.click(toggle);
+      await screen.findByRole('dialog', { name: strings.components.title });
+
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(toggle).toHaveFocus();
+      expect(document.querySelector('[inert]')).toBeNull();
+    });
+
+    it('closes the sheet with its button and with a tap outside it', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(screen.getByRole('button', { name: strings.components.open }));
+      const sheet = await screen.findByRole('dialog', { name: strings.components.title });
+      await user.click(within(sheet).getByRole('button', { name: strings.components.close }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+      await user.click(screen.getByRole('button', { name: strings.components.open }));
+      await screen.findByRole('dialog', { name: strings.components.title });
+      const backdrop = document.querySelector('.fixed.inset-0');
+      if (!backdrop) throw new Error('backdrop not found');
+      await user.click(backdrop);
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+  });
+
+  describe('on wide screens', () => {
+    beforeEach(() => {
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn((query: string) => ({
+          matches: query === WIDE_SCREEN,
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        })),
+      );
+    });
+
+    it('shows the palette beside the diagram without blocking the page', async () => {
+      const user = userEvent.setup();
+      render(<App />);
       expect(
         screen.queryByRole('region', { name: strings.components.title }),
-      ).not.toBeInTheDocument(),
-    );
+      ).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: strings.components.open }));
+      expect(
+        await screen.findByRole('region', { name: strings.components.title }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(document.querySelector('[inert]')).toBeNull();
+
+      await user.click(screen.getByRole('button', { name: strings.components.close }));
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('region', { name: strings.components.title }),
+        ).not.toBeInTheDocument(),
+      );
+    });
+
+    it('closes the side panel with Escape', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(screen.getByRole('button', { name: strings.components.open }));
+      const panel = await screen.findByRole('region', { name: strings.components.title });
+      await user.click(within(panel).getByRole('searchbox'));
+
+      await user.keyboard('{Escape}');
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('region', { name: strings.components.title }),
+        ).not.toBeInTheDocument(),
+      );
+    });
   });
 
   it('toggles the theme and remembers the choice', async () => {
