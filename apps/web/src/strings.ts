@@ -1,34 +1,33 @@
-import type { CloudProvider, NodeCategory } from '@archdraft/core';
+import type { CloudProvider, NodeCategory, TemplateId } from '@archdraft/core';
 
 /**
  * Every user-facing string lives here (ADR 0009), so that a second language
- * can be added later without touching the components.
+ * can be added later without touching the components. Node kind labels and
+ * descriptions come from the catalog in @archdraft/core.
  */
 export const strings = {
   appName: 'Archdraft',
-  tagline: 'Describe a cloud architecture and get a diagram you can edit and review',
   header: {
     themeToDark: 'Switch to dark theme',
     themeToLight: 'Switch to light theme',
-    sourceCode: 'Source code',
+    sourceCode: 'Source code on GitHub',
   },
-  panes: {
-    switcher: 'Visible panel',
-    build: 'Build',
-    diagram: 'Diagram',
-    details: 'Details',
+  providers: {
+    generic: 'Any cloud',
+    aws: 'AWS',
+    gcp: 'Google Cloud',
+    azure: 'Azure',
+  } satisfies Record<CloudProvider, string>,
+  review: {
+    clean: 'No design issues',
+    issues: (count: number) => (count === 1 ? '1 design issue' : `${count} design issues`),
   },
-  prompt: {
-    title: 'Describe',
-    label: 'Describe your system',
-    placeholder:
-      'An online store on AWS: a web front end, an API on containers, a PostgreSQL database and a queue that sends order emails.',
-    hint: 'Generating a diagram from text is not available yet.',
-    generate: 'Generate diagram',
-  },
-  palette: {
+  components: {
     title: 'Components',
-    hint: 'Building blocks you can place on the diagram.',
+    open: 'Show components',
+    close: 'Hide components',
+    search: 'Search components',
+    noMatches: (query: string) => `No components match “${query}”.`,
     categories: {
       actor: 'People and clients',
       edge: 'Entry and traffic',
@@ -42,26 +41,24 @@ export const strings = {
       container: 'Groups',
     } satisfies Record<NodeCategory, string>,
   },
+  prompt: {
+    label: 'Describe your architecture',
+    placeholder: 'Describe the architecture you want to draw',
+    generate: 'Generate diagram',
+    soon: 'AI generation is coming soon',
+    templates: 'Templates',
+    templateNames: {
+      'three-tier-web': 'Three-tier web app',
+      'serverless-api': 'Serverless API',
+      'event-driven-microservices': 'Event-driven microservices',
+      'rag-chatbot': 'RAG chatbot',
+      'analytics-pipeline': 'Analytics pipeline',
+      'static-site-cms': 'Static site with CMS',
+    } satisfies Record<TemplateId, string>,
+  },
   canvas: {
     label: 'Diagram',
-    unavailable: 'The interactive canvas is not available yet.',
-    title: 'Title',
-    provider: 'Provider',
-    components: 'Components',
-    connections: 'Connections',
-    providers: {
-      generic: 'Any cloud',
-      aws: 'AWS',
-      gcp: 'Google Cloud',
-      azure: 'Azure',
-    } satisfies Record<CloudProvider, string>,
-  },
-  details: {
-    label: 'Details',
-    inspector: 'Inspector',
-    review: 'Review',
-    inspectorEmpty: 'Select a component on the diagram to see and edit its details.',
-    reviewEmpty:
-      'Design review checks the diagram for availability, security and coupling risks as you edit it.',
+    diagramLabel: (title: string) => `Diagram: ${title}`,
+    layoutFailed: 'This diagram could not be drawn. Try another template.',
   },
 } as const;

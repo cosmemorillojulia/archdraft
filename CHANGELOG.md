@@ -19,6 +19,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/web`: editor shell built with Vite, React and Tailwind CSS: drafting-sheet visual system with light and dark themes, base components, header, build panel with the component palette, canvas with the title block of the default template, details panel with tabs, a pane switcher for small screens and centralised strings.
 - GitHub Pages deployment workflow that publishes the editor after CI passes on `main`.
 - ADR 0013: visual direction based on the technical drawing sheet.
+- `@archdraft/web`: canvas-first redesign (ADR 0014, superseding ADR 0013): full-window dot-grid canvas with a floating top bar, searchable components palette with category-coloured icons, prompt dock with one-click templates, design review status and a read-only diagram preview laid out with ELK on demand.
+- `design-critique` skill from anthropics/knowledge-work-plugins for reviewing editor screenshots.
 - `@archdraft/core`: six architecture templates (`ARCHITECTURE_TEMPLATES`) for the gallery and the generation prompt: three-tier web application, serverless API, event-driven microservices, RAG chatbot, analytics pipeline and static site with a headless CMS. They cover every provider, are valid without warnings and have no design findings.
 
 ### Changed

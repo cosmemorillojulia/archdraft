@@ -38,7 +38,9 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T21 | Tests de extremo a extremo y accesibilidad                       | T20           | pendiente          |
 | T22 | Rendimiento y presupuesto de tamaño                              | T21           | pendiente          |
 | T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | pendiente          |
-| T24 | Lanzamiento 1.0                                                  | T22, T23      | pendiente          |
+| T24 | Lanzamiento 1.0                                                  | T22, T23, T26 | pendiente          |
+| T25 | Editor: rediseño centrado en el lienzo                           | T07           | hecha (2026-10-24) |
+| T26 | Revisión de diseño y pulido visual                               | T20, T23      | pendiente          |
 
 ## Fase 0: fundamentos
 
@@ -168,8 +170,9 @@ Entregables:
 - Disposición en un Web Worker con `packages/layout`; carga diferida.
 - Minimapa, controles, ajuste a la vista. Se carga una plantilla por defecto.
 - Test que verifica que todos los iconos del catálogo existen en `lucide-react`.
+- Diseño (ADR 0014): sustituye la vista previa de T25 y conserva su lenguaje visual: nodos con icono sobre el color de su categoría, contenedores translúcidos, aristas suaves y la cuadrícula de puntos; React Flow se estiliza con los tokens del sistema visual, también en modo oscuro.
 
-Criterios de aceptación: las seis plantillas se ven sin solapes; el adaptador tiene tests de contenedores anidados.
+Criterios de aceptación: las seis plantillas se ven sin solapes; el adaptador tiene tests de contenedores anidados; capturas de las seis plantillas en claro y oscuro revisadas con la skill `design-critique`.
 
 Documentación: ampliar `docs/modulos/web.md`.
 
@@ -181,7 +184,7 @@ Entregables:
 
 - Store con Zustand: documento, selección e historial (límite de 100 pasos).
 - Acciones: añadir nodo desde la paleta (arrastrar y soltar), conectar, borrar, mover, cambiar de contenedor respetando `CONTAINMENT_RULES`, editar propiedades.
-- Inspector con formularios para nodo y arista.
+- Inspector con formularios para nodo y arista, como panel flotante que aparece al seleccionar (ADR 0014).
 - Atajos de teclado: borrar, deshacer, rehacer, duplicar.
 - Validación tras cada acción; una acción que produciría un grafo inválido se rechaza con un mensaje.
 
@@ -193,7 +196,7 @@ Documentación: ADR sobre la gestión de estado; ampliar `docs/modulos/web.md`.
 
 Objetivo: mostrar los hallazgos del motor de reglas mientras se edita.
 
-Entregables: lista agrupada por severidad, filtros, clic para seleccionar y centrar el nodo, resaltado en el lienzo, explicación y sugerencia de cada regla, opción de desactivar reglas (preferencia local).
+Entregables: panel flotante que se abre desde el estado de la revisión de la barra superior (ADR 0014), lista agrupada por severidad, filtros, clic para seleccionar y centrar el nodo, resaltado en el lienzo, explicación y sugerencia de cada regla, opción de desactivar reglas (preferencia local).
 
 Criterios de aceptación: recálculo memoizado por versión del documento; tests del panel.
 
@@ -212,6 +215,16 @@ Objetivo: menú de exportación completo.
 Entregables: copiar y descargar Mermaid, descargar draw.io y JSON, exportar PNG y SVG del lienzo.
 
 Criterios de aceptación: tests de generación de contenido y nombres de fichero.
+
+### T25. Rediseño centrado en el lienzo
+
+Estado: hecha (2026-10-24). Documentado en `docs/modulos/web.md` y ADR 0014.
+
+Objetivo: una interfaz moderna, fluida, sencilla y visual, que no se perciba como una plantilla. Surgió al revisar el resultado de T07.
+
+Entregables: lienzo a pantalla completa con cuadrícula de puntos; barra superior, paleta y barra de descripción flotantes; paleta con buscador e iconos por categoría; plantillas de un clic; estado de la revisión de diseño; vista previa de solo lectura del diagrama con ELK cargado bajo demanda; tipografía Instrument Sans; skill `design-critique` añadida al repositorio.
+
+Criterios de aceptación: tests de comportamiento de la aplicación, de la geometría y de los iconos; contraste AA; capturas revisadas en escritorio y móvil, en claro y oscuro.
 
 ## Fase 3: inteligencia artificial
 
@@ -328,3 +341,11 @@ Entregables: estado vacío con ejemplos de prompt, galería de plantillas, ayuda
 ### T24. Lanzamiento 1.0
 
 Entregables: README final con capturas generadas con Playwright, revisión completa de la documentación, versión 1.0.0 en todos los paquetes, sección de lanzamiento en CHANGELOG, etiqueta anotada `v1.0.0` y notas de la versión.
+
+### T26. Revisión de diseño y pulido visual
+
+Objetivo: que el editor completo se sienta premium antes del lanzamiento, revisado como lo haría un diseñador.
+
+Entregables: revisión con la skill `design-critique` sobre capturas de Playwright de todos los flujos (escritorio y móvil, claro y oscuro); estados de hover, foco, carga, vacío y error coherentes en todos los paneles; microinteracciones de los flujos principales; pruebas de regresión visual con capturas de Playwright para las pantallas clave.
+
+Criterios de aceptación: ningún hallazgo crítico ni moderado abierto en la revisión; las pruebas de regresión visual corren en CI.

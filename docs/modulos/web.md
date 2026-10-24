@@ -1,27 +1,32 @@
 # Módulo: apps/web
 
-Editor visual de Archdraft. Es una aplicación de una sola página con Vite, React 19, TypeScript y Tailwind CSS 4, publicada en GitHub Pages en `https://cosmemorillojulia.github.io/archdraft/`. Depende de `@archdraft/core` y nunca al revés (ver [arquitectura](../arquitectura.md)).
+Editor visual de Archdraft. Es una aplicación de una sola página con Vite, React 19, TypeScript y Tailwind CSS 4, publicada en GitHub Pages en `https://cosmemorillojulia.github.io/archdraft/`. Depende de `@archdraft/core` y `@archdraft/layout`, nunca al revés (ver [arquitectura](../arquitectura.md)).
 
-Estado a fecha de T07: estructura, sistema visual, componentes base y despliegue. El lienzo interactivo llega en T08, la edición en T09 y la revisión de diseño en T10.
+Estado: estructura y despliegue (T07) y rediseño centrado en el lienzo (T25). El lienzo interactivo llega en T08, la edición en T09 y el panel de revisión en T10.
 
 ## Estructura
 
 ```
 apps/web/
-  index.html            # aplica el tema guardado antes del primer pintado
-  vite.config.ts        # base /archdraft/, plugins de React y Tailwind, configuración de Vitest
+  index.html              # aplica el tema guardado antes del primer pintado
+  vite.config.ts          # base /archdraft/, plugins de React y Tailwind, configuración de Vitest
   public/favicon.svg
   src/
-    main.tsx            # punto de entrada
-    App.tsx             # estructura: cabecera, tres paneles y selector para pantallas pequeñas
-    strings.ts          # todas las cadenas visibles (ADR 0009)
-    theme.ts            # useTheme: tema claro u oscuro, guardado en localStorage
-    styles.css          # tokens, tema oscuro, utilidades propias
-    components/         # Button, Panel, Tabs, TextAreaField
-    layout/             # Header, BuildPanel, Canvas, DetailsPanel
+    main.tsx              # punto de entrada
+    App.tsx               # lienzo a pantalla completa y capas flotantes
+    strings.ts            # todas las cadenas visibles (ADR 0009)
+    theme.ts              # useTheme: tema claro u oscuro, guardado en localStorage
+    icons.ts              # icono de Lucide de cada tipo de nodo
+    styles.css            # tokens, tema oscuro, utilidades floating y dot-grid
+    components/           # Button, TopBar, ComponentsPanel, PromptDock
+    diagram/
+      geometry.ts         # cajas absolutas, límites, trazado de aristas, recorte de texto
+      DiagramPreview.tsx  # vista previa SVG de solo lectura
   test/
-    setup.ts            # jest-dom, limpieza y matchMedia simulado
-    app.test.tsx        # test de humo con Testing Library
+    setup.ts              # jest-dom, limpieza y matchMedia simulado
+    app.test.tsx          # comportamiento de la aplicación con Testing Library
+    geometry.test.ts
+    icons.test.ts         # los iconos coinciden con los del catálogo de core
 ```
 
 ## Scripts
@@ -35,72 +40,82 @@ apps/web/
 
 La `base` de Vite es `/archdraft/` también en desarrollo: GitHub Pages sirve el sitio del proyecto bajo el nombre del repositorio, y usar la misma ruta en local evita sorpresas con rutas de recursos que solo fallarían en producción.
 
-## Sistema visual
+## Dirección visual
 
-La dirección visual y sus alternativas están en [ADR 0013](../adr/0013-direccion-visual-hoja-de-dibujo.md): vocabulario de dibujo técnico, con la hoja de dibujo como único elemento llamativo.
+[ADR 0014](../adr/0014-interfaz-centrada-en-el-lienzo.md): el lienzo ocupa toda la ventana y la interfaz flota encima. Sustituye a la hoja de dibujo de ADR 0013.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ [logo Archdraft | Título del diagrama  AWS]   [✓ revisión ◐ </>] │
+│ [Show components]                                            │
+│                                                              │
+│                  diagrama sobre cuadrícula de puntos         │
+│                                                              │
+│          [✦ Describe the architecture…           ↑]          │
+│          (plantilla) (plantilla) (plantilla) …               │
+└──────────────────────────────────────────────────────────────┘
+```
 
 ### Tokens de color
 
-Se definen como variables CSS en `:root` y `:root[data-theme='dark']`, y se exponen a Tailwind con `@theme inline`, de modo que `bg-sheet` o `text-lead` cambian con el tema sin variantes `dark:` en los componentes.
+Variables CSS en `:root` y `:root[data-theme='dark']`, expuestas a Tailwind con `@theme inline`: `bg-surface` o `text-muted` cambian con el tema sin variantes `dark:` en los componentes.
 
-| Token          | Claro     | Oscuro    | Uso                                               |
-| -------------- | --------- | --------- | ------------------------------------------------- |
-| `vellum`       | `#eceeea` | `#142330` | Fondo de la aplicación                            |
-| `sheet`        | `#f7f8f5` | `#19293a` | Hoja del lienzo, campos y piezas de la paleta     |
-| `graphite`     | `#22292b` | `#e4eaef` | Texto principal y marco de la hoja                |
-| `lead`         | `#5f6a68` | `#9aabb9` | Texto secundario                                  |
-| `rule`         | `#c9cfcb` | `#2f465b` | Filetes y bordes                                  |
-| `grid`         | `#dfe4e0` | `#21364a` | Cuadrícula de la hoja                             |
-| `diazo`        | `#2f4bb8` | `#93a9ff` | Acción principal, pestaña activa                  |
-| `diazo-strong` | `#233a94` | `#b5c4ff` | Estado hover de la acción principal               |
-| `on-diazo`     | `#f7f8f5` | `#142330` | Texto sobre `diazo`                               |
-| `redline`      | `#c8352e` | `#ff8a7f` | Reservado para los hallazgos de la revisión (T10) |
-| `focus`        | `#2f4bb8` | `#b5c4ff` | Anillo de foco                                    |
+| Token           | Claro         | Oscuro        | Uso                                     |
+| --------------- | ------------- | ------------- | --------------------------------------- |
+| `canvas`        | `#f3f4f6`     | `#15171c`     | Fondo del lienzo                        |
+| `dots`          | `#cfd4dc`     | `#2c3039`     | Cuadrícula de puntos cada 22 px         |
+| `surface`       | `#ffffff`     | `#1d2027`     | Paneles flotantes y nodos               |
+| `surface-muted` | `#f6f7f9`     | `#23272f`     | Campos, hover, insignias                |
+| `ink`           | `#171a20`     | `#eceef2`     | Texto principal                         |
+| `muted`         | `#5d6471`     | `#9ba2af`     | Texto secundario e iconos de interfaz   |
+| `line`          | `#e2e5ea`     | `#2e333c`     | Filetes y bordes                        |
+| `accent`        | `#2e5bff`     | `#7c9bff`     | Acción principal, plantilla activa      |
+| `success`       | `#0f7a50`     | `#4cc38a`     | Revisión sin hallazgos                  |
+| `warning`       | `#b45309`     | `#f0a54a`     | Revisión con hallazgos                  |
+| `edge`          | `#9aa3b2`     | `#5c6474`     | Aristas del diagrama                    |
+| `cat-*`         | por categoría | por categoría | Icono y fondo de cada categoría de nodo |
 
-Contraste WCAG medido: texto principal sobre el fondo, 12,7:1 en claro y 13,2:1 en oscuro; texto secundario, 4,8:1 y 6,8:1; texto sobre el botón principal, 7,0:1 y 7,1:1. Todos cumplen AA para texto normal.
+Cada categoría del catálogo tiene un par de color (icono y fondo): cómputo en azul, datos en verde azulado, mensajería en ámbar, seguridad en rosa, entrada y tráfico en violeta, IA en magenta, observabilidad en verde y el resto en gris. El color identifica la categoría de un vistazo en la paleta y en el diagrama; la etiqueta sigue presente, así que no es la única pista.
+
+Contraste WCAG medido: texto principal sobre superficie, 17,4:1 en claro y 14,0:1 en oscuro; texto secundario sobre superficie, 6,0:1 y 6,4:1, y sobre el lienzo, 5,4:1 y 7,0:1; texto sobre el botón principal, 5,2:1 y 7,0:1; estado de la revisión sobre su fondo tintado, 4,5:1 en claro.
+
+### Capas flotantes
+
+La utilidad `floating` da a cada capa una superficie al 88 % de opacidad con desenfoque de fondo, un filete de un píxel y una sombra de dos niveles. Solo la llevan los elementos que flotan sobre el lienzo; dentro de un panel no hay tarjetas ni sombras. Radios por capa: 16 px en paneles (`rounded-panel`), 10 px en controles (`rounded-control`) y píldora en las plantillas.
 
 ### Tipografía
 
-Archivo variable (peso 100 a 900, anchura 62 % a 125 %), autoalojada con `@fontsource-variable/archivo`. El navegador solo descarga el subconjunto que necesita por `unicode-range` (unos 90 KB para el latino básico).
+Instrument Sans variable (peso 400 a 700, anchura 75 % a 100 %), autoalojada con `@fontsource-variable/instrument-sans`: unos 57 KB para el alfabeto latino básico. Escala: 14 px para la interfaz, 15 px semibold para la marca, 13 px semibold para la etiqueta de un nodo y 11 a 12 px para textos secundarios. Sin mayúsculas sostenidas.
 
-| Uso                               | Anchura            | Tamaño y peso                     |
-| --------------------------------- | ------------------ | --------------------------------- |
-| Marca en la cabecera              | `font-wide` 125 %  | 18 px, 700                        |
-| Título del diagrama en el cajetín | `font-wide` 125 %  | 18 px, 600                        |
-| Encabezados de panel              | `font-narrow` 75 % | 16 px, 600                        |
-| Categorías de la paleta           | `font-narrow` 75 % | 14 px, 500                        |
-| Etiquetas del cajetín             | `font-narrow` 75 % | 12 px, 400                        |
-| Texto de interfaz                 | normal             | 15 px (cuerpo), 14 px (controles) |
+### Movimiento
 
-No se usan mayúsculas sostenidas en etiquetas: la anchura condensada cumple ese papel.
+Dos animaciones definidas como tokens de Tailwind: `animate-rise` (aparición con un ligero desplazamiento, 320 ms) para el diagrama al cambiar de plantilla y para la paleta al abrirse, y `animate-fade` para el botón que la vuelve a abrir. El lienzo transiciona su margen al abrir o cerrar la paleta. Todo se anula con `prefers-reduced-motion`.
 
-### Hoja de dibujo
+## Piezas de la interfaz
 
-`drafting-grid` dibuja la cuadrícula con cuatro degradados lineales (líneas cada 8 y cada 40 px). La hoja tiene marco doble (borde de 2 px más un contorno separado 4 px) y el cajetín en la esquina inferior derecha con título, proveedor, número de componentes (nodos que no son contenedores) y número de conexiones. En pantallas estrechas el cajetín ocupa todo el ancho al pie de la hoja.
+| Pieza             | Contenido                                                                                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `TopBar`          | Logo, nombre, título y proveedor del diagrama; estado de la revisión de diseño (`lintGraph` memoizado por grafo, con `role="status"`); tema; enlace al código                                                |
+| `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón                                                           |
+| `PromptDock`      | Campo que crece con el texto (`field-sizing: content`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, y las seis plantillas como botones con `aria-pressed`                  |
+| `DiagramPreview`  | Dibujo SVG del diagrama actual, ajustado a la ventana                                                                                                                                                        |
+| `Button`          | Variantes `primary`, `secondary` y `ghost`; tamaños `default` e `icon`. Los tamaños son variantes con nombre porque dos utilidades de Tailwind sobre la misma propiedad no se anulan por su orden en `class` |
 
-## Estructura de la aplicación
+En pantallas estrechas la barra superior muestra solo lo esencial, la paleta se abre por encima del diagrama y las plantillas se desplazan en horizontal.
 
-| Zona            | Contenido en T07                                                                              | Llega en                       |
-| --------------- | --------------------------------------------------------------------------------------------- | ------------------------------ |
-| Cabecera        | Marca, descripción, enlace al código, cambio de tema                                          |                                |
-| Panel izquierdo | Campo para describir el sistema (botón deshabilitado) y paleta con el catálogo por categorías | T09 (arrastrar), T20 (generar) |
-| Lienzo          | Hoja con cajetín de la plantilla por defecto (`three-tier-web`)                               | T08                            |
-| Panel derecho   | Pestañas Inspector y Review con su estado vacío                                               | T09, T10                       |
+## Vista previa del diagrama
 
-Por debajo del punto de corte `lg` (1024 px) se muestra un panel cada vez con un selector de tres botones (`aria-pressed`); por encima, los tres a la vez. El lienzo es el panel inicial en móvil.
+Hasta que exista el lienzo interactivo (T08), `DiagramPreview` dibuja la plantilla elegida:
 
-Las etiquetas y descripciones de los tipos de nodo de la paleta vienen del catálogo de `@archdraft/core`, que es la fuente de verdad del vocabulario; el resto de textos está en `strings.ts`.
+1. Carga `@archdraft/layout` con `import()` dinámico, de modo que ELK queda fuera del bundle inicial, y calcula la disposición.
+2. `absoluteBoxes` convierte las posiciones relativas al contenedor padre en coordenadas absolutas.
+3. Dibuja contenedores (rectángulo con relleno translúcido que se intensifica al anidar; `boundary` con borde discontinuo), aristas y componentes, en ese orden para que los nodos queden encima.
+4. Las aristas son curvas que salen del lado que mira al destino (`edgePath`): horizontales si las cajas no se solapan en horizontal y verticales en caso contrario. Las asíncronas son discontinuas.
+5. Cada componente muestra el icono de su tipo sobre el color de su categoría, la etiqueta y el producto resuelto (`resolveServiceName`). Los textos largos se recortan con puntos suspensivos y el texto completo queda en un `<title>`.
 
-## Componentes base
+Si la disposición falla, se muestra un mensaje y el error va a la consola. Al cambiar de plantilla se mantiene el diagrama anterior hasta que el nuevo está listo, y entonces aparece con `animate-rise`.
 
-| Componente      | Notas                                                                                                                                 |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `Button`        | Variantes `primary`, `secondary` y `ghost`; tamaños `default` e `icon` (cuadrado, requiere `aria-label`). `type="button"` por defecto |
-| `Panel`         | Sección con encabezado y descripción opcional, etiquetada por su encabezado                                                           |
-| `Tabs`          | Patrón WAI-ARIA: un único punto de tabulación, flechas, Inicio y Fin seleccionan y enfocan                                            |
-| `TextAreaField` | Etiqueta visible y pista enlazada con `aria-describedby`                                                                              |
-
-Los tamaños son variantes con nombre en lugar de clases sobrescritas desde fuera, porque dos utilidades de Tailwind que fijan la misma propiedad no se anulan por orden de aparición en el atributo `class`.
+T08 sustituirá esta vista por React Flow reutilizando la geometría de los nodos, los colores por categoría y el estilo de las aristas.
 
 ## Tema
 
@@ -108,16 +123,18 @@ Los tamaños son variantes con nombre en lugar de clases sobrescritas desde fuer
 
 ## Accesibilidad
 
-- Estructura con `header`, `nav`, `main`, dos `aside` etiquetados y la hoja como región.
-- Foco visible con contorno de 2 px en todos los elementos interactivos.
-- `prefers-reduced-motion` anula transiciones.
-- Contrastes AA medidos (ver tokens).
+- `header` con el `h1`, `main` etiquetado para el lienzo y el diagrama como imagen con nombre (`role="img"`).
+- Foco visible con contorno de 2 px; el buscador muestra un anillo al enfocarse.
+- Botones de solo icono con `aria-label`; estado de la revisión anunciado con `role="status"`.
+- Contrastes AA medidos (ver tokens); `prefers-reduced-motion` respetado.
 
 ## Tests
 
-`test/app.test.tsx` comprueba con Testing Library las regiones principales, el campo con su descripción accesible, el cajetín con los datos de la plantilla, que la paleta contiene todo el catálogo, las pestañas con ratón y teclado, el cambio y guardado del tema, el tema inicial y el selector de paneles. Corren en jsdom; `matchMedia` se simula porque jsdom no lo implementa.
+- `app.test.tsx`: título y estado de la revisión, diagrama dibujado con sus componentes, cambio de plantilla, campo con descripción accesible y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema.
+- `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, límites, los cuatro casos de trazado de aristas y recorte de texto.
+- `icons.test.ts`: cada icono de `KIND_ICONS` es el que nombra el catálogo de core. Detectó que Lucide renombró `waves` a `waves-horizontal`.
 
-Revisión visual: el build se sirvió con `vite preview` y se capturó con Playwright en Chromium a 1440 × 900 (claro y oscuro) y 390 × 844, sin errores en la consola.
+Revisión visual: build servido con `vite preview` y capturado con Playwright en Chromium a 1440 × 900 en claro y oscuro, con la paleta abierta y cerrada y con varias plantillas, y a 390 × 844; sin errores en la consola. La skill `design-critique` (`.claude/skills`) guía la revisión de las capturas.
 
 ## Despliegue
 
@@ -127,4 +144,4 @@ Revisión visual: el build se sirvió con `vite preview` y se capturó con Playw
 2. Hace checkout del commit que pasó CI, instala, ejecuta `pnpm --filter web build` y sube `apps/web/dist` con `actions/upload-pages-artifact`.
 3. El job `deploy` publica con `actions/deploy-pages` en el entorno `github-pages`.
 
-Solo se despliega lo que ha pasado CI. La activación de Pages es una acción manual del propietario, descrita en [operaciones](../operaciones.md).
+Solo se despliega lo que ha pasado CI.

@@ -1,64 +1,41 @@
-import { ARCHITECTURE_TEMPLATES } from '@archdraft/core';
+import { ARCHITECTURE_TEMPLATES, type TemplateId } from '@archdraft/core';
 import { useState } from 'react';
-import { BuildPanel } from './layout/BuildPanel.tsx';
-import { Canvas } from './layout/Canvas.tsx';
-import { DetailsPanel } from './layout/DetailsPanel.tsx';
-import { Header } from './layout/Header.tsx';
+import { ComponentsPanel } from './components/ComponentsPanel.tsx';
+import { PromptDock } from './components/PromptDock.tsx';
+import { TopBar } from './components/TopBar.tsx';
+import { DiagramPreview } from './diagram/DiagramPreview.tsx';
 import { strings } from './strings.ts';
 import { useTheme } from './theme.ts';
 
-type Pane = 'build' | 'diagram' | 'details';
-const PANES: readonly Pane[] = ['build', 'diagram', 'details'];
-
-const DEFAULT_GRAPH = ARCHITECTURE_TEMPLATES['three-tier-web'];
-
 /**
- * Editor shell. On wide screens the three panes sit side by side; below the
- * `lg` breakpoint a switcher shows one pane at a time.
+ * Canvas-first editor: the diagram fills the window and the interface floats
+ * over it, see docs/modulos/web.md.
  */
 export function App() {
   const [theme, toggleTheme] = useTheme();
-  const [pane, setPane] = useState<Pane>('diagram');
-  const display = (target: Pane) => (target === pane ? 'flex' : 'hidden lg:flex');
+  const [templateId, setTemplateId] = useState<TemplateId>('three-tier-web');
+  // The diagram is the first thing to see; the palette opens on demand.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const graph = ARCHITECTURE_TEMPLATES[templateId];
 
   return (
-    <div className="flex h-full flex-col">
-      <Header theme={theme} onToggleTheme={toggleTheme} />
-
-      <nav
-        aria-label={strings.panes.switcher}
-        className="flex shrink-0 border-b border-rule lg:hidden"
+    <div className="dot-grid relative h-full overflow-hidden">
+      <main
+        aria-label={strings.canvas.label}
+        className={`absolute inset-0 flex px-4 pt-20 pb-36 transition-[padding] duration-300 ease-out-soft sm:px-8 ${paletteOpen ? 'lg:pl-80' : ''}`}
       >
-        {PANES.map((target) => (
-          <button
-            key={target}
-            type="button"
-            aria-pressed={target === pane}
-            onClick={() => setPane(target)}
-            className="-mb-px flex-1 border-b-2 border-transparent py-2.5 text-sm font-medium text-lead aria-pressed:border-diazo aria-pressed:text-graphite"
-          >
-            {strings.panes[target]}
-          </button>
-        ))}
-      </nav>
-
-      <main className="flex min-h-0 flex-1">
-        <aside
-          aria-label={strings.panes.build}
-          className={`${display('build')} w-full shrink-0 flex-col overflow-y-auto p-4 lg:w-80 lg:border-r lg:border-rule`}
-        >
-          <BuildPanel />
-        </aside>
-        <div className={`${display('diagram')} min-w-0 flex-1`}>
-          <Canvas graph={DEFAULT_GRAPH} />
-        </div>
-        <aside
-          aria-label={strings.panes.details}
-          className={`${display('details')} w-full shrink-0 flex-col lg:w-80 lg:border-l lg:border-rule`}
-        >
-          <DetailsPanel />
-        </aside>
+        <DiagramPreview graph={graph} />
       </main>
+
+      <TopBar graph={graph} theme={theme} onToggleTheme={toggleTheme} />
+
+      <aside className="pointer-events-none absolute top-17 bottom-36 left-3 z-10 flex items-start">
+        <ComponentsPanel open={paletteOpen} onOpenChange={setPaletteOpen} />
+      </aside>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-4">
+        <PromptDock templateId={templateId} onTemplateChange={setTemplateId} />
+      </div>
     </div>
   );
 }

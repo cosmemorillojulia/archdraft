@@ -96,7 +96,7 @@ Detalle en [modelo-de-dominio.md](modelo-de-dominio.md), [modulos/core.md](modul
 
 ### 4.2 apps/web
 
-Hoy existen la estructura de la aplicación, el sistema visual y el despliegue en Pages (T07, ver [modulos/web.md](modulos/web.md)). El diagrama muestra el diseño completo previsto:
+Hoy existen la estructura de la aplicación, el despliegue en Pages (T07) y la interfaz centrada en el lienzo con una vista previa del diagrama (T25, ADR 0014, ver [modulos/web.md](modulos/web.md)). El diagrama muestra el diseño completo previsto:
 
 ```mermaid
 flowchart LR

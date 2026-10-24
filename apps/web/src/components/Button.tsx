@@ -3,9 +3,9 @@ import type { ComponentProps } from 'react';
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-diazo text-on-diazo enabled:hover:bg-diazo-strong',
-  secondary: 'border border-rule bg-sheet text-graphite enabled:hover:border-lead',
-  ghost: 'text-lead enabled:hover:bg-graphite/8 enabled:hover:text-graphite',
+  primary: 'bg-accent text-on-accent enabled:hover:bg-accent-hover',
+  secondary: 'border border-line bg-surface text-ink enabled:hover:bg-surface-muted',
+  ghost: 'text-muted enabled:hover:bg-surface-muted enabled:hover:text-ink',
 };
 
 /** `icon` is a square button for a single icon; give it an `aria-label`. */
@@ -13,7 +13,7 @@ export type ButtonSize = 'default' | 'icon';
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   default: 'h-9 px-3.5',
-  icon: 'size-9',
+  icon: 'size-8',
 };
 
 export interface ButtonProps extends ComponentProps<'button'> {

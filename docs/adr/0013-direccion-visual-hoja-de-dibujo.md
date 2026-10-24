@@ -1,6 +1,6 @@
 # ADR 0013: Dirección visual basada en la hoja de dibujo técnico
 
-- Estado: aceptada
+- Estado: sustituida por ADR 0014
 - Fecha: 2026-10-24
 
 ## Contexto
