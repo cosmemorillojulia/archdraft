@@ -139,7 +139,7 @@ Documentación: `docs/modulos/plantillas.md`.
 
 ### T07. Estructura, sistema visual y despliegue en Pages
 
-Estado: hecha (2026-10-24). Documentado en `docs/modulos/web.md` y ADR 0013. La publicación queda pendiente de la acción manual de activar Pages (`operaciones.md`).
+Estado: hecha (2026-10-24). Documentado en `docs/modulos/web.md` y ADR 0013. Publicado en GitHub Pages desde el 2026-10-24.
 
 Objetivo: la base del editor publicada en internet.
 
