@@ -71,5 +71,19 @@ export const strings = {
     label: 'Diagram',
     diagramLabel: (title: string) => `Diagram: ${title}`,
     layoutFailed: 'This diagram could not be drawn. Try another template.',
+    miniMap: 'Overview of the diagram',
+    zoom: {
+      label: 'Zoom',
+      in: 'Zoom in',
+      out: 'Zoom out',
+      fit: 'Fit diagram to screen',
+    },
+    /** Badge on components that run outside the provider of the diagram. */
+    providerBadges: {
+      generic: 'External',
+      aws: 'AWS',
+      gcp: 'GCP',
+      azure: 'Azure',
+    } satisfies Record<CloudProvider, string>,
   },
 } as const;

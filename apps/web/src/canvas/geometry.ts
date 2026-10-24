@@ -7,11 +7,6 @@ export interface Box {
   readonly height: number;
 }
 
-export interface Point {
-  readonly x: number;
-  readonly y: number;
-}
-
 /**
  * Boxes in diagram coordinates. Layout positions are relative to the parent
  * container, so each node adds the absolute position of its ancestors. Nodes
@@ -89,57 +84,41 @@ export function boundsOf(boxes: Iterable<Box>): Box | null {
   return minX === Infinity ? null : { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
-/** Cubic Bézier curve of an edge. */
-export interface Curve {
-  readonly start: Point;
-  readonly c1: Point;
-  readonly c2: Point;
-  readonly end: Point;
+/** Space taken by the floating interface on each side of the canvas, in pixels. */
+export interface Insets {
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+}
+
+export interface Viewport {
+  readonly x: number;
+  readonly y: number;
+  readonly zoom: number;
 }
 
 /**
- * Curve of an edge: it leaves the source from the side facing the target and
- * enters the target from the opposite side. Flows are mostly left to right,
- * so horizontal sides win unless the boxes overlap horizontally.
+ * Viewport that shows `content` inside the part of the canvas not covered by
+ * the floating interface: centred and fitted when it fits at a readable zoom,
+ * otherwise at the `min` zoom, centred horizontally and starting at the top,
+ * where a top-to-bottom flow begins.
  */
-export function edgeCurve(source: Box, target: Box): Curve {
-  const horizontal = target.x >= source.x + source.width || source.x >= target.x + target.width;
-  if (horizontal) {
-    const forward = target.x >= source.x + source.width;
-    const start = { x: forward ? source.x + source.width : source.x, y: middleY(source) };
-    const end = { x: forward ? target.x : target.x + target.width, y: middleY(target) };
-    const bend = Math.max(Math.abs(end.x - start.x) / 2, 24) * (forward ? 1 : -1);
-    return { start, c1: { x: start.x + bend, y: start.y }, c2: { x: end.x - bend, y: end.y }, end };
-  }
-  const down = middleY(target) >= middleY(source);
-  const start = { x: middleX(source), y: down ? source.y + source.height : source.y };
-  const end = { x: middleX(target), y: down ? target.y : target.y + target.height };
-  const bend = Math.max(Math.abs(end.y - start.y) / 2, 24) * (down ? 1 : -1);
-  return { start, c1: { x: start.x, y: start.y + bend }, c2: { x: end.x, y: end.y - bend }, end };
-}
-
-/** SVG path data of a curve. */
-export function curvePath({ start, c1, c2, end }: Curve): string {
-  return `M ${start.x} ${start.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${end.x} ${end.y}`;
-}
-
-/** Point halfway along the curve parameter, where an edge label sits. */
-export function curveMidpoint({ start, c1, c2, end }: Curve): Point {
-  return {
-    x: (start.x + 3 * c1.x + 3 * c2.x + end.x) / 8,
-    y: (start.y + 3 * c1.y + 3 * c2.y + end.y) / 8,
+export function initialViewport(
+  content: Box,
+  canvas: { width: number; height: number },
+  insets: Insets,
+  limits: { min: number; max: number },
+): Viewport {
+  const available = {
+    width: Math.max(canvas.width - insets.left - insets.right, 1),
+    height: Math.max(canvas.height - insets.top - insets.bottom, 1),
   };
-}
-
-/** Straight-line distance between the ends, enough to pace animations along the edge. */
-export function curveSpan({ start, end }: Curve): number {
-  return Math.hypot(end.x - start.x, end.y - start.y);
-}
-
-const middleX = (box: Box) => box.x + box.width / 2;
-const middleY = (box: Box) => box.y + box.height / 2;
-
-/** Shortens text to `max` characters with an ellipsis, for SVG text that cannot wrap. */
-export function truncate(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
+  const zoom = drawingScale(content, available, limits);
+  const spareHeight = available.height - content.height * zoom;
+  return {
+    x: insets.left + (available.width - content.width * zoom) / 2 - content.x * zoom,
+    y: insets.top + Math.max(spareHeight / 2, 0) - content.y * zoom,
+    zoom,
+  };
 }

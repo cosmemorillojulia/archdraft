@@ -3,19 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   absoluteBoxes,
   boundsOf,
-  curveMidpoint,
-  curvePath,
-  curveSpan,
   drawingScale,
-  edgeCurve,
+  initialViewport,
   nestingDepths,
-  truncate,
-} from '../src/diagram/geometry.ts';
-
-const edgePath = (
-  source: Parameters<typeof edgeCurve>[0],
-  target: Parameters<typeof edgeCurve>[1],
-) => curvePath(edgeCurve(source, target));
+} from '../src/canvas/geometry.ts';
 
 const graph: ArchitectureGraph = {
   schemaVersion: 1,
@@ -110,52 +101,31 @@ describe('boundsOf', () => {
   });
 });
 
-describe('edgeCurve', () => {
-  const left = { x: 0, y: 0, width: 100, height: 40 };
+describe('initialViewport', () => {
+  const insets = { top: 100, right: 20, bottom: 150, left: 20 };
+  const limits = { min: 0.9, max: 1.2 };
 
-  it('joins facing sides when the target is to the right', () => {
-    expect(edgePath(left, { x: 200, y: 100, width: 100, height: 40 })).toBe(
-      'M 100 20 C 150 20 150 120 200 120',
+  it('centres and fits a diagram that fits at a readable zoom', () => {
+    const viewport = initialViewport(
+      { x: 0, y: 0, width: 960, height: 500 },
+      { width: 1240, height: 850 },
+      insets,
+      limits,
     );
+    expect(viewport.zoom).toBe(1.2);
+    expect(viewport.x).toBe(20 + (1200 - 960 * 1.2) / 2);
+    expect(viewport.y).toBe(100 + (600 - 500 * 1.2) / 2);
   });
 
-  it('joins facing sides when the target is to the left', () => {
-    expect(edgePath({ x: 200, y: 0, width: 100, height: 40 }, left)).toBe(
-      'M 200 20 C 150 20 150 20 100 20',
+  it('keeps a readable zoom on a small screen and starts at the top', () => {
+    const viewport = initialViewport(
+      { x: 40, y: 60, width: 1000, height: 1100 },
+      { width: 390, height: 700 },
+      insets,
+      limits,
     );
-  });
-
-  it('joins bottom to top when the boxes overlap horizontally', () => {
-    expect(edgePath(left, { x: 20, y: 140, width: 100, height: 40 })).toBe(
-      'M 50 40 C 50 90 70 90 70 140',
-    );
-  });
-
-  it('joins top to bottom when the target is above', () => {
-    expect(edgePath({ x: 20, y: 140, width: 100, height: 40 }, left)).toBe(
-      'M 70 140 C 70 90 50 90 50 40',
-    );
-  });
-});
-
-describe('curveMidpoint and curveSpan', () => {
-  const curve = edgeCurve(
-    { x: 0, y: 0, width: 100, height: 40 },
-    { x: 200, y: 100, width: 100, height: 40 },
-  );
-
-  it('places the midpoint halfway between the ends of a symmetric curve', () => {
-    expect(curveMidpoint(curve)).toEqual({ x: 150, y: 70 });
-  });
-
-  it('measures the distance between the ends', () => {
-    expect(curveSpan(curve)).toBeCloseTo(Math.hypot(100, 100));
-  });
-});
-
-describe('truncate', () => {
-  it('keeps short text and shortens long text with an ellipsis', () => {
-    expect(truncate('Cache', 10)).toBe('Cache');
-    expect(truncate('Conversation history', 10)).toBe('Conversat…');
+    expect(viewport.zoom).toBe(0.9);
+    expect(viewport.y).toBe(100 - 60 * 0.9);
+    expect(viewport.x).toBe(20 + (350 - 1000 * 0.9) / 2 - 40 * 0.9);
   });
 });

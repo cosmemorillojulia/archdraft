@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* React Flow's structural styles, in a layer so that Tailwind utilities and the rules below win. */
+@import '@xyflow/react/dist/base.css' layer(base);
 @import '@fontsource-variable/instrument-sans/wdth.css';
 
 /*
@@ -169,22 +171,31 @@
   transition-delay: 0s !important;
 }
 
-/*
- * Dots are painted by a masked layer whose colour is a plain background, so
- * that they blend smoothly when the theme changes (gradients cannot).
- */
-@utility dot-grid {
-  background-color: var(--canvas);
-  isolation: isolate;
+/* React Flow, restyled with the tokens of the visual system. */
+.archdraft-flow {
+  --xy-background-color: transparent;
+  --xy-attribution-background-color: transparent;
+  font-family: var(--font-sans);
+}
 
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-color: var(--dots);
-    mask-image: radial-gradient(circle, #000 1px, transparent 1.5px);
-    mask-size: 22px 22px;
-  }
+.archdraft-flow .react-flow__pane {
+  cursor: grab;
+}
+
+.archdraft-flow .react-flow__pane.dragging {
+  cursor: grabbing;
+}
+
+.archdraft-flow .react-flow__attribution a {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+/* Edge labels above every node: groups are opaque and would hide labels of edges inside them. */
+.archdraft-flow .react-flow__edgelabel-renderer {
+  z-index: 2000;
+}
+
+.archdraft-flow .react-flow__minimap {
+  background-color: var(--surface);
 }

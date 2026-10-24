@@ -9,16 +9,27 @@ import {
 import { DiagramCard } from './components/DiagramCard.tsx';
 import { Header } from './components/Header.tsx';
 import { PromptDock } from './components/PromptDock.tsx';
-import { DiagramPreview } from './diagram/DiagramPreview.tsx';
-import { useMediaQuery, WIDE_SCREEN } from './media.ts';
+import { DiagramCanvas } from './canvas/DiagramCanvas.tsx';
+import type { Insets } from './canvas/geometry.ts';
+import { EXTRA_WIDE_SCREEN, useMediaQuery, WIDE_SCREEN } from './media.ts';
 import { strings } from './strings.ts';
 
 /**
- * Smallest scale of the diagram before the canvas scrolls instead of
- * shrinking it: node labels stay at 12 px or more on phones.
+ * Zoom of the first view: the diagram is not shrunk below it and the canvas
+ * pans instead, so node labels stay at 12 px or more on phones.
  */
-const NARROW_MIN_SCALE = 0.9;
-const WIDE_MIN_SCALE = 0.6;
+const NARROW_READABLE_ZOOM = 0.9;
+const WIDE_READABLE_ZOOM = 0.6;
+
+/** Width of the palette panel plus its margins, in pixels. */
+const PALETTE_WIDTH = 304;
+
+/** Space taken by the floating interface around the canvas, in pixels. */
+function canvasInsets(wide: boolean, paletteOpen: boolean): Insets {
+  return wide
+    ? { top: 24, right: 24, bottom: 150, left: paletteOpen ? PALETTE_WIDTH + 16 : 24 }
+    : { top: 150, right: 16, bottom: 200, left: 16 };
+}
 
 const loadMotionFeatures = () => import('./motion-features.ts').then((module) => module.default);
 
@@ -37,6 +48,7 @@ export function App() {
   // The diagram is the first thing to see; the palette opens on demand.
   const [paletteOpen, setPaletteOpen] = useState(false);
   const wide = useMediaQuery(WIDE_SCREEN);
+  const extraWide = useMediaQuery(EXTRA_WIDE_SCREEN);
   const sheetToggleRef = useRef<HTMLButtonElement>(null);
   const sheetOpen = paletteOpen && !wide;
   const graph = ARCHITECTURE_TEMPLATES[templateId];
@@ -47,15 +59,15 @@ export function App() {
         <div inert={sheetOpen} className="flex h-full flex-col">
           <Header />
 
-          <div className="dot-grid relative min-h-0 flex-1 overflow-hidden">
-            <main
-              aria-label={strings.canvas.label}
-              className={`absolute inset-0 flex px-4 pt-32 pb-48 transition-[padding] duration-500 ease-out-soft sm:px-8 md:pt-6 md:pb-36 ${paletteOpen && wide ? 'lg:pl-80' : ''}`}
-            >
-              <DiagramPreview
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-canvas">
+            <main aria-label={strings.canvas.label} className="absolute inset-0">
+              <DiagramCanvas
                 graph={graph}
                 direction={wide ? 'LR' : 'TB'}
-                minScale={wide ? WIDE_MIN_SCALE : NARROW_MIN_SCALE}
+                insets={canvasInsets(wide, paletteOpen)}
+                readableZoom={wide ? WIDE_READABLE_ZOOM : NARROW_READABLE_ZOOM}
+                showMiniMap={extraWide}
+                controlsClassName={wide ? 'bottom-4 left-3' : 'bottom-34 left-3'}
               />
             </main>
 
