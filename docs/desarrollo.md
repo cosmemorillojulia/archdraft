@@ -79,10 +79,11 @@ Resumen de ADR 0011 y CONTRIBUTING.md:
 
 `.claude/skills/` contiene las skills usadas durante el desarrollo asistido:
 
-| Skill                    | Origen                              | Uso                                                     |
-| ------------------------ | ----------------------------------- | ------------------------------------------------------- |
-| `ingeniero-senior`       | Propia del proyecto                 | Criterio al planificar, implementar y cerrar cada tarea |
-| `code-review-excellence` | wshobson/agents, MIT, sin modificar | Revisión del diff de cada tarea antes del merge         |
+| Skill                    | Origen                                                       | Uso                                                       |
+| ------------------------ | ------------------------------------------------------------ | --------------------------------------------------------- |
+| `ingeniero-senior`       | Propia del proyecto                                          | Criterio al planificar, implementar y cerrar cada tarea   |
+| `code-review-excellence` | wshobson/agents, MIT, sin modificar                          | Revisión del diff de cada tarea antes del merge           |
+| `design-critique`        | anthropics/knowledge-work-plugins, Apache 2.0, sin modificar | Revisión de capturas del editor en las tareas de interfaz |
 
 Además, la pasada de simplificación usa la skill integrada `simplify` de Claude Code cuando el entorno la ofrece; al ser integrada, no se copia al repositorio. Prettier ignora la carpeta `.claude`; la licencia y el origen de la skill de terceros están en su carpeta.
 
