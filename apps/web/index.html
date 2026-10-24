@@ -12,14 +12,17 @@
     <script>
       // Applies the saved or system theme before the first paint to avoid a flash.
       // Keep the storage key in sync with src/theme.ts.
-      try {
-        const saved = localStorage.getItem('archdraft:theme');
+      (() => {
+        let saved = null;
+        try {
+          saved = localStorage.getItem('archdraft:theme');
+        } catch {
+          // Storage blocked by the browser: fall back to the system theme.
+        }
         const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         document.documentElement.dataset.theme =
           saved === 'light' || saved === 'dark' ? saved : dark ? 'dark' : 'light';
-      } catch {
-        document.documentElement.dataset.theme = 'light';
-      }
+      })();
     </script>
   </head>
   <body>
