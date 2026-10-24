@@ -41,6 +41,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T24 | Lanzamiento 1.0                                                  | T22, T23, T26 | pendiente          |
 | T25 | Editor: rediseño centrado en el lienzo                           | T07           | hecha (2026-10-24) |
 | T26 | Revisión de diseño y pulido visual                               | T20, T23      | pendiente          |
+| T27 | Editor: cabecera fija y animaciones                              | T25           | hecha (2026-10-24) |
 
 ## Fase 0: fundamentos
 
@@ -170,7 +171,7 @@ Entregables:
 - Disposición en un Web Worker con `packages/layout`; carga diferida.
 - Minimapa, controles, ajuste a la vista. Se carga una plantilla por defecto.
 - Test que verifica que todos los iconos del catálogo existen en `lucide-react`.
-- Diseño (ADR 0014): sustituye la vista previa de T25 y conserva su lenguaje visual: nodos con icono sobre el color de su categoría, contenedores translúcidos, aristas suaves y la cuadrícula de puntos; React Flow se estiliza con los tokens del sistema visual, también en modo oscuro.
+- Diseño (ADR 0014 y 0015): sustituye la vista previa de T25 y T27 y conserva su lenguaje visual y su movimiento (construcción del diagrama, partículas en las aristas, resaltado al pasar el ratón): nodos con icono sobre el color de su categoría, contenedores translúcidos, aristas suaves y la cuadrícula de puntos; React Flow se estiliza con los tokens del sistema visual, también en modo oscuro.
 
 Criterios de aceptación: las seis plantillas se ven sin solapes; el adaptador tiene tests de contenedores anidados; capturas de las seis plantillas en claro y oscuro revisadas con la skill `design-critique`.
 
@@ -225,6 +226,16 @@ Objetivo: una interfaz moderna, fluida, sencilla y visual, que no se perciba com
 Entregables: lienzo a pantalla completa con cuadrícula de puntos; barra superior, paleta y barra de descripción flotantes; paleta con buscador e iconos por categoría; plantillas de un clic; estado de la revisión de diseño; vista previa de solo lectura del diagrama con ELK cargado bajo demanda; tipografía Instrument Sans; skill `design-critique` añadida al repositorio.
 
 Criterios de aceptación: tests de comportamiento de la aplicación, de la geometría y de los iconos; contraste AA; capturas revisadas en escritorio y móvil, en claro y oscuro.
+
+### T27. Cabecera fija y animaciones
+
+Estado: hecha (2026-10-24). Documentado en `docs/modulos/web.md` y ADR 0015.
+
+Objetivo: volver a la cabecera fija de T07 sin logotipo y dar a todo el recorrido animaciones fluidas. Surgió al revisar T25.
+
+Entregables: cabecera fija con el nombre, la descripción, el enlace al código y el tema; tarjeta flotante con el título, las cifras y la revisión del diagrama; Motion con carga diferida y tokens de movimiento; diagrama que se construye, aristas con partículas y resaltado de conexiones con etiquetas al pasar el ratón; paleta con entrada, cascada y recolocación; indicador deslizante de plantillas; ejemplos de descripción rotatorios; cambio de tema con revelado circular.
+
+Criterios de aceptación: tests de comportamiento con las animaciones desactivadas; movimiento reducido respetado; capturas y vídeo revisados.
 
 ## Fase 3: inteligencia artificial
 

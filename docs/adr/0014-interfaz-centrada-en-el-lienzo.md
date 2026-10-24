@@ -1,6 +1,6 @@
 # ADR 0014: Interfaz centrada en el lienzo con paneles flotantes
 
-- Estado: aceptada
+- Estado: aceptada; ADR 0015 sustituye la barra superior flotante por una cabecera fija
 - Fecha: 2026-10-24
 - Sustituye a: ADR 0013
 
