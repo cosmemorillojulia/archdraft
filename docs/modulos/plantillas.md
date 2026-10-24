@@ -82,8 +82,9 @@ En `packages/layout` otro test calcula la disposición de las seis y comprueba q
 
 ## Decisiones
 
-- Datos congelados en lugar de funciones que construyen el grafo. Las plantillas se leen mucho más de lo que se modifican (galería, prompt, tests), y el editor trata el documento como inmutable. Como son estado compartido del módulo, se congelan en profundidad con `Object.freeze`: una mutación accidental lanza `TypeError` en lugar de corromper la plantilla para el siguiente lector. Quien necesite modificar una copia en el sitio usa `structuredClone`.
-- El tipo se comprueba con `satisfies ArchitectureGraph` en cada fichero y el conjunto con `satisfies Record<TemplateId, TemplateGraph>`: TypeScript obliga a que cada id tenga su plantilla y a que cada plantilla tenga descripción.
+- Datos congelados en lugar de funciones que construyen el grafo. Las plantillas se leen mucho más de lo que se modifican (galería, prompt, tests), y el editor trata el documento como inmutable. Como son estado compartido del módulo, se congelan en profundidad con `Object.freeze`: una mutación accidental lanza `TypeError` (en modo estricto, que es el de todo módulo ES) en lugar de corromper la plantilla para el siguiente lector. Quien necesite modificar una copia en el sitio usa `structuredClone`.
+- El tipo se comprueba con `satisfies ArchitectureGraph` en cada fichero y el conjunto con `satisfies Record<TemplateId, TemplateGraph>`: TypeScript obliga a que cada id tenga exactamente una plantilla y a que cada plantilla tenga descripción.
+- Los sistemas de terceros (pagos, correo, BI) declaran `provider: 'generic'` cuando el diagrama es de un proveedor concreto: no pertenecen a esa nube, y el distintivo de proveedor del lienzo (T08) no debe atribuírselos.
 - Textos en inglés, como la interfaz (ADR 0009). Si la interfaz se traduce, los títulos y descripciones de la galería tendrán que pasar por las cadenas centralizadas; los grafos que recibe el modelo pueden seguir en inglés.
 - Los productos de cada nodo salen del catálogo salvo cuando la plantilla quiere mostrar uno concreto con `service`. Así una revisión del catálogo actualiza también las plantillas.
 
