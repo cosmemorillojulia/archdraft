@@ -7,10 +7,15 @@ import type { CloudProvider, NodeCategory, TemplateId } from '@archdraft/core';
  */
 export const strings = {
   appName: 'Archdraft',
+  tagline: 'Describe a cloud architecture and get a diagram you can edit and review',
   header: {
     themeToDark: 'Switch to dark theme',
     themeToLight: 'Switch to light theme',
-    sourceCode: 'Source code on GitHub',
+    sourceCode: 'Source code',
+  },
+  card: {
+    components: 'components',
+    connections: 'connections',
   },
   providers: {
     generic: 'Any cloud',
@@ -43,17 +48,23 @@ export const strings = {
   },
   prompt: {
     label: 'Describe your architecture',
-    placeholder: 'Describe the architecture you want to draw',
+    examples: [
+      'An online store on AWS with a CDN, an API on containers and PostgreSQL',
+      'A chatbot that answers from company documents, on Azure',
+      'Order processing with microservices that talk through events',
+      'A serverless REST API with Lambda, DynamoDB and a job queue',
+      'A clickstream pipeline into BigQuery with nightly extracts',
+    ],
     generate: 'Generate diagram',
     soon: 'AI generation is coming soon',
     templates: 'Templates',
     templateNames: {
-      'three-tier-web': 'Three-tier web app',
+      'three-tier-web': 'Three-tier web',
       'serverless-api': 'Serverless API',
-      'event-driven-microservices': 'Event-driven microservices',
+      'event-driven-microservices': 'Microservices',
       'rag-chatbot': 'RAG chatbot',
-      'analytics-pipeline': 'Analytics pipeline',
-      'static-site-cms': 'Static site with CMS',
+      'analytics-pipeline': 'Data pipeline',
+      'static-site-cms': 'Static site',
     } satisfies Record<TemplateId, string>,
   },
   canvas: {

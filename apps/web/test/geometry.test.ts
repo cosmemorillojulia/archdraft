@@ -1,6 +1,19 @@
 import type { ArchitectureGraph, DiagramLayout } from '@archdraft/core';
 import { describe, expect, it } from 'vitest';
-import { absoluteBoxes, boundsOf, edgePath, truncate } from '../src/diagram/geometry.ts';
+import {
+  absoluteBoxes,
+  boundsOf,
+  curveMidpoint,
+  curvePath,
+  curveSpan,
+  edgeCurve,
+  truncate,
+} from '../src/diagram/geometry.ts';
+
+const edgePath = (
+  source: Parameters<typeof edgeCurve>[0],
+  target: Parameters<typeof edgeCurve>[1],
+) => curvePath(edgeCurve(source, target));
 
 const graph: ArchitectureGraph = {
   schemaVersion: 1,
@@ -62,7 +75,7 @@ describe('boundsOf', () => {
   });
 });
 
-describe('edgePath', () => {
+describe('edgeCurve', () => {
   const left = { x: 0, y: 0, width: 100, height: 40 };
 
   it('joins facing sides when the target is to the right', () => {
@@ -87,6 +100,21 @@ describe('edgePath', () => {
     expect(edgePath({ x: 20, y: 140, width: 100, height: 40 }, left)).toBe(
       'M 70 140 C 70 90 50 90 50 40',
     );
+  });
+});
+
+describe('curveMidpoint and curveSpan', () => {
+  const curve = edgeCurve(
+    { x: 0, y: 0, width: 100, height: 40 },
+    { x: 200, y: 100, width: 100, height: 40 },
+  );
+
+  it('places the midpoint halfway between the ends of a symmetric curve', () => {
+    expect(curveMidpoint(curve)).toEqual({ x: 150, y: 70 });
+  });
+
+  it('measures the distance between the ends', () => {
+    expect(curveSpan(curve)).toBeCloseTo(Math.hypot(100, 100));
   });
 });
 
