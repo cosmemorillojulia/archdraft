@@ -356,50 +356,60 @@ function ComponentShape({
       <title>{service === node.label ? node.label : `${node.label}: ${service}`}</title>
       <m.g
         initial={{ opacity: 0, scale: 0.86, y: 6 }}
-        animate={{ opacity: 1, scale: focused ? 1.04 : 1, y: 0 }}
-        transition={{ ...SPRING_POP, delay: focused ? 0 : delay }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ ...SPRING_POP, delay }}
         style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
       >
-        <rect
-          width={box.width}
-          height={box.height}
-          rx={12}
-          strokeWidth={focused ? 1.5 : 1}
-          className="transition-[stroke] duration-200"
+        {/* Hover growth is a CSS transition so that it never inherits the entrance delay. */}
+        <g
+          className="transition-transform duration-200 ease-out-soft"
           style={{
-            fill: 'var(--surface)',
-            stroke: focused ? `var(--cat-${category})` : 'var(--line)',
-            filter: focused ? 'drop-shadow(0 6px 16px rgb(17 24 39 / 0.16))' : undefined,
+            transform: focused ? 'scale(1.04)' : 'scale(1)',
+            transformBox: 'fill-box',
+            transformOrigin: 'center',
           }}
-        />
-        <rect
-          x={12}
-          y={(box.height - 36) / 2}
-          width={36}
-          height={36}
-          rx={10}
-          style={{ fill: `var(--cat-${category}-bg)` }}
-        />
-        <Icon
-          x={21}
-          y={(box.height - 18) / 2}
-          width={18}
-          height={18}
-          strokeWidth={1.75}
-          style={{ color: `var(--cat-${category})` }}
-        />
-        <text
-          x={58}
-          y={box.height / 2 - 3}
-          fontSize={13}
-          fontWeight={600}
-          style={{ fill: 'var(--ink)' }}
         >
-          {truncate(node.label, 17)}
-        </text>
-        <text x={58} y={box.height / 2 + 13} fontSize={11} style={{ fill: 'var(--muted)' }}>
-          {truncate(service, 21)}
-        </text>
+          <rect
+            width={box.width}
+            height={box.height}
+            rx={12}
+            strokeWidth={focused ? 1.5 : 1}
+            className="transition-[stroke] duration-200"
+            style={{
+              fill: 'var(--surface)',
+              stroke: focused ? `var(--cat-${category})` : 'var(--line)',
+              filter: focused ? 'drop-shadow(0 6px 16px rgb(17 24 39 / 0.16))' : undefined,
+            }}
+          />
+          <rect
+            x={12}
+            y={(box.height - 36) / 2}
+            width={36}
+            height={36}
+            rx={10}
+            style={{ fill: `var(--cat-${category}-bg)` }}
+          />
+          <Icon
+            x={21}
+            y={(box.height - 18) / 2}
+            width={18}
+            height={18}
+            strokeWidth={1.75}
+            style={{ color: `var(--cat-${category})` }}
+          />
+          <text
+            x={58}
+            y={box.height / 2 - 3}
+            fontSize={13}
+            fontWeight={600}
+            style={{ fill: 'var(--ink)' }}
+          >
+            {truncate(node.label, 17)}
+          </text>
+          <text x={58} y={box.height / 2 + 13} fontSize={11} style={{ fill: 'var(--muted)' }}>
+            {truncate(service, 21)}
+          </text>
+        </g>
       </m.g>
     </g>
   );
