@@ -42,6 +42,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T25 | Editor: rediseño centrado en el lienzo                           | T07           | hecha (2026-10-24) |
 | T26 | Revisión de diseño y pulido visual                               | T20, T23      | pendiente          |
 | T27 | Editor: cabecera fija y animaciones                              | T25           | hecha (2026-10-24) |
+| T28 | Editor: paleta de componentes en móvil                           | T27           | hecha (2026-10-25) |
 
 ## Fase 0: fundamentos
 
@@ -184,7 +185,7 @@ Objetivo: editar el diagrama a mano.
 Entregables:
 
 - Store con Zustand: documento, selección e historial (límite de 100 pasos).
-- Acciones: añadir nodo desde la paleta (arrastrar y soltar), conectar, borrar, mover, cambiar de contenedor respetando `CONTAINMENT_RULES`, editar propiedades.
+- Acciones: añadir nodo desde la paleta (arrastrar y soltar en escritorio; en pantallas estrechas o táctiles, tocar un mosaico lo añade en el centro de la vista, lo selecciona y cierra la hoja de la paleta), conectar, borrar, mover, cambiar de contenedor respetando `CONTAINMENT_RULES`, editar propiedades.
 - Inspector con formularios para nodo y arista, como panel flotante que aparece al seleccionar (ADR 0014).
 - Atajos de teclado: borrar, deshacer, rehacer, duplicar.
 - Validación tras cada acción; una acción que produciría un grafo inválido se rechaza con un mensaje.
@@ -236,6 +237,16 @@ Objetivo: volver a la cabecera fija de T07 sin logotipo y dar a todo el recorrid
 Entregables: cabecera fija con el nombre, la descripción, el enlace al código y el tema; tarjeta flotante con el título, las cifras y la revisión del diagrama; Motion con carga diferida y tokens de movimiento; diagrama que se construye, aristas con partículas y resaltado de conexiones con etiquetas al pasar el ratón; paleta con entrada, cascada y recolocación; indicador deslizante de plantillas; ejemplos de descripción rotatorios; cambio de tema con revelado circular.
 
 Criterios de aceptación: tests de comportamiento con las animaciones desactivadas; movimiento reducido respetado; capturas y vídeo revisados.
+
+### T28. Paleta de componentes en móvil
+
+Estado: hecha (2026-10-25). Documentado en `docs/modulos/web.md`.
+
+Objetivo: que la paleta también esté disponible en pantallas estrechas, donde T27 la ocultaba.
+
+Entregables: botón flotante y hoja modal que sube desde abajo, con fondo atenuado, resto de la página inerte, foco gestionado y cierre con botón, Escape, toque fuera o arrastre del asa; cierre con Escape también en el panel lateral; nota en T09 sobre cómo se añaden componentes en móvil.
+
+Criterios de aceptación: tests de la hoja y del panel lateral; capturas en móvil en claro y oscuro y prueba del arrastre para cerrar.
 
 ## Fase 3: inteligencia artificial
 

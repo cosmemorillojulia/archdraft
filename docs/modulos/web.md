@@ -2,7 +2,7 @@
 
 Editor visual de Archdraft. Es una aplicación de una sola página con Vite, React 19, TypeScript y Tailwind CSS 4, publicada en GitHub Pages en `https://cosmemorillojulia.github.io/archdraft/`. Depende de `@archdraft/core` y `@archdraft/layout`, nunca al revés (ver [arquitectura](../arquitectura.md)).
 
-Estado: estructura y despliegue (T07), rediseño centrado en el lienzo (T25) y cabecera fija con animaciones (T27). El lienzo interactivo llega en T08, la edición en T09 y el panel de revisión en T10.
+Estado: estructura y despliegue (T07), rediseño centrado en el lienzo (T25), cabecera fija con animaciones (T27) y paleta en móvil (T28). El lienzo interactivo llega en T08, la edición en T09 y el panel de revisión en T10.
 
 ## Estructura
 
@@ -18,6 +18,7 @@ apps/web/
     theme.ts              # useTheme: tema claro u oscuro, guardado, con revelado circular
     motion.ts             # tokens de movimiento: curva y muelles compartidos
     motion-features.ts    # funciones de Motion que se cargan aparte
+    media.ts              # useMediaQuery y el punto de corte WIDE_SCREEN
     icons.ts              # icono de Lucide de cada tipo de nodo
     styles.css            # tokens, tema oscuro, utilidades floating y dot-grid
     components/           # Button, Header, DiagramCard, ComponentsPanel, PromptDock
@@ -126,7 +127,20 @@ Animaciones del recorrido:
 | `DiagramPreview`  | Dibujo SVG animado del diagrama actual, ajustado al lienzo                                                                                                                                                                                                                         |
 | `Button`          | Variantes `primary`, `secondary` y `ghost`; tamaños `default` e `icon`. Los tamaños son variantes con nombre porque dos utilidades de Tailwind sobre la misma propiedad no se anulan por su orden en `class`                                                                       |
 
-En pantallas estrechas la cabecera oculta la descripción, la tarjeta ocupa el ancho sin la descripción del diagrama, la paleta no se muestra (no hay edición en móvil) y las plantillas se desplazan en horizontal.
+En pantallas estrechas la cabecera oculta la descripción, la tarjeta ocupa el ancho sin la descripción del diagrama y las plantillas se desplazan en horizontal.
+
+### Paleta en escritorio y en móvil
+
+`useMediaQuery(WIDE_SCREEN)` (`min-width: 768px`, el punto `md` de Tailwind) decide la forma de la paleta:
+
+| Pantalla | Botón                                                                       | Paleta                                                                                            | Cierre                                                                                               |
+| -------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Ancha    | `Show components` arriba a la izquierda                                     | Panel flotante junto al diagrama, tres columnas; el lienzo deja sitio                             | Botón del panel o Escape                                                                             |
+| Estrecha | Botón flotante redondeado sobre la barra de descripción, abajo a la derecha | Hoja modal que sube desde abajo (hasta el 80 % de la altura), cuatro columnas, con fondo atenuado | Botón con aspa, Escape, toque fuera o arrastrar el asa hacia abajo (más de 120 px o más de 500 px/s) |
+
+Mientras la hoja está abierta, el resto de la página lleva el atributo `inert`, de modo que el foco y los lectores de pantalla no salen de ella; al abrirse recibe el foco la propia hoja (no el buscador, para no desplegar el teclado) y al cerrarse vuelve al botón. El arrastre solo empieza en el asa (`useDragControls`), para que desplazar la rejilla no cierre la hoja.
+
+Hoy los mosaicos solo muestran el catálogo. Añadir componentes llega con T09: arrastrar y soltar en escritorio y tocar para añadir en pantallas estrechas o táctiles.
 
 ## Vista previa del diagrama
 
@@ -155,7 +169,7 @@ T08 sustituirá esta vista por React Flow reutilizando la geometría de los nodo
 
 ## Tests
 
-- `app.test.tsx`: cabecera solo con el nombre, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes, etiquetas de las conexiones al pasar el ratón, cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
+- `app.test.tsx`: hoja modal en pantallas estrechas (foco, `inert`, cierre con Escape, botón y fondo) y panel lateral en anchas (sin bloquear la página, cierre con Escape), cabecera solo con el nombre, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes, etiquetas de las conexiones al pasar el ratón, cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
 - `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, límites, los cuatro casos de curva de las aristas, punto medio, distancia y recorte de texto.
 - `icons.test.ts`: cada icono de `KIND_ICONS` es el que nombra el catálogo de core. Detectó que Lucide renombró `waves` a `waves-horizontal`.
 
