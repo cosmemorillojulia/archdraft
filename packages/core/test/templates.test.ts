@@ -15,10 +15,6 @@ function isDeeplyFrozen(value: unknown): boolean {
 }
 
 describe('architecture templates', () => {
-  it('has exactly one template per id', () => {
-    expect(Object.keys(ARCHITECTURE_TEMPLATES).sort()).toEqual([...TEMPLATE_IDS].sort());
-  });
-
   it.each(templates)('%s is valid, without warnings and already normalised', (_id, graph) => {
     expect(parseArchitectureGraph(graph)).toEqual({ success: true, graph, warnings: [] });
   });

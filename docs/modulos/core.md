@@ -76,6 +76,6 @@ Añadir un código de validación:
 
 ## Tests
 
-- 220 tests en doce ficheros a fecha de T06; cobertura del 100 % de líneas y funciones y por encima del 99 % de ramas.
+- 219 tests en doce ficheros a fecha de T06; cobertura del 100 % de líneas y funciones y por encima del 99 % de ramas.
 - Umbrales mínimos en `vitest.config.ts`: 90 % de líneas, funciones y sentencias y 85 % de ramas. CI falla si se incumplen.
 - `parseArchitectureGraph` se prueba con entradas arbitrarias (`null`, números, arrays) para garantizar que nunca lanza.
