@@ -1,4 +1,4 @@
-import { ARCHITECTURE_TEMPLATES, NODE_CATALOG, isContainerKind } from '@archdraft/core';
+import { ARCHITECTURE_TEMPLATES, NODE_CATALOG } from '@archdraft/core';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -6,63 +6,92 @@ import { App } from '../src/App.tsx';
 import { strings } from '../src/strings.ts';
 
 describe('App', () => {
-  it('renders the header, both side panels and the diagram', () => {
+  it('shows the product, the current diagram and its review status', async () => {
     render(<App />);
+    const graph = ARCHITECTURE_TEMPLATES['three-tier-web'];
     expect(screen.getByRole('heading', { level: 1, name: strings.appName })).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: strings.panes.build })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: strings.canvas.label })).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: strings.panes.details })).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toHaveTextContent(graph.title);
+    expect(screen.getByRole('status')).toHaveTextContent(strings.review.clean);
+    expect(
+      await screen.findByRole('img', { name: strings.canvas.diagramLabel(graph.title) }),
+    ).toBeInTheDocument();
   });
 
-  it('has a labelled description field and a generate button that is disabled for now', () => {
+  it('draws every component of the diagram', async () => {
+    render(<App />);
+    const graph = ARCHITECTURE_TEMPLATES['three-tier-web'];
+    const diagram = await screen.findByRole('img', {
+      name: strings.canvas.diagramLabel(graph.title),
+    });
+    expect(within(diagram).getByText('Web application')).toBeInTheDocument();
+    expect(within(diagram).getByText('Amazon Aurora')).toBeInTheDocument();
+  });
+
+  it('switches the diagram from the template chips', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const templates = screen.getByRole('group', { name: strings.prompt.templates });
+    const rag = within(templates).getByRole('button', {
+      name: strings.prompt.templateNames['rag-chatbot'],
+    });
+
+    await user.click(rag);
+    const graph = ARCHITECTURE_TEMPLATES['rag-chatbot'];
+    expect(rag).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('banner')).toHaveTextContent(graph.title);
+    expect(
+      await screen.findByRole('img', { name: strings.canvas.diagramLabel(graph.title) }),
+    ).toBeInTheDocument();
+  });
+
+  it('has a labelled prompt whose generate button explains that it is not available yet', () => {
     render(<App />);
     expect(screen.getByRole('textbox', { name: strings.prompt.label })).toHaveAccessibleDescription(
-      strings.prompt.hint,
+      strings.prompt.soon,
     );
     expect(screen.getByRole('button', { name: strings.prompt.generate })).toBeDisabled();
   });
 
-  it('shows the default template in the title block', () => {
-    const graph = ARCHITECTURE_TEMPLATES['three-tier-web'];
+  it('lists every kind of the catalog in the palette', async () => {
+    const user = userEvent.setup();
     render(<App />);
-    const titleBlock = screen.getByRole('region', { name: graph.title });
-    const components = graph.nodes.filter((node) => !isContainerKind(node.kind)).length;
-    expect(within(titleBlock).getByText('AWS')).toBeInTheDocument();
-    expect(within(titleBlock).getByText(String(components))).toBeInTheDocument();
-    expect(within(titleBlock).getByText(String(graph.edges.length))).toBeInTheDocument();
-  });
-
-  it('lists every kind of the catalog in the palette', () => {
-    render(<App />);
-    const palette = screen.getByRole('region', { name: strings.palette.title });
+    await user.click(screen.getByRole('button', { name: strings.components.open }));
+    const palette = screen.getByRole('region', { name: strings.components.title });
     for (const definition of Object.values(NODE_CATALOG)) {
       expect(within(palette).getByText(definition.label)).toBeInTheDocument();
     }
   });
 
-  it('switches the details tabs with the mouse and the keyboard', async () => {
+  it('filters the palette and says when nothing matches', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const inspector = screen.getByRole('tab', { name: strings.details.inspector });
-    const review = screen.getByRole('tab', { name: strings.details.review });
-    expect(inspector).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByText(strings.details.inspectorEmpty)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: strings.components.open }));
+    const palette = screen.getByRole('region', { name: strings.components.title });
+    const search = within(palette).getByRole('searchbox', { name: strings.components.search });
 
-    await user.click(review);
-    expect(review).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByText(strings.details.reviewEmpty)).toBeVisible();
-    expect(screen.getByText(strings.details.inspectorEmpty)).not.toBeVisible();
+    await user.type(search, 'data');
+    expect(within(palette).getByText('Relational database')).toBeInTheDocument();
+    expect(within(palette).queryByText('Function')).not.toBeInTheDocument();
 
-    await user.keyboard('{ArrowRight}');
-    expect(inspector).toHaveAttribute('aria-selected', 'true');
-    expect(inspector).toHaveFocus();
+    await user.clear(search);
+    await user.type(search, 'zzz');
+    expect(within(palette).getByText(strings.components.noMatches('zzz'))).toBeInTheDocument();
+  });
 
-    await user.keyboard('{End}');
-    expect(review).toHaveFocus();
-    await user.keyboard('{Home}');
-    expect(inspector).toHaveFocus();
-    await user.keyboard('{ArrowLeft}');
-    expect(review).toHaveFocus();
+  it('hides and shows the palette', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(
+      screen.queryByRole('region', { name: strings.components.title }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: strings.components.open }));
+    expect(screen.getByRole('region', { name: strings.components.title })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: strings.components.close }));
+    expect(
+      screen.queryByRole('region', { name: strings.components.title }),
+    ).not.toBeInTheDocument();
   });
 
   it('toggles the theme and remembers the choice', async () => {
@@ -82,18 +111,5 @@ describe('App', () => {
     document.documentElement.dataset.theme = 'dark';
     render(<App />);
     expect(screen.getByRole('button', { name: strings.header.themeToLight })).toBeInTheDocument();
-  });
-
-  it('marks the pane chosen in the small-screen switcher', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    const switcher = screen.getByRole('navigation', { name: strings.panes.switcher });
-    const diagram = within(switcher).getByRole('button', { name: strings.panes.diagram });
-    const build = within(switcher).getByRole('button', { name: strings.panes.build });
-    expect(diagram).toHaveAttribute('aria-pressed', 'true');
-
-    await user.click(build);
-    expect(build).toHaveAttribute('aria-pressed', 'true');
-    expect(diagram).toHaveAttribute('aria-pressed', 'false');
   });
 });
