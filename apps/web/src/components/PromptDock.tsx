@@ -51,7 +51,13 @@ export function PromptDock({ templateId, onTemplateChange }: PromptDockProps) {
         <label htmlFor={inputId} className="sr-only">
           {strings.prompt.label}
         </label>
-        <Sparkles size={17} aria-hidden="true" className="mb-2.5 shrink-0 text-accent" />
+        <Sparkles
+          size={17}
+          fill="currentColor"
+          strokeWidth={1.5}
+          aria-hidden="true"
+          className="mb-2.5 shrink-0 text-accent"
+        />
         <div className="relative min-w-0 flex-1">
           <textarea
             id={inputId}
