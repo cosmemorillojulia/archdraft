@@ -16,6 +16,9 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/core`: `DiagramLayout` and `DiagramDocument` schemas for the positions and sizes stored next to the graph.
 - `@archdraft/layout`: `computeLayout` with ELK `layered`, nested containers, configurable direction, default sizes and pinned positions that keep a previous layout and only place new nodes.
 - `@archdraft/core`: draw.io export (`toDrawio`) with containers as draw.io containers, layout positions, styles by category, dashed async edges and labels escaped for XML and HTML.
+- `@archdraft/web`: editor shell built with Vite, React and Tailwind CSS: drafting-sheet visual system with light and dark themes, base components, header, build panel with the component palette, canvas with the title block of the default template, details panel with tabs, a pane switcher for small screens and centralised strings.
+- GitHub Pages deployment workflow that publishes the editor after CI passes on `main`.
+- ADR 0013: visual direction based on the technical drawing sheet.
 - `@archdraft/core`: six architecture templates (`ARCHITECTURE_TEMPLATES`) for the gallery and the generation prompt: three-tier web application, serverless API, event-driven microservices, RAG chatbot, analytics pipeline and static site with a headless CMS. They cover every provider, are valid without warnings and have no design findings.
 
 ### Changed
