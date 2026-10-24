@@ -2,7 +2,7 @@
 
 Editor visual de Archdraft. Es una aplicación de una sola página con Vite, React 19, TypeScript y Tailwind CSS 4, publicada en GitHub Pages en `https://cosmemorillojulia.github.io/archdraft/`. Depende de `@archdraft/core` y `@archdraft/layout`, nunca al revés (ver [arquitectura](../arquitectura.md)).
 
-Estado: estructura y despliegue (T07) y rediseño centrado en el lienzo (T25). El lienzo interactivo llega en T08, la edición en T09 y el panel de revisión en T10.
+Estado: estructura y despliegue (T07), rediseño centrado en el lienzo (T25) y cabecera fija con animaciones (T27). El lienzo interactivo llega en T08, la edición en T09 y el panel de revisión en T10.
 
 ## Estructura
 
@@ -13,17 +13,19 @@ apps/web/
   public/favicon.svg
   src/
     main.tsx              # punto de entrada
-    App.tsx               # lienzo a pantalla completa y capas flotantes
+    App.tsx               # cabecera fija, lienzo y capas flotantes; carga de Motion
     strings.ts            # todas las cadenas visibles (ADR 0009)
-    theme.ts              # useTheme: tema claro u oscuro, guardado en localStorage
+    theme.ts              # useTheme: tema claro u oscuro, guardado, con revelado circular
+    motion.ts             # tokens de movimiento: curva y muelles compartidos
+    motion-features.ts    # funciones de Motion que se cargan aparte
     icons.ts              # icono de Lucide de cada tipo de nodo
     styles.css            # tokens, tema oscuro, utilidades floating y dot-grid
-    components/           # Button, TopBar, ComponentsPanel, PromptDock
+    components/           # Button, Header, DiagramCard, ComponentsPanel, PromptDock
     diagram/
-      geometry.ts         # cajas absolutas, límites, trazado de aristas, recorte de texto
-      DiagramPreview.tsx  # vista previa SVG de solo lectura
+      geometry.ts         # cajas absolutas, límites, curvas de las aristas, recorte de texto
+      DiagramPreview.tsx  # vista previa SVG animada de solo lectura
   test/
-    setup.ts              # jest-dom, limpieza y matchMedia simulado
+    setup.ts              # jest-dom, limpieza, matchMedia simulado y animaciones desactivadas
     app.test.tsx          # comportamiento de la aplicación con Testing Library
     geometry.test.ts
     icons.test.ts         # los iconos coinciden con los del catálogo de core
@@ -42,17 +44,19 @@ La `base` de Vite es `/archdraft/` también en desarrollo: GitHub Pages sirve el
 
 ## Dirección visual
 
-[ADR 0014](../adr/0014-interfaz-centrada-en-el-lienzo.md): el lienzo ocupa toda la ventana y la interfaz flota encima. Sustituye a la hoja de dibujo de ADR 0013.
+[ADR 0014](../adr/0014-interfaz-centrada-en-el-lienzo.md): el lienzo ocupa el espacio bajo la cabecera y el resto de la interfaz flota encima. [ADR 0015](../adr/0015-animaciones-con-motion-y-cabecera-fija.md): la cabecera vuelve a ser una barra fija solo con el nombre, y todo el recorrido se anima con Motion.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ [logo Archdraft | Título del diagrama  AWS]   [✓ revisión ◐ </>] │
-│ [Show components]                                            │
-│                                                              │
+│ Archdraft  Describe a cloud architecture…    Source code  ◐  │  cabecera fija
+├──────────────────────────────────────────────────────────────┤
+│ [Show components]              [Título del diagrama     AWS] │
+│                                [10 components 8 connections] │
+│                                [              ✓ No issues    ] │
 │                  diagrama sobre cuadrícula de puntos         │
 │                                                              │
-│          [✦ Describe the architecture…           ↑]          │
-│          (plantilla) (plantilla) (plantilla) …               │
+│          [✦ ejemplo de descripción que va rotando     ↑]     │
+│          ( plantilla activa ) plantilla  plantilla  …        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,23 +89,44 @@ La utilidad `floating` da a cada capa una superficie al 88 % de opacidad con des
 
 ### Tipografía
 
-Instrument Sans variable (peso 400 a 700, anchura 75 % a 100 %), autoalojada con `@fontsource-variable/instrument-sans`: unos 57 KB para el alfabeto latino básico. Escala: 14 px para la interfaz, 15 px semibold para la marca, 13 px semibold para la etiqueta de un nodo y 11 a 12 px para textos secundarios. Sin mayúsculas sostenidas.
+Instrument Sans variable (peso 400 a 700, anchura 75 % a 100 %), autoalojada con `@fontsource-variable/instrument-sans`: unos 57 KB para el alfabeto latino básico. Escala: 14 px para la interfaz, 18 px bold para el nombre en la cabecera, 13 px semibold para la etiqueta de un nodo y 11 a 12 px para textos secundarios. Sin mayúsculas sostenidas.
 
 ### Movimiento
 
-Dos animaciones definidas como tokens de Tailwind: `animate-rise` (aparición con un ligero desplazamiento, 320 ms) para el diagrama al cambiar de plantilla y para la paleta al abrirse, y `animate-fade` para el botón que la vuelve a abrir. El lienzo transiciona su margen al abrir o cerrar la paleta. Todo se anula con `prefers-reduced-motion`.
+Motion (`motion/react`, ADR 0015) con `LazyMotion` y componentes `m`; las funciones de animación (`domMax`, con animaciones de layout) se cargan en un chunk aparte justo después del primer render. `MotionConfig reducedMotion="user"` desactiva los desplazamientos y escalados si el sistema pide movimiento reducido, y las partículas de las aristas no se dibujan en ese caso.
+
+Tokens en `src/motion.ts`:
+
+| Token          | Valor                                 | Uso                                              |
+| -------------- | ------------------------------------- | ------------------------------------------------ |
+| `EASE_OUT`     | `cubic-bezier(0.2, 0.8, 0.2, 1)`      | Entradas, salidas y fundidos                     |
+| `SPRING_POP`   | muelle, rigidez 380, amortiguación 28 | Elementos pequeños que aparecen: nodos, mosaicos |
+| `SPRING_SLIDE` | muelle, rebote 0,18, 450 ms           | Paneles e indicadores que se desplazan           |
+
+Animaciones del recorrido:
+
+| Momento                    | Qué ocurre                                                                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Cargar o cambiar diagrama  | El anterior se desvanece; el nuevo se construye de izquierda a derecha en unos 0,7 s: grupos, nodos con un muelle y aristas que se trazan |
+| Flujo                      | Una partícula del color de la categoría de origen recorre cada arista en bucle, más despacio cuanto más larga es                          |
+| Pasar el ratón por un nodo | El nodo crece un 4 % y se perfila con su color; sus conexiones se resaltan con su etiqueta y el resto se atenúa                           |
+| Elegir plantilla           | El indicador de la plantilla activa se desliza hasta ella; la tarjeta del diagrama cambia el título y las cifras ruedan                   |
+| Paleta                     | Entra desde la izquierda con un muelle, los mosaicos aparecen en cascada y la rejilla se recoloca al filtrar; el lienzo ajusta su margen  |
+| Campo de descripción       | Ejemplos de descripción que se suceden cada 3,6 s mientras está vacío; al enfocarlo aparece un halo del color de acento                   |
+| Cambio de tema             | El nuevo tema se extiende en círculo desde el botón (API View Transitions); el icono gira y se funde                                      |
 
 ## Piezas de la interfaz
 
-| Pieza             | Contenido                                                                                                                                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `TopBar`          | Logo, nombre, título y proveedor del diagrama; estado de la revisión de diseño (`lintGraph` memoizado por grafo, con `role="status"`); tema; enlace al código                                                |
-| `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón                                                           |
-| `PromptDock`      | Campo que crece con el texto (`field-sizing: content`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, y las seis plantillas como botones con `aria-pressed`                  |
-| `DiagramPreview`  | Dibujo SVG del diagrama actual, ajustado a la ventana                                                                                                                                                        |
-| `Button`          | Variantes `primary`, `secondary` y `ghost`; tamaños `default` e `icon`. Los tamaños son variantes con nombre porque dos utilidades de Tailwind sobre la misma propiedad no se anulan por su orden en `class` |
+| Pieza             | Contenido                                                                                                                                                                                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Header`          | Barra fija: nombre del producto (sin logotipo), descripción, enlace al código y cambio de tema                                                                                                                                                                                     |
+| `DiagramCard`     | Tarjeta flotante: título, proveedor, descripción recortada a dos líneas, número de componentes y conexiones, y estado de la revisión de diseño (`lintGraph` memoizado por grafo, con `role="status"`)                                                                              |
+| `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón                                                                                                                                 |
+| `PromptDock`      | Campo que crece con el texto (`field-sizing: content`) con ejemplos rotatorios decorativos (`aria-hidden`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, y las seis plantillas con icono en una cápsula con indicador deslizante (`aria-pressed`) |
+| `DiagramPreview`  | Dibujo SVG animado del diagrama actual, ajustado al lienzo                                                                                                                                                                                                                         |
+| `Button`          | Variantes `primary`, `secondary` y `ghost`; tamaños `default` e `icon`. Los tamaños son variantes con nombre porque dos utilidades de Tailwind sobre la misma propiedad no se anulan por su orden en `class`                                                                       |
 
-En pantallas estrechas la barra superior muestra solo lo esencial, la paleta se abre por encima del diagrama y las plantillas se desplazan en horizontal.
+En pantallas estrechas la cabecera oculta la descripción, la tarjeta ocupa el ancho sin la descripción del diagrama, la paleta no se muestra (no hay edición en móvil) y las plantillas se desplazan en horizontal.
 
 ## Vista previa del diagrama
 
@@ -110,16 +135,16 @@ Hasta que exista el lienzo interactivo (T08), `DiagramPreview` dibuja la plantil
 1. Carga `@archdraft/layout` con `import()` dinámico, de modo que ELK queda fuera del bundle inicial, y calcula la disposición.
 2. `absoluteBoxes` convierte las posiciones relativas al contenedor padre en coordenadas absolutas.
 3. Dibuja contenedores (rectángulo con relleno translúcido que se intensifica al anidar; `boundary` con borde discontinuo), aristas y componentes, en ese orden para que los nodos queden encima.
-4. Las aristas son curvas que salen del lado que mira al destino (`edgePath`): horizontales si las cajas no se solapan en horizontal y verticales en caso contrario. Las asíncronas son discontinuas.
+4. Las aristas son curvas de Bézier que salen del lado que mira al destino (`edgeCurve`): horizontales si las cajas no se solapan en horizontal y verticales en caso contrario. Las asíncronas son discontinuas y aparecen con un fundido, porque el trazado animado también usa `stroke-dasharray`. `curveMidpoint` sitúa la etiqueta al resaltar y `curveSpan` marca el ritmo de la partícula.
 5. Cada componente muestra el icono de su tipo sobre el color de su categoría, la etiqueta y el producto resuelto (`resolveServiceName`). Los textos largos se recortan con puntos suspensivos y el texto completo queda en un `<title>`.
 
-Si la disposición falla, se muestra un mensaje y el error va a la consola. Al cambiar de plantilla se mantiene el diagrama anterior hasta que el nuevo está listo, y entonces aparece con `animate-rise`.
+Si la disposición falla, se muestra un mensaje y el error va a la consola. Al cambiar de plantilla se mantiene el diagrama anterior hasta que el nuevo está listo; entonces el anterior sale y el nuevo se construye (`AnimatePresence` en modo `wait`).
 
-T08 sustituirá esta vista por React Flow reutilizando la geometría de los nodos, los colores por categoría y el estilo de las aristas.
+T08 sustituirá esta vista por React Flow reutilizando la geometría de los nodos, los colores por categoría, el estilo de las aristas y su movimiento.
 
 ## Tema
 
-`useTheme` parte del tema que ya aplicó el script de `index.html` (preferencia guardada o tema del sistema) y lo guarda en `localStorage` solo cuando el usuario lo cambia. Si el almacenamiento está bloqueado, el tema se aplica igualmente durante la visita y se registra un aviso en la consola. El script inline evita el destello del tema equivocado antes de que cargue React; si el almacenamiento está bloqueado, usa el tema del sistema. El tema se decide al cargar: un cambio del tema del sistema con la página abierta se aplica al recargar.
+`useTheme` parte del tema que ya aplicó el script de `index.html` (preferencia guardada o tema del sistema) y lo guarda en `localStorage` solo cuando el usuario lo cambia. Si el almacenamiento está bloqueado, el tema se aplica igualmente durante la visita y se registra un aviso en la consola. El script inline evita el destello del tema equivocado antes de que cargue React; si el almacenamiento está bloqueado, usa el tema del sistema. El tema se decide al cargar: un cambio del tema del sistema con la página abierta se aplica al recargar. Al pulsar el botón, `toggle` recibe el centro del botón, guarda el origen y el radio del círculo en variables CSS y aplica el cambio dentro de `document.startViewTransition`; la animación `theme-reveal` de `styles.css` recorta el nuevo tema con un círculo creciente.
 
 ## Accesibilidad
 
@@ -130,11 +155,11 @@ T08 sustituirá esta vista por React Flow reutilizando la geometría de los nodo
 
 ## Tests
 
-- `app.test.tsx`: título y estado de la revisión, diagrama dibujado con sus componentes, cambio de plantilla, campo con descripción accesible y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema.
-- `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, límites, los cuatro casos de trazado de aristas y recorte de texto.
+- `app.test.tsx`: cabecera solo con el nombre, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes, etiquetas de las conexiones al pasar el ratón, cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
+- `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, límites, los cuatro casos de curva de las aristas, punto medio, distancia y recorte de texto.
 - `icons.test.ts`: cada icono de `KIND_ICONS` es el que nombra el catálogo de core. Detectó que Lucide renombró `waves` a `waves-horizontal`.
 
-Revisión visual: build servido con `vite preview` y capturado con Playwright en Chromium a 1440 × 900 en claro y oscuro, con la paleta abierta y cerrada y con varias plantillas, y a 390 × 844; sin errores en la consola. La skill `design-critique` (`.claude/skills`) guía la revisión de las capturas.
+Revisión visual: build servido con `vite preview` y capturado con Playwright en Chromium a 1440 × 900 en claro y oscuro, con la paleta abierta y cerrada, con un nodo resaltado y con varias plantillas, y a 390 × 844; además, un vídeo de 15 s del recorrido para revisar el movimiento. Sin errores en la consola. La skill `design-critique` (`.claude/skills`) guía la revisión de las capturas.
 
 ## Despliegue
 

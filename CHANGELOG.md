@@ -21,6 +21,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - ADR 0013: visual direction based on the technical drawing sheet.
 - `@archdraft/web`: canvas-first redesign (ADR 0014, superseding ADR 0013): full-window dot-grid canvas with a floating top bar, searchable components palette with category-coloured icons, prompt dock with one-click templates, design review status and a read-only diagram preview laid out with ELK on demand.
 - `design-critique` skill from anthropics/knowledge-work-plugins for reviewing editor screenshots.
+- `@archdraft/web`: fixed header with only the product name and a floating diagram card (ADR 0015); fluid animations with Motion: the diagram builds from left to right, edges draw in and carry flowing particles, hovering a component highlights its connections, the palette slides and reflows, the active template slides, example prompts rotate and the theme spreads from the toggle.
 - `@archdraft/core`: six architecture templates (`ARCHITECTURE_TEMPLATES`) for the gallery and the generation prompt: three-tier web application, serverless API, event-driven microservices, RAG chatbot, analytics pipeline and static site with a headless CMS. They cover every provider, are valid without warnings and have no design findings.
 
 ### Changed
