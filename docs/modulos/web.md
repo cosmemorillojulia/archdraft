@@ -2,7 +2,7 @@
 
 Editor visual de Archdraft. Es una aplicación de una sola página con Vite, React 19, TypeScript y Tailwind CSS 4, publicada en GitHub Pages en `https://cosmemorillojulia.github.io/archdraft/`. Depende de `@archdraft/core` y `@archdraft/layout`, nunca al revés (ver [arquitectura](../arquitectura.md)).
 
-Estado: estructura y despliegue (T07), rediseño centrado en el lienzo (T25), cabecera fija con animaciones (T27) y paleta en móvil (T28). El lienzo interactivo llega en T08, la edición en T09 y el panel de revisión en T10.
+Estado: estructura y despliegue (T07), lienzo con React Flow y zoom (T08), rediseño centrado en el lienzo (T25), cabecera fija con animaciones (T27), paleta en móvil (T28) y ajustes visuales (T29). La edición llega en T09 y el panel de revisión en T10.
 
 ## Estructura
 
@@ -20,14 +20,24 @@ apps/web/
     motion-features.ts    # funciones de Motion que se cargan aparte
     media.ts              # useMediaQuery y el punto de corte WIDE_SCREEN
     icons.ts              # icono de Lucide de cada tipo de nodo
-    styles.css            # tokens, tema oscuro, utilidades floating y dot-grid
+    styles.css            # tokens, tema oscuro, utilidad floating, estilos de React Flow
     components/           # Button, Header, DiagramCard, ComponentsPanel, PromptDock
-    diagram/
-      geometry.ts         # cajas absolutas, límites, curvas de las aristas, recorte de texto
-      DiagramPreview.tsx  # vista previa SVG animada de solo lectura
+    canvas/
+      DiagramCanvas.tsx   # lienzo React Flow: disposición, vista inicial, resaltado, minimapa
+      flow.ts             # toFlow: adaptador puro del documento a nodos y aristas
+      ComponentNode.tsx   # nodo de componente
+      ContainerNode.tsx   # nodo de contenedor
+      ArchitectureEdge.tsx# arista con trazado animado, partícula y etiqueta
+      ZoomControls.tsx    # acercar, alejar y ajustar
+      highlight.ts        # contexto del resaltado y relatedTo
+      geometry.ts         # cajas absolutas, profundidad, límites, escala y vista inicial
+      layout-client.ts    # layoutDiagram: ELK en un Web Worker
+      layout.worker.ts    # el worker
+      elk-in-worker.ts    # prepara el ámbito del worker para elkjs
   test/
-    setup.ts              # jest-dom, limpieza, matchMedia simulado y animaciones desactivadas
+    setup.ts              # jest-dom, limpieza, matchMedia, ResizeObserver y DOMMatrix simulados, animaciones desactivadas
     app.test.tsx          # comportamiento de la aplicación con Testing Library
+    flow.test.ts          # adaptador toFlow
     geometry.test.ts
     icons.test.ts         # los iconos coinciden con los del catálogo de core
 ```
@@ -124,7 +134,7 @@ Animaciones del recorrido:
 | `DiagramCard`     | Tarjeta flotante: título, proveedor, descripción recortada a dos líneas, número de componentes y conexiones, y estado de la revisión de diseño (`lintGraph` memoizado por grafo, con `role="status"`)                                                                              |
 | `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón                                                                                                                                 |
 | `PromptDock`      | Campo que crece con el texto (`field-sizing: content`) con ejemplos rotatorios decorativos (`aria-hidden`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, y las seis plantillas con icono en una cápsula con indicador deslizante (`aria-pressed`) |
-| `DiagramPreview`  | Dibujo SVG animado del diagrama actual: se ajusta al lienzo y, si así quedaría demasiado pequeño, mantiene una escala mínima y el lienzo se desplaza                                                                                                                               |
+| `DiagramCanvas`   | Lienzo React Flow con el diagrama, zoom, minimapa y resaltado (ver Lienzo)                                                                                                                                                                                                         |
 | `Button`          | Variantes `primary`, `secondary` y `ghost`; tamaños `default` e `icon`. Los tamaños son variantes con nombre porque dos utilidades de Tailwind sobre la misma propiedad no se anulan por su orden en `class`                                                                       |
 
 En pantallas estrechas la cabecera oculta la descripción, la tarjeta ocupa el ancho sin la descripción del diagrama y las plantillas se desplazan en horizontal.
@@ -142,37 +152,85 @@ Mientras la hoja está abierta, el resto de la página lleva el atributo `inert`
 
 Hoy los mosaicos solo muestran el catálogo. Añadir componentes llega con T09: arrastrar y soltar en escritorio y tocar para añadir en pantallas estrechas o táctiles.
 
-## Vista previa del diagrama
+## Lienzo
 
-Hasta que exista el lienzo interactivo (T08), `DiagramPreview` dibuja la plantilla elegida:
+`DiagramCanvas` dibuja el documento con React Flow (ADR 0007), de solo lectura hasta T09.
 
-1. Carga `@archdraft/layout` con `import()` dinámico, de modo que ELK queda fuera del bundle inicial, y calcula la disposición: de izquierda a derecha en pantallas anchas y de arriba abajo en las estrechas, donde se lee mejor desplazando en vertical.
-2. `absoluteBoxes` convierte las posiciones relativas al contenedor padre en coordenadas absolutas.
-3. Dibuja contenedores (rectángulo opaco teñido con el color de acento, más intenso cuanto más anidado según `nestingDepths`, para que los puntos del lienzo no se vean dentro; `boundary` con borde discontinuo), aristas y componentes, en ese orden para que los nodos queden encima.
-4. Las aristas son curvas de Bézier que salen del lado que mira al destino (`edgeCurve`): horizontales si las cajas no se solapan en horizontal y verticales en caso contrario. Las asíncronas son discontinuas y aparecen con un fundido, porque el trazado animado también usa `stroke-dasharray`. `curveMidpoint` sitúa la etiqueta al resaltar y `curveSpan` marca el ritmo de la partícula.
-5. Cada componente muestra el icono de su tipo sobre el color de su categoría, la etiqueta y el producto resuelto (`resolveServiceName`). Los textos largos se recortan con puntos suspensivos y el texto completo queda en un `<title>`.
+### Del documento a React Flow
 
-`drawingScale` elige la escala: la que ajusta el diagrama al lienzo, con un mínimo (0,6 en pantallas anchas y 0,9 en estrechas, para que las etiquetas no bajen de unos 12 px en un móvil) y un máximo de 1,4 para que los diagramas pequeños no se agiganten. Si con la escala mínima el diagrama no cabe, el lienzo se desplaza en los dos ejes y empieza arriba y centrado. El tamaño del lienzo se mide antes de pintar y se actualiza con `ResizeObserver`.
+`toFlow(document, direction)` es un adaptador puro, con tests:
 
-Si la disposición falla, se muestra un mensaje y el error va a la consola. Al cambiar de plantilla se mantiene el diagrama anterior hasta que el nuevo está listo; entonces el anterior sale y el nuevo se construye (`AnimatePresence` en modo `wait`).
+- Un nodo `component` o `container` por nodo del grafo, con la posición relativa al contenedor padre (la convención de los subflujos de React Flow), el tamaño de la disposición y `parentId`. Los padres van antes que sus hijos, como exige React Flow.
+- Los componentes llevan su categoría, el producto resuelto, las posiciones de sus conectores según la dirección (derecha e izquierda en `LR`, abajo y arriba en `TB`) y, si su proveedor no es el del diagrama, un distintivo (`External`, `AWS`, `GCP` o `Azure`).
+- Los contenedores llevan su profundidad de anidamiento, para el tinte.
+- Cada arista sabe si es asíncrona y la categoría de su origen, para el color de la partícula.
+- Cada elemento lleva el retardo de su entrada: el diagrama se construye en el sentido del flujo en unos 0,7 s.
+- Los nodos sin disposición se omiten, con sus descendientes y sus aristas.
 
-T08 sustituirá esta vista por React Flow reutilizando la geometría de los nodos, los colores por categoría, el estilo de las aristas y su movimiento.
+### Disposición en un Web Worker
+
+`layoutDiagram` envía el grafo a `layout.worker.ts`, que ejecuta `computeLayout` de `@archdraft/layout`, de izquierda a derecha en pantallas anchas y de arriba abajo en las estrechas. El worker se crea la primera vez que hace falta, así que ELK (unos 440 KB comprimidos) no forma parte de la carga inicial y nunca bloquea la interfaz. Donde no hay workers (los tests en jsdom) se ejecuta en el hilo principal con `import()` dinámico.
+
+La versión empaquetada de elkjs, al ejecutarse en un contexto con `self` y sin `document`, se comporta como su propio worker: escucha mensajes y deja de exportar el motor que usa `@archdraft/layout`. `elk-in-worker.ts`, importado antes que nada en el worker, declara un `document` vacío para que elkjs se cargue como librería.
+
+### Zoom y desplazamiento
+
+| Gesto                                                            | Efecto                                                                            |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Rueda del ratón                                                  | Acerca o aleja alrededor del puntero                                              |
+| Pellizco en trackpad (el navegador lo envía como rueda con Ctrl) | Acerca o aleja                                                                    |
+| Pellizco con dos dedos                                           | Acerca o aleja                                                                    |
+| Arrastrar el fondo o un nodo, con ratón o con un dedo            | Desplaza                                                                          |
+| Doble clic o doble toque                                         | Acerca                                                                            |
+| Botones de zoom                                                  | Acercar y alejar en pasos animados de 220 ms; ajustar con una animación de 450 ms |
+
+El zoom va del 20 % al 200 % y los botones muestran el porcentaje actual. La vista inicial se calcula con `initialViewport`: encaja el diagrama en la parte del lienzo que no tapan las capas flotantes (`canvasInsets` en `App.tsx`), sin pasar del 120 % y sin bajar del 60 % en pantallas anchas ni del 90 % en las estrechas, para que las etiquetas se lean; si así no cabe, empieza arriba y centrado. Ajustar usa el mismo cálculo con el mínimo del 20 %, de modo que muestra el diagrama entero. Al abrir o cerrar la paleta en escritorio, la vista se desliza la mitad del ancho del panel para seguir centrada en el espacio libre.
+
+Los botones de zoom están abajo a la izquierda; en pantallas estrechas suben por encima de la barra de descripción y miden 40 px para el dedo. A partir de 1280 px aparece un minimapa abajo a la derecha, con los nodos en el color de su categoría, que también sirve para desplazarse y hacer zoom. Se mantiene la atribución de React Flow.
+
+### Nodos y aristas
+
+- Componente: tarjeta con el icono sobre el color de su categoría, el nombre y el producto en una línea cada uno, recortados con puntos suspensivos y completos en el `title`; el distintivo de proveedor flota sobre el borde superior.
+- Contenedor: rectángulo opaco teñido con el acento, más intenso cuanto más anidado, para que los puntos del fondo no se vean dentro; `boundary` con borde discontinuo; cabecera con icono y nombre.
+- Arista: curva de Bézier entre los conectores, trazada al aparecer (las asíncronas, discontinuas, aparecen con un fundido porque el trazado también usa `stroke-dasharray`), con una partícula en bucle y una flecha. Las dos flechas, normal y resaltada, se definen una vez por lienzo.
+- La cuadrícula de puntos es el `Background` de React Flow, así que se desplaza y escala con el diagrama.
+
+### Resaltado
+
+Al pasar el ratón por un componente, o al tocarlo en una pantalla táctil, el componente crece un 4 % y se perfila con su color, sus conexiones se vuelven del color de acento con su etiqueta y el resto se atenúa. En pantallas táctiles, tocar otra vez o tocar el fondo lo deshace. El tipo de puntero se recuerda en cada `pointerdown`, porque React Flow notifica el hover y el clic con eventos de ratón. El estado vive en un contexto (`HighlightContext`) para no recalcular los nodos al resaltar. Las etiquetas se pintan en la capa de etiquetas de React Flow, que se sube por encima de los nodos porque los grupos opacos las taparían.
+
+### Cambio de plantilla
+
+El diagrama anterior se mantiene hasta que la nueva disposición está lista; entonces sale con un fundido y el nuevo lienzo se monta y se construye (`AnimatePresence` en modo `wait`). Si la disposición falla, se muestra un mensaje y el error va a la consola.
+
+### Revisión de diseño de T08
+
+Capturas de las seis plantillas en claro y oscuro a 1440 × 900, del resaltado y de móvil a 390 × 844 (vista inicial y toque), revisadas con la skill `design-critique`:
+
+- El diagrama domina la jerarquía; tarjeta, barra de descripción y controles quedan en segundo plano. Sin solapes en ninguna plantilla.
+- Corregido: los botones de zoom medían 32 px en móvil; ahora 40 px.
+- Corregido: las etiquetas de aristas dentro de grupos quedaban tapadas por el grupo opaco.
+- Pendiente (T30): algunas aristas pasan por detrás de otro nodo, porque la curva no esquiva obstáculos; usar las rutas que calcula ELK lo resolvería.
+
+En Chromium se comprobaron la rueda, Ctrl más rueda (como envía el navegador el pellizco del trackpad), los botones, el ajuste y el arrastre. El pellizco con dos dedos lo implementa d3-zoom dentro de React Flow y no se automatizó.
 
 ## Tema
 
-`useTheme` parte del tema que ya aplicó el script de `index.html` (preferencia guardada o tema del sistema) y lo guarda en `localStorage` solo cuando el usuario lo cambia. Si el almacenamiento está bloqueado, el tema se aplica igualmente durante la visita y se registra un aviso en la consola. El script inline evita el destello del tema equivocado antes de que cargue React; si el almacenamiento está bloqueado, usa el tema del sistema. El tema se decide al cargar: un cambio del tema del sistema con la página abierta se aplica al recargar. El estado del tema vive en `Header`, de modo que un cambio solo vuelve a pintar el botón. Al pulsarlo, `toggle` añade la clase `theme-fade` a la raíz, cambia `data-theme` y la quita a los 420 ms: todos los colores de la página se funden a la vez (ADR 0016). La cuadrícula de puntos es una capa con máscara cuyo color es un fondo liso, para que también se funda.
+`useTheme` parte del tema que ya aplicó el script de `index.html` (preferencia guardada o tema del sistema) y lo guarda en `localStorage` solo cuando el usuario lo cambia. Si el almacenamiento está bloqueado, el tema se aplica igualmente durante la visita y se registra un aviso en la consola. El script inline evita el destello del tema equivocado antes de que cargue React; si el almacenamiento está bloqueado, usa el tema del sistema. El tema se decide al cargar: un cambio del tema del sistema con la página abierta se aplica al recargar. El estado del tema vive en `Header`, de modo que un cambio solo vuelve a pintar el botón. Al pulsarlo, `toggle` añade la clase `theme-fade` a la raíz, cambia `data-theme` y la quita a los 420 ms: todos los colores de la página se funden a la vez (ADR 0016). La cuadrícula de puntos es el fondo de React Flow, un patrón SVG cuyo relleno también se funde.
 
 ## Accesibilidad
 
-- `header` con el `h1`, `main` etiquetado para el lienzo y el diagrama como imagen con nombre (`role="img"`).
+- `header` con el `h1`, `main` etiquetado para el lienzo y el diagrama como grupo con nombre (`role="group"`, «Diagram: <título>»).
+- Los controles de zoom forman un grupo etiquetado, con botones que se deshabilitan en los límites; el zoom también funciona con gestos. Los nodos aún no reciben el foco: la navegación por teclado del lienzo llega con la edición (T09).
 - Foco visible con contorno de 2 px; el buscador muestra un anillo al enfocarse.
 - Botones de solo icono con `aria-label`; estado de la revisión anunciado con `role="status"`.
 - Contrastes AA medidos (ver tokens); `prefers-reduced-motion` respetado.
 
 ## Tests
 
-- `app.test.tsx`: hoja modal en pantallas estrechas (foco, `inert`, cierre con Escape, botón y fondo) y panel lateral en anchas (sin bloquear la página, cierre con Escape), cabecera solo con el nombre, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes, etiquetas de las conexiones al pasar el ratón, cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
-- `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, profundidad de anidamiento, escala de dibujo con su mínimo y su máximo, límites, los cuatro casos de curva de las aristas, punto medio, distancia y recorte de texto.
+- `app.test.tsx`: hoja modal en pantallas estrechas (foco, `inert`, cierre con Escape, botón y fondo) y panel lateral en anchas (sin bloquear la página, cierre con Escape), cabecera solo con el nombre, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes en React Flow, resaltado y etiquetas de las conexiones al pasar el ratón, distintivo de proveedor, controles de zoom (acercar, alejar, porcentaje y ajustar), cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
+- `flow.test.ts`: padres antes que hijos, posiciones relativas, tamaños, profundidad, producto y distintivo de proveedor, conectores por dirección, orden de construcción, aristas asíncronas y categoría de origen, nodos sin disposición y diagrama vacío.
+- `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, profundidad de anidamiento, escala de dibujo con su mínimo y su máximo, límites vacíos y vista inicial que encaja o que empieza arriba.
 - `icons.test.ts`: cada icono de `KIND_ICONS` es el que nombra el catálogo de core. Detectó que Lucide renombró `waves` a `waves-horizontal`.
 
 Revisión visual: build servido con `vite preview` y capturado con Playwright en Chromium a 1440 × 900 en claro y oscuro, con la paleta abierta y cerrada, con un nodo resaltado y con varias plantillas, y a 390 × 844; además, un vídeo de 15 s del recorrido para revisar el movimiento. Sin errores en la consola. La skill `design-critique` (`.claude/skills`) guía la revisión de las capturas.
