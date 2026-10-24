@@ -58,7 +58,7 @@ export const analyticsPipeline = {
       service: 'Dataform',
       parentId: 'modelling',
     },
-    { id: 'bi', kind: 'external-system', label: 'BI dashboards' },
+    { id: 'bi', kind: 'external-system', label: 'BI dashboards', provider: 'generic' },
   ],
   edges: [
     {
