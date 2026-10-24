@@ -62,14 +62,14 @@ flowchart TB
   evals -->|inferencia| ghm
 ```
 
-| Contenedor        | Responsabilidad                                                                                                            | Tecnología                                 | Despliegue                                               | Estado                                                                                    |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `packages/core`   | Modelo de dominio: esquema, catálogo, índice del grafo, validación, reglas de diseño, exportadores, plantillas             | TypeScript puro, Zod                       | Librería interna                                         | Esquema, validación, reglas y exportación de texto hechos (T01 a T03); resto en T05 y T06 |
-| `packages/layout` | Disposición automática de un grafo jerárquico                                                                              | ELK.js                                     | Librería interna, ejecutada en un Web Worker             | Hecho (T04)                                                                               |
-| `packages/ai`     | Construcción del prompt, interfaz de proveedor LLM, proveedor compatible con OpenAI, pipeline de generación con reintentos | TypeScript puro                            | Librería interna, sin E/S propia salvo `fetch` inyectado | T14, T15, T18                                                                             |
-| `apps/web`        | Editor visual, revisión en vivo, exportación, persistencia local                                                           | React, Vite, Tailwind, React Flow, Zustand | GitHub Pages                                             | T07 a T12, T20, T23                                                                       |
-| `apps/api`        | Capa HTTP: rutas, validación de entrada, límites de uso, adaptador de Workers AI                                           | Hono, Cloudflare Workers, Workers AI       | Cloudflare Workers                                       | T13, T15, T18, T19                                                                        |
-| `evals/`          | Medir la calidad de la generación                                                                                          | TypeScript, GitHub Actions, GitHub Models  | Workflow de CI                                           | T16, T17                                                                                  |
+| Contenedor        | Responsabilidad                                                                                                            | Tecnología                                 | Despliegue                                               | Estado                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------- | -------------------------------------------------------- |
+| `packages/core`   | Modelo de dominio: esquema, catálogo, índice del grafo, validación, reglas de diseño, exportadores, plantillas             | TypeScript puro, Zod                       | Librería interna                                         | Hecho (T01 a T06) salvo las operaciones de edición (T18) |
+| `packages/layout` | Disposición automática de un grafo jerárquico                                                                              | ELK.js                                     | Librería interna, ejecutada en un Web Worker             | Hecho (T04)                                              |
+| `packages/ai`     | Construcción del prompt, interfaz de proveedor LLM, proveedor compatible con OpenAI, pipeline de generación con reintentos | TypeScript puro                            | Librería interna, sin E/S propia salvo `fetch` inyectado | T14, T15, T18                                            |
+| `apps/web`        | Editor visual, revisión en vivo, exportación, persistencia local                                                           | React, Vite, Tailwind, React Flow, Zustand | GitHub Pages                                             | T07 a T12, T20, T23                                      |
+| `apps/api`        | Capa HTTP: rutas, validación de entrada, límites de uso, adaptador de Workers AI                                           | Hono, Cloudflare Workers, Workers AI       | Cloudflare Workers                                       | T13, T15, T18, T19                                       |
+| `evals/`          | Medir la calidad de la generación                                                                                          | TypeScript, GitHub Actions, GitHub Models  | Workflow de CI                                           | T16, T17                                                 |
 
 La regla de dependencias es estricta: `apps/*` y `evals/` dependen de `packages/*`; `packages/*` nunca depende de `apps/*`. El pipeline de generación vive en `packages/ai` precisamente para que la API y el banco de evaluación ejecuten el mismo código: lo que se mide es lo que se despliega. Los paquetes no hacen E/S por su cuenta; reciben `fetch` o el proveedor por parámetro, así que se prueban sin red, sin navegador y sin Worker.
 
@@ -89,10 +89,10 @@ La regla de dependencias es estricta: `apps/*` y `evals/` dependen de `packages/
 | `export/`        | Mermaid y JSON (T03), draw.io (T05)                                                          | Hecho  |
 | `migrations.ts`  | Cadena de migraciones por `schemaVersion`, aplicada por `importJson`                         | Hecho  |
 | `document.ts`    | Esquemas de `DiagramLayout` y `DiagramDocument`: grafo más posiciones y tamaños              | Hecho  |
-| `templates/`     | Arquitecturas de ejemplo                                                                     | T06    |
+| `templates/`     | Seis arquitecturas de referencia para la galería y el prompt                                 | Hecho  |
 | `patch.ts`       | Operaciones de edición (añadir, quitar, modificar) y su aplicación                           | T18    |
 
-Detalle en [modelo-de-dominio.md](modelo-de-dominio.md), [modulos/core.md](modulos/core.md), [modulos/lint.md](modulos/lint.md), [modulos/exportacion.md](modulos/exportacion.md) y, para la disposición, [modulos/layout.md](modulos/layout.md).
+Detalle en [modelo-de-dominio.md](modelo-de-dominio.md), [modulos/core.md](modulos/core.md), [modulos/lint.md](modulos/lint.md), [modulos/exportacion.md](modulos/exportacion.md), [modulos/plantillas.md](modulos/plantillas.md) y, para la disposición, [modulos/layout.md](modulos/layout.md).
 
 ### 4.2 apps/web (planificado)
 
