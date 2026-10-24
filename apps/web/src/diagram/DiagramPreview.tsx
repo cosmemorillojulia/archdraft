@@ -8,8 +8,18 @@ import {
   resolveEdgeMode,
   resolveServiceName,
 } from '@archdraft/core';
+import type { LayoutDirection } from '@archdraft/layout';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import {
+  type PointerEvent,
+  type RefObject,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { EASE_OUT, SPRING_POP } from '../motion.ts';
 import { KIND_ICONS } from '../icons.ts';
 import { strings } from '../strings.ts';
@@ -21,33 +31,53 @@ import {
   curveMidpoint,
   curvePath,
   curveSpan,
+  drawingScale,
   edgeCurve,
+  nestingDepths,
   truncate,
 } from './geometry.ts';
 
 const PADDING = 24;
-/** Seconds the diagram takes to build from its left edge to its right edge. */
+/** Seconds the diagram takes to build from its first layer to its last. */
 const BUILD_SPREAD = 0.6;
+/** Small diagrams grow to fill the canvas, but not beyond this scale. */
+const MAX_SCALE = 1.4;
+/** Percentage of accent mixed into a group's fill, and how much more each nesting level adds. */
+const GROUP_TINT_BASE = 3;
+const GROUP_TINT_STEP = 2.5;
 
 type LayoutState =
   | { status: 'loading' }
-  | { status: 'ready'; graph: ArchitectureGraph; layout: DiagramLayout }
+  | {
+      status: 'ready';
+      graph: ArchitectureGraph;
+      layout: DiagramLayout;
+      direction: LayoutDirection;
+    }
   | { status: 'failed' };
+
+interface DiagramPreviewProps {
+  graph: ArchitectureGraph;
+  /** Flow direction of the layout: left to right on wide screens, top to bottom on narrow ones. */
+  direction: LayoutDirection;
+  /** Below this scale the diagram stops shrinking and the canvas scrolls instead. */
+  minScale: number;
+}
 
 /**
  * Read-only drawing of a diagram, laid out with ELK. ELK is loaded on demand
  * so that it stays out of the initial bundle. The interactive canvas (T08)
  * will replace this view and reuse its visual language and motion.
  */
-export function DiagramPreview({ graph }: { graph: ArchitectureGraph }) {
+export function DiagramPreview({ graph, direction, minScale }: DiagramPreviewProps) {
   const [state, setState] = useState<LayoutState>({ status: 'loading' });
 
   useEffect(() => {
     let active = true;
     import('@archdraft/layout')
-      .then(({ computeLayout }) => computeLayout(graph))
+      .then(({ computeLayout }) => computeLayout(graph, { direction }))
       .then((layout) => {
-        if (active) setState({ status: 'ready', graph, layout });
+        if (active) setState({ status: 'ready', graph, layout, direction });
       })
       .catch((error: unknown) => {
         console.error('Could not lay out the diagram', error);
@@ -56,7 +86,7 @@ export function DiagramPreview({ graph }: { graph: ArchitectureGraph }) {
     return () => {
       active = false;
     };
-  }, [graph]);
+  }, [graph, direction]);
 
   if (state.status === 'failed') {
     return <p className="m-auto text-sm text-muted">{strings.canvas.layoutFailed}</p>;
@@ -64,7 +94,13 @@ export function DiagramPreview({ graph }: { graph: ArchitectureGraph }) {
   return (
     <AnimatePresence mode="wait">
       {state.status === 'ready' && (
-        <DiagramSvg key={state.graph.title} graph={state.graph} layout={state.layout} />
+        <DiagramSvg
+          key={`${state.graph.title}:${state.direction}`}
+          graph={state.graph}
+          layout={state.layout}
+          direction={state.direction}
+          minScale={minScale}
+        />
       )}
     </AnimatePresence>
   );
@@ -78,18 +114,48 @@ interface PlacedEdge {
   sourceCategory: string;
 }
 
-function DiagramSvg({ graph, layout }: { graph: ArchitectureGraph; layout: DiagramLayout }) {
+/** Size of an element, measured before paint and kept up to date when it resizes. */
+function useElementSize(ref: RefObject<HTMLElement | null>) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const measure = () => setSize({ width: element.clientWidth, height: element.clientHeight });
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+  return size;
+}
+
+interface DiagramSvgProps {
+  graph: ArchitectureGraph;
+  layout: DiagramLayout;
+  direction: LayoutDirection;
+  minScale: number;
+}
+
+function DiagramSvg({ graph, layout, direction, minScale }: DiagramSvgProps) {
   const markerId = useId();
   const reduceMotion = useReducedMotion() === true;
   const [focusId, setFocusId] = useState<string | null>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const viewport = useElementSize(viewportRef);
 
   const scene = useMemo(() => {
     const boxes = absoluteBoxes(graph, layout);
     const bounds = boundsOf(boxes.values());
     if (!bounds) return null;
-    // Nodes appear from left to right, so the diagram reads as it builds.
-    const appearAt = (box: Box) =>
-      0.1 + ((box.x - bounds.x) / Math.max(bounds.width, 1)) * BUILD_SPREAD;
+    // Nodes appear along the flow direction, so the diagram reads as it builds.
+    const vertical = direction === 'TB' || direction === 'BT';
+    const appearAt = (box: Box) => {
+      const progress = vertical
+        ? (box.y - bounds.y) / Math.max(bounds.height, 1)
+        : (box.x - bounds.x) / Math.max(bounds.width, 1);
+      return 0.1 + progress * BUILD_SPREAD;
+    };
     const edges: PlacedEdge[] = graph.edges.flatMap((edge) => {
       const source = boxes.get(edge.source);
       const target = boxes.get(edge.target);
@@ -105,8 +171,8 @@ function DiagramSvg({ graph, layout }: { graph: ArchitectureGraph; layout: Diagr
         },
       ];
     });
-    return { boxes, bounds, appearAt, edges };
-  }, [graph, layout]);
+    return { boxes, bounds, appearAt, edges, depths: nestingDepths(graph) };
+  }, [graph, layout, direction]);
 
   const related = useMemo(() => {
     if (focusId === null) return null;
@@ -121,103 +187,147 @@ function DiagramSvg({ graph, layout }: { graph: ArchitectureGraph; layout: Diagr
     return { nodes, edges };
   }, [focusId, graph]);
 
-  if (!scene) return null;
-  const { boxes, bounds, appearAt, edges } = scene;
+  const content = scene && {
+    width: scene.bounds.width + PADDING * 2,
+    height: scene.bounds.height + PADDING * 2,
+  };
+  const scale = content ? drawingScale(content, viewport, { min: minScale, max: MAX_SCALE }) : 1;
+  const overflows =
+    content !== null &&
+    (content.width * scale > viewport.width || content.height * scale > viewport.height);
+
+  // When the diagram is larger than the canvas, start from the top, centred horizontally.
+  const scrolled = useRef(false);
+  useLayoutEffect(() => {
+    const element = viewportRef.current;
+    if (!element || !overflows || scrolled.current) return;
+    element.scrollLeft = (element.scrollWidth - element.clientWidth) / 2;
+    element.scrollTop = 0;
+    scrolled.current = true;
+  }, [overflows]);
+
+  if (!scene || !content) return null;
+  const { boxes, bounds, appearAt, edges, depths } = scene;
   const containers = graph.nodes.filter((node) => isContainerKind(node.kind));
   const components = graph.nodes.filter((node) => !isContainerKind(node.kind));
-  const viewBox = [
-    bounds.x - PADDING,
-    bounds.y - PADDING,
-    bounds.width + PADDING * 2,
-    bounds.height + PADDING * 2,
-  ].join(' ');
+  const viewBox = [bounds.x - PADDING, bounds.y - PADDING, content.width, content.height].join(' ');
+
+  // A tap outside any component clears the highlight on touch screens.
+  const clearOnTap = (event: PointerEvent) => {
+    if (event.pointerType === 'touch') setFocusId(null);
+  };
 
   return (
-    <m.svg
-      role="img"
-      aria-label={strings.canvas.diagramLabel(graph.title)}
-      viewBox={viewBox}
-      preserveAspectRatio="xMidYMid meet"
-      className="h-full w-full"
+    <m.div
+      ref={viewportRef}
+      onPointerUp={clearOnTap}
+      className="h-full w-full overflow-auto overscroll-contain [scrollbar-width:none]"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.2, ease: EASE_OUT } }}
     >
-      <defs>
-        <marker
-          id={markerId}
-          viewBox="0 0 10 10"
-          refX="9"
-          refY="5"
-          markerWidth="7"
-          markerHeight="7"
-          orient="auto-start-reverse"
+      <div className="flex min-h-full w-max min-w-full items-center justify-center">
+        <svg
+          role="img"
+          aria-label={strings.canvas.diagramLabel(graph.title)}
+          viewBox={viewBox}
+          width={content.width * scale}
+          height={content.height * scale}
+          className="shrink-0"
         >
-          <path d="M 0 1 L 9 5 L 0 9 z" style={{ fill: 'var(--edge)' }} />
-        </marker>
-        <marker
-          id={`${markerId}-active`}
-          viewBox="0 0 10 10"
-          refX="9"
-          refY="5"
-          markerWidth="7"
-          markerHeight="7"
-          orient="auto-start-reverse"
-        >
-          <path d="M 0 1 L 9 5 L 0 9 z" style={{ fill: 'var(--accent)' }} />
-        </marker>
-      </defs>
+          <defs>
+            <marker
+              id={markerId}
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1 L 9 5 L 0 9 z" style={{ fill: 'var(--edge)' }} />
+            </marker>
+            <marker
+              id={`${markerId}-active`}
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1 L 9 5 L 0 9 z" style={{ fill: 'var(--accent)' }} />
+            </marker>
+          </defs>
 
-      {containers.map((node) => {
-        const box = boxes.get(node.id);
-        return (
-          box && <ContainerShape key={node.id} node={node} box={box} delay={appearAt(box) * 0.5} />
-        );
-      })}
+          {containers.map((node) => {
+            const box = boxes.get(node.id);
+            return (
+              box && (
+                <ContainerShape
+                  key={node.id}
+                  node={node}
+                  box={box}
+                  depth={depths.get(node.id) ?? 0}
+                  delay={appearAt(box) * 0.5}
+                />
+              )
+            );
+          })}
 
-      {edges.map((placed) => {
-        const active = related?.edges.has(placed.edge.id) ?? false;
-        return (
-          <EdgeShape
-            key={placed.edge.id}
-            placed={placed}
-            active={active}
-            dimmed={related !== null && !active}
-            markerId={active ? `${markerId}-active` : markerId}
-            flowing={!reduceMotion}
-          />
-        );
-      })}
+          {edges.map((placed) => {
+            const active = related?.edges.has(placed.edge.id) ?? false;
+            return (
+              <EdgeShape
+                key={placed.edge.id}
+                placed={placed}
+                active={active}
+                dimmed={related !== null && !active}
+                markerId={active ? `${markerId}-active` : markerId}
+                flowing={!reduceMotion}
+              />
+            );
+          })}
 
-      {components.map((node) => {
-        const box = boxes.get(node.id);
-        return (
-          box && (
-            <ComponentShape
-              key={node.id}
-              node={node}
-              graph={graph}
-              box={box}
-              delay={appearAt(box)}
-              focused={focusId === node.id}
-              dimmed={related !== null && !related.nodes.has(node.id)}
-              onFocusChange={(focused) => setFocusId(focused ? node.id : null)}
-            />
-          )
-        );
-      })}
+          {components.map((node) => {
+            const box = boxes.get(node.id);
+            return (
+              box && (
+                <ComponentShape
+                  key={node.id}
+                  node={node}
+                  graph={graph}
+                  box={box}
+                  delay={appearAt(box)}
+                  focused={focusId === node.id}
+                  dimmed={related !== null && !related.nodes.has(node.id)}
+                  onHoverChange={(hovered) => setFocusId(hovered ? node.id : null)}
+                  onTap={() => setFocusId((current) => (current === node.id ? null : node.id))}
+                />
+              )
+            );
+          })}
 
-      <AnimatePresence>
-        {edges
-          .filter((placed) => related?.edges.has(placed.edge.id))
-          .map((placed) => (
-            <EdgeLabel key={placed.edge.id} placed={placed} />
-          ))}
-      </AnimatePresence>
-    </m.svg>
+          <AnimatePresence>
+            {edges
+              .filter((placed) => related?.edges.has(placed.edge.id))
+              .map((placed) => (
+                <EdgeLabel key={placed.edge.id} placed={placed} />
+              ))}
+          </AnimatePresence>
+        </svg>
+      </div>
+    </m.div>
   );
 }
 
-function ContainerShape({ node, box, delay }: { node: ArchNode; box: Box; delay: number }) {
+interface ContainerShapeProps {
+  node: ArchNode;
+  box: Box;
+  depth: number;
+  delay: number;
+}
+
+function ContainerShape({ node, box, depth, delay }: ContainerShapeProps) {
   const Icon = KIND_ICONS[node.kind];
   return (
     <g transform={`translate(${box.x} ${box.y})`}>
@@ -232,7 +342,11 @@ function ContainerShape({ node, box, delay }: { node: ArchNode; box: Box; delay:
           rx={14}
           strokeWidth={1}
           strokeDasharray={node.kind === 'boundary' ? '6 5' : undefined}
-          style={{ fill: 'var(--group-fill)', stroke: 'var(--group-line)' }}
+          style={{
+            // Opaque, so the canvas dots stay outside the groups; deeper groups get a stronger tint.
+            fill: `color-mix(in srgb, var(--accent) ${GROUP_TINT_BASE + depth * GROUP_TINT_STEP}%, var(--canvas))`,
+            stroke: 'var(--group-line)',
+          }}
         />
         <Icon x={14} y={14} width={14} height={14} style={{ color: 'var(--muted)' }} />
         <text x={34} y={25.5} fontSize={12} fontWeight={600} style={{ fill: 'var(--muted)' }}>
@@ -330,7 +444,10 @@ interface ComponentShapeProps {
   delay: number;
   focused: boolean;
   dimmed: boolean;
-  onFocusChange: (focused: boolean) => void;
+  /** Mouse and pen: highlight while the pointer is over the component. */
+  onHoverChange: (hovered: boolean) => void;
+  /** Touch: a tap toggles the highlight. */
+  onTap: () => void;
 }
 
 function ComponentShape({
@@ -340,7 +457,8 @@ function ComponentShape({
   delay,
   focused,
   dimmed,
-  onFocusChange,
+  onHoverChange,
+  onTap,
 }: ComponentShapeProps) {
   const Icon = KIND_ICONS[node.kind];
   const { category } = getNodeDefinition(node.kind);
@@ -348,8 +466,17 @@ function ComponentShape({
   return (
     <g
       transform={`translate(${box.x} ${box.y})`}
-      onPointerEnter={() => onFocusChange(true)}
-      onPointerLeave={() => onFocusChange(false)}
+      onPointerEnter={(event) => {
+        if (event.pointerType !== 'touch') onHoverChange(true);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType !== 'touch') onHoverChange(false);
+      }}
+      onPointerUp={(event) => {
+        if (event.pointerType !== 'touch') return;
+        event.stopPropagation();
+        onTap();
+      }}
       className="transition-opacity duration-200"
       style={{ opacity: dimmed ? 0.3 : 1 }}
     >
