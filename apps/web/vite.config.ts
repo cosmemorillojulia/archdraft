@@ -7,9 +7,6 @@ export default defineConfig({
   // same base in development keeps local URLs identical to production.
   base: '/archdraft/',
   plugins: [react(), tailwindcss()],
-  build: {
-    target: 'es2023',
-  },
   test: {
     environment: 'jsdom',
     include: ['test/**/*.test.{ts,tsx}'],
