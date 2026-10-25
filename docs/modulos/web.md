@@ -139,7 +139,7 @@ Animaciones del recorrido:
 | Elegir plantilla           | El indicador de la plantilla activa se desliza hasta ella; la tarjeta del diagrama cambia el título y las cifras ruedan                                              |
 | Paleta                     | Entra desde la izquierda con un muelle, los mosaicos aparecen en cascada y la rejilla se recoloca al filtrar; el lienzo ajusta su margen                             |
 | Campo de descripción       | Ejemplos de descripción que se suceden cada 3,6 s mientras está vacío; al enfocarlo aparece un halo del color de acento                                              |
-| Cambio de tema             | Toda la página funde sus colores al nuevo tema en 420 ms (ADR 0016); el icono gira y se funde                                                                        |
+| Cambio de tema             | La página en el tema anterior se funde con la del nuevo en 450 ms, con un fundido cruzado (ADR 0018); el icono gira y se funde                                       |
 
 ## Piezas de la interfaz
 
@@ -296,7 +296,11 @@ Pendiente: las aristas siguen saliendo por el lado fijo de la dirección de la d
 
 ## Tema
 
-`useTheme` parte del tema que ya aplicó el script de `index.html` (preferencia guardada o tema del sistema) y lo guarda en `localStorage` solo cuando el usuario lo cambia. Si el almacenamiento está bloqueado, el tema se aplica igualmente durante la visita y se registra un aviso en la consola. El script inline evita el destello del tema equivocado antes de que cargue React; si el almacenamiento está bloqueado, usa el tema del sistema. El tema se decide al cargar: un cambio del tema del sistema con la página abierta se aplica al recargar. El estado del tema vive en `Header`, de modo que un cambio solo vuelve a pintar el botón. Al pulsarlo, `toggle` añade la clase `theme-fade` a la raíz, cambia `data-theme` y la quita a los 420 ms: todos los colores de la página se funden a la vez (ADR 0016). La cuadrícula de puntos es el fondo de React Flow, un patrón SVG cuyo relleno también se funde.
+`useTheme` parte del tema que ya aplicó el script de `index.html` (preferencia guardada o tema del sistema) y lo guarda en `localStorage` solo cuando el usuario lo cambia. Si el almacenamiento está bloqueado, el tema se aplica igualmente durante la visita y se registra un aviso en la consola. El script inline evita el destello del tema equivocado antes de que cargue React; si el almacenamiento está bloqueado, usa el tema del sistema. El tema se decide al cargar: un cambio del tema del sistema con la página abierta se aplica al recargar. El estado del tema vive en `Header`, de modo que un cambio solo vuelve a pintar el botón.
+
+Al pulsarlo (ADR 0018), si el navegador tiene transiciones de vista, `toggle` llama a `document.startViewTransition`: el navegador captura la página, se cambian `data-theme` y el icono, y la captura se funde con la página nueva en el compositor durante 450 ms con `cubic-bezier(0.4, 0, 0.2, 1)`. Es un único cambio de estilo, así que el fundido no depende del tamaño del diagrama. Si no las tiene, `toggle` añade la clase `theme-fade` a la raíz, que da a todos los elementos una transición de color con la misma duración y curva (ADR 0016), y la quita 150 ms después del final para que ninguna transición tardía salte. La cuadrícula de puntos es el fondo de React Flow, un patrón SVG cuyo relleno también se funde.
+
+Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de colores el primer fotograma tardaba de 146 a 309 ms y el cambio daba de 6 a 8 fotogramas en 800 ms; con el fundido cruzado, de 4 a 12 ms y de 19 a 26 fotogramas. Con GPU no se ha medido.
 
 ## Accesibilidad
 
