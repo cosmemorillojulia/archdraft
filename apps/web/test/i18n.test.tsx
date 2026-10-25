@@ -278,18 +278,18 @@ describe('language switch', () => {
     await screen.findByRole('group', {
       name: en.canvas.diagramLabel(ARCHITECTURE_TEMPLATES['three-tier-web'].title),
     });
+    // The button shows the language the interface is in.
     const toggle = screen.getByRole('button', { name: en.header.language.label });
-    expect(toggle).toHaveAttribute('lang', 'es');
-    expect(toggle.querySelector('[data-flag]')).toHaveAttribute('data-flag', 'es');
+    expect(toggle).toHaveTextContent('EN');
+    expect(toggle).toHaveAttribute('title', en.header.language.hint);
 
     await user.click(toggle);
     expect(document.documentElement.lang).toBe('es');
     expect(localStorage.getItem(LOCALE_KEY)).toBe('es');
     expect(screen.getByRole('banner')).toHaveTextContent(es.tagline);
     const back = screen.getByRole('button', { name: es.header.language.label });
-    await waitFor(() =>
-      expect(back.querySelector('[data-flag]')).toHaveAttribute('data-flag', 'en'),
-    );
+    await waitFor(() => expect(back).toHaveTextContent(/^ES$/));
+    expect(back).toHaveAttribute('title', es.header.language.hint);
     const title = localizedTemplate('three-tier-web', 'es').title;
     const diagram = await diagramNamed(title);
     expect(within(diagram).getByText('Aplicación web')).toBeInTheDocument();
@@ -300,6 +300,11 @@ describe('language switch', () => {
     act(() => editorStore.getState().updateNode('app', { label: 'Tienda' }));
     await user.click(back);
     expect(document.documentElement.lang).toBe('en');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: en.header.language.label })).toHaveTextContent(
+        /^EN$/,
+      ),
+    );
     expect(screen.getByRole('banner')).toHaveTextContent(en.tagline);
     expect(
       await screen.findByRole('group', { name: en.canvas.diagramLabel(title) }),

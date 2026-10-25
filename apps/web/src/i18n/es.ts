@@ -251,7 +251,7 @@ export const es: Strings = {
   header: {
     themeToDark: 'Cambiar al tema oscuro',
     themeToLight: 'Cambiar al tema claro',
-    language: { label: 'View in English', lang: 'en' },
+    language: { code: 'ES', label: 'ES, cambiar a inglés', hint: 'Cambiar a inglés' },
     undo: 'Deshacer',
     redo: 'Rehacer',
   },
