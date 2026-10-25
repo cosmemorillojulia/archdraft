@@ -71,8 +71,8 @@ export const en = {
   header: {
     themeToDark: 'Switch to dark theme',
     themeToLight: 'Switch to light theme',
-    /** The language switch, written in the language it switches to. */
-    language: { label: 'Ver en español', lang: 'es' },
+    /** The language switch: the code of the current language, and what pressing it does. */
+    language: { code: 'EN', label: 'EN, switch to Spanish', hint: 'Switch to Spanish' },
     undo: 'Undo',
     redo: 'Redo',
   },

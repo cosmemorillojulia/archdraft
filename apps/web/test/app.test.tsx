@@ -29,10 +29,7 @@ describe('App', () => {
     expect(
       within(header).getByRole('button', { name: strings.header.language.label }),
     ).toBeInTheDocument();
-    // No logo: the only drawings besides the icons are the flags of the language switch.
-    for (const drawing of header.querySelectorAll('svg:not(.lucide)')) {
-      expect(drawing.closest('[data-flag]')).not.toBeNull();
-    }
+    expect(header.querySelector('svg:not(.lucide)')).toBeNull();
   });
 
   it('summarises the current diagram in a card', async () => {
