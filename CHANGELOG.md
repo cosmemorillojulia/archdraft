@@ -34,6 +34,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/web`: the interface in English and Spanish (ADR 0020), switched with an EN/ES button in the header that shows the current language, remembers the choice and starts in Spanish when the browser prefers it. Kind names, design findings and templates are translated, and an untouched template follows the language.
 - `@archdraft/web`: every node can be resized when selected, groups included (never smaller than what they hold, with their contents kept in place); palette tiles can be dragged onto the diagram with the mouse or, after holding them, with a finger, with the node following the pointer.
 - `@archdraft/web`: export from the Share menu: copy or download Mermaid, download draw.io, and SVG and PNG images drawn from the document in the theme and language of the editor, with file names taken from the title.
+- `@archdraft/web`: preview card for shared links (`og-image.png`, 1200 × 630) with the Open Graph and Twitter tags in `index.html`.
 - `@archdraft/core`: six architecture templates (`ARCHITECTURE_TEMPLATES`) for the gallery and the generation prompt: three-tier web application, serverless API, event-driven microservices, RAG chatbot, analytics pipeline and static site with a headless CMS. They cover every provider, are valid without warnings and have no design findings.
 
 ### Changed
