@@ -23,14 +23,17 @@ apps/web/
     styles.css            # tokens, tema oscuro, utilidad floating, estilos de React Flow
     components/           # Button, Header, HistoryControls, DiagramCard, ComponentsPanel, PromptDock,
                           # FloatingPanel, PanelSlot, Inspector, fields (campos del inspector),
-                          # ReviewPanel, EditorNotice
+                          # ReviewPanel, EditorNotice, ShareMenu (compartir y ficheros)
+    persist/
+      autosave.ts         # autoguardado en localStorage (archdraft:document:v1)
+      share-link.ts       # enlaces #d=: compresión, base64 apto para URL y límites
     review/
       findings.ts         # hallazgos memoizados por versión del documento, severidades por nodo
       review-store.ts     # estado del panel de revisión y reglas desactivadas (localStorage)
     editor/
       store.ts            # store de Zustand: documento, historial, selección, mensajes (ADR 0017)
       operations.ts       # ediciones puras del documento: añadir, conectar, mover, borrar, duplicar
-      open-template.ts    # dispone una plantilla y la abre
+      open-document.ts    # abre plantillas, ficheros, enlaces y lo guardado; deduce la dirección
       shortcuts.ts        # atajos de teclado
     canvas/
       DiagramCanvas.tsx   # lienzo React Flow: vista inicial, resaltado, arrastres, conexiones, minimapa
@@ -149,7 +152,7 @@ Animaciones del recorrido:
 
 | Pieza             | Contenido                                                                                                                                                                                                                                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Header`          | Barra fija: nombre del producto en mayúsculas inclinadas, sin logotipo gráfico, descripción, deshacer y rehacer (`HistoryControls`), enlace al código y cambio de tema                                                                                                             |
+| `Header`          | Barra fija: nombre del producto en mayúsculas inclinadas, sin logotipo gráfico, descripción, deshacer y rehacer (`HistoryControls`), compartir y ficheros (`ShareMenu`), enlace al código (solo icono en móvil) y cambio de tema                                                   |
 | `DiagramCard`     | Tarjeta flotante: título, proveedor, descripción recortada a dos líneas, número de componentes y conexiones, y estado de la revisión de diseño en el color del hallazgo más grave; es el botón que abre la revisión, y una región `role="status"` oculta anuncia sus cambios       |
 | `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón. Cada mosaico es un botón «Add …» (ver Edición)                                                                                 |
 | `PromptDock`      | Campo que crece con el texto (`field-sizing: content`) con ejemplos rotatorios decorativos (`aria-hidden`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, y las seis plantillas con icono en una cápsula con indicador deslizante (`aria-pressed`) |
@@ -323,6 +326,34 @@ Colores de severidad: error con `--danger`, aviso con `--warning` y nota con `--
 
 Capturas a 1440 × 900 en claro y oscuro y en un móvil táctil de 390 × 844, con hallazgos de las tres severidades, el panel abierto, un hallazgo elegido y su explicación desplegada, revisadas con la skill `design-critique`. Se corrigió que los filtros no cabían en una fila del panel lateral. Queda como limitación que «Edit» selecciona el primer componente del hallazgo, que en `unprotected-entry` es el cliente y no el componente expuesto.
 
+## Guardar y compartir
+
+Todo se apoya en el documento con disposición de `@archdraft/core` (`documentToJson` e `importDocument`, ver [exportacion.md](exportacion.md#documento-con-disposición)) y en ADR 0019.
+
+### Al abrir el editor
+
+1. Si la dirección trae `#d=…`, se abre ese diagrama y el fragmento se quita de la dirección (`history.replaceState`), para que recargar abra el trabajo guardado y no vuelva al enlace.
+2. Si no, o si el enlace no se puede abrir, se abre el diagrama guardado en este navegador.
+3. Si no hay ninguno, o está dañado, la plantilla por defecto.
+
+Cada fallo se explica con un aviso y se pasa al siguiente paso; el editor nunca se queda vacío ni se rompe. Un enlace pegado en la barra de direcciones con el editor abierto también se abre (`hashchange`). Abrir cualquier diagrama es un paso del historial: deshacer devuelve el anterior.
+
+`openDocumentText` (`editor/open-document.ts`) es el único camino para ficheros, enlaces y lo guardado: valida con `importDocument`; si faltan posiciones, coloca con ELK solo los nodos que faltan, conservando las demás (`layoutDiagram` con `pinned`), y deduce la dirección del flujo de las aristas ya colocadas (`inferDirection`: de arriba abajo si avanzan más en vertical que en horizontal), que orienta los conectores. Como las plantillas, se abre entero y, si llegan varias aperturas seguidas, solo cuenta la última.
+
+### Autoguardado
+
+`startAutosave` guarda el documento abierto en `localStorage` (`archdraft:document:v1`, JSON compacto) 400 ms después del último cambio, y al momento cuando la página se oculta o se cierra. Si el navegador no deja guardar (bloqueado o sin espacio), un aviso lo dice una vez y propone descargar el fichero. El historial no se guarda.
+
+### Enlaces
+
+El menú Share de la cabecera crea un enlace con el documento comprimido (`deflate-raw` con `CompressionStream`) en base64 apto para URL tras `#d=`. Las plantillas dan enlaces de 1100 a 1600 caracteres. A partir de 4000 caracteres el menú avisa de que algunas aplicaciones cortan los enlaces largos y propone el fichero; el umbral es una estimación. El enlace se rehace si el diagrama cambia con el menú abierto. «Copy link» usa el portapapeles; si el navegador no lo permite, selecciona el enlace y pide copiarlo a mano.
+
+Al abrir un enlace, que puede estar manipulado, `decodeDocument` rechaza caracteres fuera de base64, textos de más de 500 000 caracteres y datos que no se descomprimen, y corta la descompresión al pasar de 2 MB. Después, el texto pasa por `importDocument` como cualquier fichero.
+
+### Ficheros
+
+«Download JSON» descarga el documento con el título como nombre (`three-tier-web-application.archdraft.json`). «Open JSON file» abre un documento o un grafo suelto, por ejemplo uno escrito a mano o exportado con `toJson`; sin disposición, se coloca con ELK.
+
 ## Tema
 
 `useTheme` parte del tema que ya aplicó el script de `index.html` (preferencia guardada o tema del sistema) y lo guarda en `localStorage` solo cuando el usuario lo cambia. Si el almacenamiento está bloqueado, el tema se aplica igualmente durante la visita y se registra un aviso en la consola. El script inline evita el destello del tema equivocado antes de que cargue React; si el almacenamiento está bloqueado, usa el tema del sistema. El tema se decide al cargar: un cambio del tema del sistema con la página abierta se aplica al recargar. El estado del tema vive en `Header`, de modo que un cambio solo vuelve a pintar el botón.
@@ -347,6 +378,8 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 
 - `app.test.tsx`: hoja modal en pantallas estrechas (foco, `inert`, cierre con Escape, botón y fondo) y panel lateral en anchas (sin bloquear la página, cierre con Escape), cabecera solo con el nombre, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes en React Flow, resaltado y etiquetas de las conexiones al pasar el ratón, distintivo de proveedor, controles de zoom (acercar, alejar, porcentaje y ajustar), cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
 - `editing.test.tsx`: en móvil, tocar un mosaico añade en el centro, selecciona, cierra la hoja y el inspector sustituye a la barra de descripción; en escritorio, clic para inspeccionar y renombrar, Enter sobre un nodo enfocado, Supr, Ctrl+Z y el botón de rehacer, Ctrl+D, soltar un mosaico en el lienzo, rechazo explicado al conectar con un grupo y cierre con Escape.
+- `persistence.test.ts`: ida y vuelta de un enlace sin pérdida (también con una plantilla), fragmentos que no son enlaces, enlaces dañados y demasiado grandes (incluida una bomba de descompresión), abrir un documento con su dirección, un grafo suelto y una disposición parcial, errores sin tocar el editor, dirección deducida, autoguardado con retardo y al parar, aviso único si no se puede guardar, clave versionada y nombres de fichero.
+- `share.test.tsx`: arranque desde lo guardado, desde un enlace (que se quita de la dirección) y con un enlace manipulado (aviso y plantilla), guardado de las ediciones, enlace del menú que abre el mismo diagrama, copia al portapapeles, descarga, apertura de un fichero y cierre con Escape.
 - `review.test.tsx`: memoización por versión y por reglas desactivadas, severidad más grave y por componente, clave de un hallazgo, reglas desactivadas guardadas y leídas (con entradas desconocidas o rotas), apertura desde la tarjeta, grupos por severidad, filtros, elegir un hallazgo (selección y foco), paso al inspector, explicación, desactivar y activar reglas, revisión sin hallazgos, puntos en el lienzo y cierre con Escape.
 - `inspector.test.tsx`: campos de componente, grupo y conexión; nombre confirmado al salir como un paso, nombre vacío rechazado y restaurado, Escape, producto y proveedor con vuelta a los valores por defecto, hechos operativos de tres valores, instancias en rango, modo inferido del protocolo, borrar e iniciar una conexión.
 - `operations.test.ts`: ids y nombres numerados, reglas de contención, grupo bajo un punto, añadir (nivel superior, dentro de un grupo, hueco libre, crecimiento de grupos, límite de nodos), conectar (repetida, con un grupo), mover (dentro del grupo, sin cambios, fuera de todos, a otro grupo, relleno, nunca dentro de sí), borrar con contenido, duplicar con contenido y aristas internas, y actualizaciones de campos.
