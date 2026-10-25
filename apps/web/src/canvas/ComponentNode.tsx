@@ -3,6 +3,7 @@ import { m } from 'motion/react';
 import { memo } from 'react';
 import { KIND_ICONS } from '../icons.ts';
 import { SPRING_POP } from '../motion.ts';
+import { SEVERITY_COLOR } from '../review/findings.ts';
 import { strings } from '../strings.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import type { ComponentFlowNode } from './flow.ts';
@@ -25,6 +26,8 @@ export const ComponentNode = memo(function ComponentNode({
   const focused = canvas.focusId === id;
   const dimmed = canvas.dimOthers && !canvas.nodes.has(id);
   const selected = isSelected(canvas.selection, 'node', id);
+  const issue = canvas.issues.get(id);
+  const inFinding = canvas.finding?.nodes.has(id) === true;
 
   return (
     <m.div
@@ -38,7 +41,14 @@ export const ComponentNode = memo(function ComponentNode({
         data-selected={selected || undefined}
         title={service === node.label ? node.label : `${node.label}: ${service}`}
         className="relative flex h-full w-full items-center gap-2.5 rounded-xl border bg-surface px-3 outline-2 outline-offset-2 outline-transparent transition-[opacity,transform,border-color,box-shadow,outline-color] duration-200 ease-out-soft data-selected:outline-accent data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.04] data-[state=focused]:shadow-[0_8px_20px_-6px_rgb(17_24_39/0.25)]"
-        style={{ borderColor: focused || selected ? `var(--cat-${category})` : 'var(--line)' }}
+        style={{
+          borderColor: focused || selected ? `var(--cat-${category})` : 'var(--line)',
+          ...(canvas.finding && inFinding
+            ? {
+                boxShadow: `0 0 0 3px color-mix(in srgb, ${SEVERITY_COLOR[canvas.finding.severity]} 45%, transparent)`,
+              }
+            : {}),
+        }}
       >
         <span
           className="flex size-9 shrink-0 items-center justify-center rounded-[10px]"
@@ -52,6 +62,14 @@ export const ComponentNode = memo(function ComponentNode({
           </span>
           <span className="block truncate text-[11px] leading-tight text-muted">{service}</span>
         </span>
+        {issue !== undefined && (
+          <span
+            aria-hidden="true"
+            title={strings.review.severities[issue]}
+            className="absolute -top-1.5 -left-1.5 size-3.5 rounded-full border-2 border-surface"
+            style={{ backgroundColor: SEVERITY_COLOR[issue] }}
+          />
+        )}
         {providerBadge !== undefined && (
           <span className="absolute -top-2 right-2 rounded-full border border-line bg-surface px-1.5 text-[9.5px] leading-4 font-medium text-muted">
             {strings.canvas.providerBadges[providerBadge]}

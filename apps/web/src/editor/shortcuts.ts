@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { reviewStore } from '../review/review-store.ts';
 import { editorStore } from './store.ts';
 
 /** Whether a key press belongs to a text field rather than to the editor. */
@@ -13,7 +14,7 @@ function isTyping(target: EventTarget | null): boolean {
  * - Delete or Backspace: delete the selection.
  * - Ctrl or ⌘ + Z: undo; with Shift, or Ctrl + Y: redo.
  * - Ctrl or ⌘ + D: duplicate the selected node.
- * - Escape: cancel a connection, or clear the selection.
+ * - Escape: close the design review, or cancel a connection, or clear the selection.
  */
 export function useEditorShortcuts(enabled: boolean): void {
   useEffect(() => {
@@ -36,8 +37,13 @@ export function useEditorShortcuts(enabled: boolean): void {
         handled = editor.selection !== null;
         editor.removeSelection();
       } else if (!command && key === 'escape') {
-        handled = editor.selection !== null || editor.connectingFrom !== null;
-        editor.select(null);
+        const review = reviewStore.getState();
+        if (review.open) {
+          review.setOpen(false);
+        } else {
+          handled = editor.selection !== null || editor.connectingFrom !== null;
+          editor.select(null);
+        }
       } else {
         handled = false;
       }

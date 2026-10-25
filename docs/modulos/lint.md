@@ -17,15 +17,15 @@ packages/core/src/lint/
 
 ## API pública
 
-| Export                        | Tipo      | Uso                                                                   |
-| ----------------------------- | --------- | --------------------------------------------------------------------- |
-| `lintGraph(graph, options?)`  | Función   | Ejecuta las reglas activas. `options.disabledRules` desactiva reglas  |
-| `LINT_RULES`                  | Constante | Reglas con título y descripción, para el panel de revisión (T10)      |
-| `LINT_RULE_IDS`, `LintRuleId` | Constante | Ids válidos, para guardar preferencias de reglas desactivadas         |
-| `LINT_SEVERITIES`             | Constante | `error`, `warning`, `info`, de mayor a menor                          |
-| `LintFinding`, `LintRule`     | Tipos     | Hallazgo: `ruleId`, `severity`, `message`, `nodeIds`, `edgeIds`, etc. |
-| `MAX_SYNC_HOPS`               | Constante | Saltos síncronos máximos desde un cliente (4)                         |
-| `resolveEdgeMode(edge)`       | Función   | En `graph.ts`. Modo efectivo de una arista, ver más abajo             |
+| Export                        | Tipo      | Uso                                                                                                  |
+| ----------------------------- | --------- | ---------------------------------------------------------------------------------------------------- |
+| `lintGraph(graph, options?)`  | Función   | Ejecuta las reglas activas. `options.disabledRules` desactiva reglas                                 |
+| `LINT_RULES`                  | Constante | Reglas con título y descripción; el panel de revisión del editor (T10, [web.md](web.md)) las muestra |
+| `LINT_RULE_IDS`, `LintRuleId` | Constante | Ids válidos, para guardar preferencias de reglas desactivadas                                        |
+| `LINT_SEVERITIES`             | Constante | `error`, `warning`, `info`, de mayor a menor                                                         |
+| `LintFinding`, `LintRule`     | Tipos     | Hallazgo: `ruleId`, `severity`, `message`, `nodeIds`, `edgeIds`, etc.                                |
+| `MAX_SYNC_HOPS`               | Constante | Saltos síncronos máximos desde un cliente (4)                                                        |
+| `resolveEdgeMode(edge)`       | Función   | En `graph.ts`. Modo efectivo de una arista, ver más abajo                                            |
 
 `lintGraph` devuelve los hallazgos ordenados por severidad (primero `error`). Dentro de una severidad se mantiene el orden de `LINT_RULES` y, dentro de cada regla, el orden en que la regla los produce, así que la salida es determinista.
 

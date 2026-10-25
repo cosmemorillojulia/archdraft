@@ -1,15 +1,27 @@
-import { type ArchitectureGraph, isContainerKind, lintGraph } from '@archdraft/core';
-import { Boxes, Cable, CircleCheck, TriangleAlert } from 'lucide-react';
+import { type ArchitectureGraph, isContainerKind } from '@archdraft/core';
+import {
+  Boxes,
+  Cable,
+  ChevronRight,
+  CircleCheck,
+  Info,
+  OctagonAlert,
+  TriangleAlert,
+} from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { useId, useMemo } from 'react';
+import { type CSSProperties, useId } from 'react';
 import { EASE_OUT } from '../motion.ts';
+import { SEVERITY_COLOR, useFindings, worstSeverity } from '../review/findings.ts';
+import { reviewStore, useReview } from '../review/review-store.ts';
 import { strings } from '../strings.ts';
 
-/** Floating summary of the current diagram: what it is, its size and its design review. */
+/**
+ * Floating summary of the current diagram: what it is, its size and its
+ * design review, whose status opens the review panel.
+ */
 export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
   const headingId = useId();
   const components = graph.nodes.filter((node) => !isContainerKind(node.kind)).length;
-  const issues = useMemo(() => lintGraph(graph).length, [graph]);
 
   return (
     <m.section
@@ -53,7 +65,7 @@ export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
           <Count value={graph.edges.length} />
           {strings.card.connections}
         </span>
-        <ReviewStatus issues={issues} />
+        <ReviewStatus />
       </div>
     </m.section>
   );
@@ -78,21 +90,37 @@ function Count({ value }: { value: number }) {
   );
 }
 
-function ReviewStatus({ issues }: { issues: number }) {
-  const clean = issues === 0;
-  const color = clean ? 'var(--success)' : 'var(--warning)';
+const STATUS_ICON = { error: OctagonAlert, warning: TriangleAlert, info: Info } as const;
+
+/** Review status in the colour of the most severe finding; it opens and closes the review. */
+function ReviewStatus() {
+  const findings = useFindings();
+  const open = useReview((state) => state.open);
+  const worst = worstSeverity(findings);
+  const color = worst === null ? 'var(--success)' : SEVERITY_COLOR[worst];
+  const Icon = worst === null ? CircleCheck : STATUS_ICON[worst];
+  const text = worst === null ? strings.review.clean : strings.review.issues(findings.length);
   return (
-    <span
-      role="status"
-      className="ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium"
-      style={{ color, backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }}
-    >
-      {clean ? (
-        <CircleCheck size={14} aria-hidden="true" />
-      ) : (
-        <TriangleAlert size={14} aria-hidden="true" />
-      )}
-      {clean ? strings.review.clean : strings.review.issues(issues)}
-    </span>
+    <>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => reviewStore.getState().setOpen(!open)}
+        className="ml-auto inline-flex h-7 items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--status)_12%,transparent)] pr-1.5 pl-2.5 font-medium text-(--status) transition-colors hover:bg-[color-mix(in_srgb,var(--status)_20%,transparent)]"
+        style={{ '--status': color } as CSSProperties}
+      >
+        <Icon size={14} aria-hidden="true" />
+        {text}
+        <ChevronRight
+          size={14}
+          aria-hidden="true"
+          className={`transition-transform ${open ? 'rotate-90' : ''}`}
+        />
+      </button>
+      {/* Announces changes of the review while editing. */}
+      <span role="status" className="sr-only">
+        {text}
+      </span>
+    </>
   );
 }
