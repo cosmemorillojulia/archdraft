@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isContainerKind, isShapeKind, type NodeKind, type ShapeKind } from './kinds.ts';
 import { ArchitectureGraphSchema, IdSchema, LIMITS } from './schema.ts';
 
 /**
@@ -42,6 +43,20 @@ export type DiagramDocument = z.infer<typeof DiagramDocumentSchema>;
 export const DEFAULT_NODE_SIZE: Size = { width: 180, height: 64 };
 /** Size of an empty container, which has no children to grow around. */
 export const DEFAULT_CONTAINER_SIZE: Size = { width: 240, height: 140 };
+/** Size of each shape before it is resized. */
+export const SHAPE_SIZES: Readonly<Record<ShapeKind, Size>> = {
+  box: { width: 160, height: 64 },
+  circle: { width: 96, height: 96 },
+  diamond: { width: 140, height: 96 },
+  note: { width: 160, height: 96 },
+};
+
+/** Size of a node of `kind` that has not been measured, resized or laid out yet. */
+export function defaultSizeOf(kind: NodeKind): Size {
+  if (isContainerKind(kind)) return DEFAULT_CONTAINER_SIZE;
+  return isShapeKind(kind) ? SHAPE_SIZES[kind] : DEFAULT_NODE_SIZE;
+}
+
 /** Space between a container's border and its children; the top leaves room for its title. */
 export const CONTAINER_PADDING = { top: 48, right: 24, bottom: 24, left: 24 } as const;
 

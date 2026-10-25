@@ -10,6 +10,7 @@ import {
   DiagramLayoutSchema,
   indexGraph,
   layoutEntry,
+  SHAPE_SIZES,
   TEMPLATE_IDS,
   validateGraph,
 } from '@archdraft/core';
@@ -132,6 +133,20 @@ describe('computeLayout', () => {
     const layout = await computeLayout(nestedGraph());
     expect(layout.sizes.api).toEqual(DEFAULT_NODE_SIZE);
     expect(layout.sizes.empty).toEqual(DEFAULT_CONTAINER_SIZE);
+  });
+
+  it('gives generic shapes the default size of their kind', async () => {
+    const layout = await computeLayout(
+      graphOf(
+        [
+          { id: 'start', kind: 'circle', label: 'Start' },
+          { id: 'check', kind: 'diamond', label: 'Approved?' },
+        ],
+        [{ id: 'e1', source: 'start', target: 'check' }],
+      ),
+    );
+    expect(layout.sizes.start).toEqual(SHAPE_SIZES.circle);
+    expect(layout.sizes.check).toEqual(SHAPE_SIZES.diamond);
   });
 
   it('uses known sizes from the pinned layout without pinning positions', async () => {

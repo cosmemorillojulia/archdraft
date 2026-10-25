@@ -9,7 +9,8 @@ import { edgeText, nodeSubtitle } from './labels.ts';
  * most documentation tools render natively.
  *
  * Containers become nested `subgraph` blocks, the node shape follows the
- * category (cylinder for data, stadium for actors, rectangle otherwise) and
+ * category (cylinder for data, stadium for actors, rectangle otherwise, and
+ * circle, rhombus or flag for those shapes) and
  * asynchronous edges are dashed. Edges are declared after every node and
  * subgraph because Mermaid moves a node into the subgraph where it is first
  * mentioned.
@@ -86,6 +87,16 @@ function nodeShape(node: ArchNode, graph: ArchitectureGraph): string {
     subtitle === undefined
       ? escapeLabel(node.label)
       : `${escapeLabel(node.label)}<br/>${escapeLabel(subtitle)}`;
+  switch (node.kind) {
+    case 'circle':
+      return `(("${label}"))`;
+    case 'diamond':
+      return `{"${label}"}`;
+    case 'note':
+      return `>"${label}"]`;
+    default:
+      break;
+  }
   switch (getNodeDefinition(node.kind).category) {
     case 'data':
       return `[("${label}")]`;

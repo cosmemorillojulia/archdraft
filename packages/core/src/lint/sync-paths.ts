@@ -1,5 +1,6 @@
 import { getNodeDefinition } from '../catalog.ts';
 import { type GraphIndex, resolveEdgeMode } from '../graph.ts';
+import { isShapeKind } from '../kinds.ts';
 import type { ArchEdge, ArchNode } from '../schema.ts';
 
 /** Nodes and the edges that join them: a path, or the members of a cycle. */
@@ -8,8 +9,17 @@ export interface SyncPath {
   readonly edges: readonly ArchEdge[];
 }
 
+/** A node that takes part in request paths: shapes do not, so flowcharts with loops are not cycles. */
+function inPaths(index: GraphIndex, nodeId: string): boolean {
+  const node = index.nodesById.get(nodeId);
+  return node !== undefined && !isShapeKind(node.kind);
+}
+
 function syncOutgoing(index: GraphIndex, nodeId: string): ArchEdge[] {
-  return (index.outgoing.get(nodeId) ?? []).filter((edge) => resolveEdgeMode(edge) === 'sync');
+  if (!inPaths(index, nodeId)) return [];
+  return (index.outgoing.get(nodeId) ?? []).filter(
+    (edge) => resolveEdgeMode(edge) === 'sync' && inPaths(index, edge.target),
+  );
 }
 
 /**
