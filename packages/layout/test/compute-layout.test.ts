@@ -3,6 +3,7 @@ import {
   type ArchEdge,
   type ArchitectureGraph,
   type ArchNode,
+  CONTAINER_PADDING,
   DEFAULT_CONTAINER_SIZE,
   DEFAULT_NODE_SIZE,
   type DiagramLayout,
@@ -13,7 +14,7 @@ import {
   validateGraph,
 } from '@archdraft/core';
 import { describe, expect, it } from 'vitest';
-import { computeLayout, CONTAINER_PADDING } from '../src/index.ts';
+import { computeLayout } from '../src/index.ts';
 
 function graphOf(nodes: ArchNode[], edges: ArchEdge[] = []): ArchitectureGraph {
   return { schemaVersion: 1, title: 'Test', provider: 'aws', nodes, edges };

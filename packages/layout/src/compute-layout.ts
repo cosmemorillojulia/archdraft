@@ -1,6 +1,7 @@
 import {
   type ArchitectureGraph,
   type ArchNode,
+  CONTAINER_PADDING,
   DEFAULT_CONTAINER_SIZE,
   DEFAULT_NODE_SIZE,
   type DiagramLayout,
@@ -34,8 +35,6 @@ export interface ComputeLayoutOptions {
 /** Space between sibling nodes, also kept around new nodes in pinned mode. */
 export const NODE_SPACING = 40;
 const LAYER_SPACING = 80;
-/** Room for the container title above its children. */
-export const CONTAINER_PADDING = { top: 48, right: 24, bottom: 24, left: 24 } as const;
 
 const ELK_DIRECTIONS: Record<LayoutDirection, string> = {
   LR: 'RIGHT',
