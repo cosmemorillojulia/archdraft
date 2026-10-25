@@ -421,6 +421,8 @@ export const es: Strings = {
   },
   inspector: {
     close: 'Cerrar',
+    expand: 'Mostrar propiedades',
+    collapse: 'Ocultar propiedades',
     connection: 'Conexión',
     name: 'Nombre',
     product: 'Producto',

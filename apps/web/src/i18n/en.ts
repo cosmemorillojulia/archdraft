@@ -256,6 +256,8 @@ export const en = {
   },
   inspector: {
     close: 'Close',
+    expand: 'Show properties',
+    collapse: 'Hide properties',
     connection: 'Connection',
     name: 'Name',
     product: 'Product',
