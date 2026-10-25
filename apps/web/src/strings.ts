@@ -40,6 +40,7 @@ export const strings = {
   card: {
     components: 'components',
     connections: 'connections',
+    shapes: 'shapes',
   },
   providers: {
     generic: 'Any cloud',
@@ -94,6 +95,7 @@ export const strings = {
       observability: 'Observability',
       ai: 'AI',
       external: 'External',
+      shape: 'Shapes',
       container: 'Groups',
     } satisfies Record<NodeCategory, string>,
   },
@@ -123,8 +125,13 @@ export const strings = {
     diagramLabel: (title: string) => `Diagram: ${title}`,
     layoutFailed: 'This diagram could not be drawn. Try another template.',
     miniMap: 'Overview of the diagram',
+    flow: {
+      label: 'Flow animation',
+      hide: 'Hide the particles on connections',
+      show: 'Show the particles on connections',
+    },
     zoom: {
-      label: 'Zoom',
+      label: 'View',
       in: 'Zoom in',
       out: 'Zoom out',
       fit: 'Fit diagram to screen',

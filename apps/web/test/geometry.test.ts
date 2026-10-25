@@ -2,6 +2,9 @@ import type { ArchitectureGraph, DiagramLayout } from '@archdraft/core';
 import { describe, expect, it } from 'vitest';
 import {
   absoluteBoxes,
+  ARROW_LENGTH,
+  ARROW_WIDTH,
+  arrowhead,
   boundsOf,
   drawingScale,
   initialViewport,
@@ -127,5 +130,26 @@ describe('initialViewport', () => {
     expect(viewport.zoom).toBe(0.9);
     expect(viewport.y).toBe(100 - 60 * 0.9);
     expect(viewport.x).toBe(20 + (350 - 1000 * 0.9) / 2 - 40 * 0.9);
+  });
+});
+
+describe('arrowhead', () => {
+  it('ends the line one arrow length before the target, on the side it arrives from', () => {
+    expect(arrowhead(100, 50, 'left').base).toEqual({ x: 100 - ARROW_LENGTH, y: 50 });
+    expect(arrowhead(100, 50, 'right').base).toEqual({ x: 100 + ARROW_LENGTH, y: 50 });
+    expect(arrowhead(100, 50, 'top').base).toEqual({ x: 100, y: 50 - ARROW_LENGTH });
+    expect(arrowhead(100, 50, 'bottom').base).toEqual({ x: 100, y: 50 + ARROW_LENGTH });
+  });
+
+  it('draws a triangle across the base with its tip on the target', () => {
+    const half = ARROW_WIDTH / 2;
+    const base = 100 - ARROW_LENGTH;
+    expect(arrowhead(100, 50, 'left').outline).toBe(
+      `M ${base} ${50 + half} L 100 50 L ${base} ${50 - half} Z`,
+    );
+    const top = 50 - ARROW_LENGTH;
+    expect(arrowhead(100, 50, 'top').outline).toBe(
+      `M ${100 - half} ${top} L 100 50 L ${100 + half} ${top} Z`,
+    );
   });
 });

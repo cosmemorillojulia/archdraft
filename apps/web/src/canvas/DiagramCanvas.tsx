@@ -16,7 +16,6 @@ import {
   type KeyboardEvent,
   useCallback,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -26,17 +25,19 @@ import { editorStore, type Snapshot, useEditor } from '../editor/store.ts';
 import { findingKey, severityByNode, useFindings } from '../review/findings.ts';
 import { reviewStore, useReview } from '../review/review-store.ts';
 import { EASE_OUT } from '../motion.ts';
+import { usePreferences } from '../preferences.ts';
 import { strings } from '../strings.ts';
 import { ArchitectureEdge } from './ArchitectureEdge.tsx';
-import { CanvasContext, relatedTo } from './canvas-context.ts';
+import { CanvasContext, relatedTo, type ShapeBox } from './canvas-context.ts';
 import { ComponentNode } from './ComponentNode.tsx';
 import { ContainerNode } from './ContainerNode.tsx';
+import { ShapeNode } from './ShapeNode.tsx';
 import { type ArchitectureFlowEdge, type ArchitectureFlowNode, toFlow } from './flow.ts';
 import { type Insets, absoluteBoxes, boundsOf, initialViewport } from './geometry.ts';
 import { isNodeKind, KIND_MIME } from './palette-drop.ts';
 import { ZoomControls } from './ZoomControls.tsx';
 
-const NODE_TYPES = { component: ComponentNode, container: ContainerNode };
+const NODE_TYPES = { component: ComponentNode, container: ContainerNode, shape: ShapeNode };
 const EDGE_TYPES = { architecture: ArchitectureEdge };
 
 /** Zoom range of the canvas. */
@@ -111,6 +112,7 @@ interface FlowProps extends DiagramCanvasProps {
 function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlacement }: FlowProps) {
   const { document: diagram, direction } = snapshot;
   const selection = useEditor((state) => state.selection);
+  const particles = usePreferences((state) => state.flowAnimation);
   const findings = useFindings();
   const reviewOpen = useReview((state) => state.open);
   const activeKey = useReview((state) => state.activeKey);
@@ -136,6 +138,16 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; position: XYPosition } | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  // Like a drag, a resize in progress lives here and reaches the store when it ends.
+  const [resizing, setResizing] = useState<{ id: string; box: ShapeBox } | null>(null);
+  const resizeShape = useCallback((id: string, box: ShapeBox, done: boolean) => {
+    if (done) {
+      editorStore.getState().resizeNode(id, box);
+      setResizing(null);
+    } else {
+      setResizing({ id, box });
+    }
+  }, []);
   const [building, setBuilding] = useState(true);
   useEffect(() => {
     const timer = setTimeout(() => setBuilding(false), BUILD_MS);
@@ -145,8 +157,12 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   // The store holds where nodes rest; while one is dragged, its position lives here.
   const selectedNodeId = selection?.type === 'node' ? selection.id : null;
   const nodes = useMemo(() => {
-    if (!dragging && selectedNodeId === null) return elements.nodes;
+    if (!dragging && !resizing && selectedNodeId === null) return elements.nodes;
     return elements.nodes.map((node) => {
+      if (node.id === resizing?.id) {
+        const { x, y, width, height } = resizing.box;
+        return { ...node, position: { x, y }, width, height, measured: { width, height } };
+      }
       // Lifted above everything while dragged, so opaque groups do not hide it.
       if (node.id === dragging?.id) {
         return { ...node, position: dragging.position, draggable: true, zIndex: DRAGGED_Z };
@@ -154,9 +170,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       if (node.id === selectedNodeId) return { ...node, draggable: true };
       return node;
     });
-  }, [elements.nodes, dragging, selectedNodeId]);
+  }, [elements.nodes, dragging, resizing, selectedNodeId]);
 
-  const markerBase = `arrow-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   // While the review is open, components show their most severe finding, and the chosen
   // finding stands out with everything else faded.
   const issues = useMemo(
@@ -173,8 +188,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
 
   const canvas = useMemo(() => {
     const hovered = dragging ? null : hoverId;
-    const markers = { idle: markerBase, active: `${markerBase}-active` };
-    const shared = { selection, dropTargetId, building, markers, issues };
+    const shared = { selection, dropTargetId, building, particles, issues, resizeShape };
     if (hovered === null && activeFinding) {
       const nodes = new Set(activeFinding.nodeIds);
       return {
@@ -202,7 +216,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     dropTargetId,
     hoverId,
     issues,
-    markerBase,
+    particles,
+    resizeShape,
     selectedNodeId,
     selection,
   ]);
@@ -399,12 +414,6 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
-        <svg aria-hidden="true" className="absolute size-0">
-          <defs>
-            <ArrowMarker id={canvas.markers.idle} color="var(--edge)" />
-            <ArrowMarker id={canvas.markers.active} color="var(--accent)" />
-          </defs>
-        </svg>
         <ReactFlow<ArchitectureFlowNode, ArchitectureFlowEdge>
           nodes={nodes}
           edges={elements.edges}
@@ -437,7 +446,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
           onConnect={({ source, target }: Connection) => connectTo(source, target)}
           onConnectEnd={onConnectEnd}
           onNodeMouseEnter={(_event, node) => {
-            if (pointerType.current !== 'touch' && node.type === 'component') setHoverId(node.id);
+            if (pointerType.current !== 'touch' && node.type !== 'container') setHoverId(node.id);
           }}
           onNodeMouseLeave={() => setHoverId(null)}
           onNodeClick={(_event, node) => {
@@ -466,7 +475,11 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
               position="bottom-right"
               ariaLabel={strings.canvas.miniMap}
               nodeColor={(node) =>
-                node.type === 'component' ? `var(--cat-${node.data.category})` : 'var(--group-line)'
+                node.type === 'component'
+                  ? `var(--cat-${node.data.category})`
+                  : node.type === 'shape'
+                    ? 'var(--cat-shape)'
+                    : 'var(--group-line)'
               }
               nodeBorderRadius={6}
               maskColor="color-mix(in srgb, var(--canvas) 72%, transparent)"
@@ -480,21 +493,5 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
         </div>
       </div>
     </CanvasContext.Provider>
-  );
-}
-
-function ArrowMarker({ id, color }: { id: string; color: string }) {
-  return (
-    <marker
-      id={id}
-      viewBox="0 0 10 10"
-      refX="9"
-      refY="5"
-      markerWidth="7"
-      markerHeight="7"
-      orient="auto-start-reverse"
-    >
-      <path d="M 0 1 L 9 5 L 0 9 z" style={{ fill: color }} />
-    </marker>
   );
 }

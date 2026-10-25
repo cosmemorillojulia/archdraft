@@ -30,65 +30,73 @@ export const ComponentNode = memo(function ComponentNode({
   const inFinding = canvas.finding?.nodes.has(id) === true;
 
   return (
-    <m.div
-      initial={{ opacity: 0, scale: 0.86, y: 6 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ ...SPRING_POP, delay: canvas.building ? appearDelay : 0 }}
-      className="group h-full w-full"
-    >
-      <div
-        data-state={focused ? 'focused' : dimmed ? 'dimmed' : 'idle'}
-        data-selected={selected || undefined}
-        title={service === node.label ? node.label : `${node.label}: ${service}`}
-        className="relative flex h-full w-full items-center gap-2.5 rounded-xl border bg-surface px-3 outline-2 outline-offset-2 outline-transparent transition-[opacity,transform,border-color,box-shadow,outline-color] duration-200 ease-out-soft data-selected:outline-accent data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.04] data-[state=focused]:shadow-[0_8px_20px_-6px_rgb(17_24_39/0.25)]"
-        style={{
-          borderColor: focused || selected ? `var(--cat-${category})` : 'var(--line)',
-          ...(canvas.finding && inFinding
-            ? {
-                boxShadow: `0 0 0 3px color-mix(in srgb, ${SEVERITY_COLOR[canvas.finding.severity]} 45%, transparent)`,
-              }
-            : {}),
-        }}
+    // The connection points stay outside the animated card: React Flow measures where they are
+    // when the node mounts, and measuring them mid-entrance, scaled down, made edges end inside
+    // the node and hid their arrowheads.
+    <div className="group h-full w-full">
+      <m.div
+        initial={{ opacity: 0, scale: 0.86, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ ...SPRING_POP, delay: canvas.building ? appearDelay : 0 }}
+        className="h-full w-full"
       >
-        <span
-          className="flex size-9 shrink-0 items-center justify-center rounded-[10px]"
-          style={{ color: `var(--cat-${category})`, backgroundColor: `var(--cat-${category}-bg)` }}
+        <div
+          data-state={focused ? 'focused' : dimmed ? 'dimmed' : 'idle'}
+          data-selected={selected || undefined}
+          title={service === node.label ? node.label : `${node.label}: ${service}`}
+          className="relative flex h-full w-full items-center gap-2.5 rounded-xl border bg-surface px-3 outline-2 outline-offset-2 outline-transparent transition-[opacity,transform,border-color,box-shadow,outline-color] duration-200 ease-out-soft data-selected:outline-accent data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.04] data-[state=focused]:shadow-[0_8px_20px_-6px_rgb(17_24_39/0.25)]"
+          style={{
+            borderColor: focused || selected ? `var(--cat-${category})` : 'var(--line)',
+            ...(canvas.finding && inFinding
+              ? {
+                  boxShadow: `0 0 0 3px color-mix(in srgb, ${SEVERITY_COLOR[canvas.finding.severity]} 45%, transparent)`,
+                }
+              : {}),
+          }}
         >
-          <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] leading-tight font-semibold">
-            {node.label}
-          </span>
-          <span className="block truncate text-[11px] leading-tight text-muted">{service}</span>
-        </span>
-        {issue !== undefined && (
           <span
-            aria-hidden="true"
-            title={strings.review.severities[issue]}
-            className="absolute -top-1.5 -left-1.5 size-3.5 rounded-full border-2 border-surface"
-            style={{ backgroundColor: SEVERITY_COLOR[issue] }}
-          />
-        )}
-        {providerBadge !== undefined && (
-          <span className="absolute -top-2 right-2 rounded-full border border-line bg-surface px-1.5 text-[9.5px] leading-4 font-medium text-muted">
-            {strings.canvas.providerBadges[providerBadge]}
+            className="flex size-9 shrink-0 items-center justify-center rounded-[10px]"
+            style={{
+              color: `var(--cat-${category})`,
+              backgroundColor: `var(--cat-${category}-bg)`,
+            }}
+          >
+            <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
           </span>
-        )}
-      </div>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] leading-tight font-semibold">
+              {node.label}
+            </span>
+            <span className="block truncate text-[11px] leading-tight text-muted">{service}</span>
+          </span>
+          {issue !== undefined && (
+            <span
+              aria-hidden="true"
+              title={strings.review.severities[issue]}
+              className="absolute -top-1.5 -left-1.5 size-3.5 rounded-full border-2 border-surface"
+              style={{ backgroundColor: SEVERITY_COLOR[issue] }}
+            />
+          )}
+          {providerBadge !== undefined && (
+            <span className="absolute -top-2 right-2 rounded-full border border-line bg-surface px-1.5 text-[9.5px] leading-4 font-medium text-muted">
+              {strings.canvas.providerBadges[providerBadge]}
+            </span>
+          )}
+        </div>
+      </m.div>
       <Handle
         type="target"
         position={targetPosition}
         isConnectable={isConnectable}
-        className="pointer-events-none opacity-0"
+        className="flow-handle pointer-events-none"
       />
       <Handle
         type="source"
         position={sourcePosition}
         isConnectable={isConnectable}
         data-selected={selected || undefined}
-        className="connect-handle"
+        className="flow-handle connect-handle"
       />
-    </m.div>
+    </div>
   );
 });

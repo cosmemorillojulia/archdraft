@@ -17,6 +17,7 @@ import {
   moveNode,
   NUDGE,
   remove,
+  resizeNode,
   subtreeOf,
   uniqueId,
   uniqueLabel,
@@ -268,6 +269,40 @@ describe('moveNode', () => {
     // The subnet dragged out of the region, to the top level.
     const next = edited(moveNode(document, 'subnet', { x: -400, y: 500 }));
     expect(errorsOf(next).map((issue) => issue.code)).toEqual(['INVALID_CONTAINMENT']);
+  });
+});
+
+describe('resizeNode', () => {
+  it('sets the new box in whole pixels', () => {
+    const next = edited(
+      resizeNode(document, 'db', { x: 990.4, y: 80.6, width: 240.2, height: 99.7 }),
+    );
+    expect(next.layout.positions.db).toEqual({ x: 990, y: 81 });
+    expect(next.layout.sizes.db).toEqual({ width: 240, height: 100 });
+  });
+
+  it('changes nothing when the box is the same', () => {
+    expect(resizeNode(document, 'db', { x: 1000, y: 100, ...DEFAULT_NODE_SIZE })).toEqual({
+      ok: true,
+      document,
+    });
+    expect(resizeNode(document, 'missing', { x: 0, y: 0, width: 10, height: 10 })).toEqual({
+      ok: true,
+      document,
+    });
+  });
+
+  it('keeps the node clear of the border of its container and grows the containers around it', () => {
+    const next = edited(resizeNode(document, 'api', { x: 0, y: 48, width: 400, height: 300 }));
+    expect(next.layout.positions.api).toEqual({ x: CONTAINER_PADDING.left, y: 48 });
+    // The subnet grows to hold it, and the network to hold the subnet.
+    expect(next.layout.sizes.subnet).toEqual({
+      width: CONTAINER_PADDING.left + 400 + CONTAINER_PADDING.right,
+      height: 48 + 300 + CONTAINER_PADDING.bottom,
+    });
+    expect(next.layout.sizes.vpc?.width).toBeGreaterThanOrEqual(
+      24 + (next.layout.sizes.subnet?.width ?? 0) + CONTAINER_PADDING.right,
+    );
   });
 });
 

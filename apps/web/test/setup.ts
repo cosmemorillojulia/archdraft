@@ -3,6 +3,7 @@ import { cleanup } from '@testing-library/react';
 import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { editorStore } from '../src/editor/store.ts';
+import { preferencesStore } from '../src/preferences.ts';
 import { reviewStore } from '../src/review/review-store.ts';
 
 // Animations jump to their end state, so tests check outcomes without waiting for them.
@@ -66,6 +67,7 @@ afterEach(() => {
   // Each test starts with an empty editor.
   editorStore.setState(editorStore.getInitialState(), true);
   reviewStore.setState(reviewStore.getInitialState(), true);
+  preferencesStore.setState(preferencesStore.getInitialState(), true);
   localStorage.clear();
   delete document.documentElement.dataset.theme;
   document.documentElement.classList.remove('theme-fade');

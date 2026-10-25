@@ -7,6 +7,7 @@ import {
   type NodeCategory,
   getNodeDefinition,
   isContainerKind,
+  isShapeKind,
   layoutEntry,
   resolveEdgeMode,
   resolveServiceName,
@@ -37,6 +38,13 @@ export interface ContainerNodeData extends Record<string, unknown> {
   appearDelay: number;
 }
 
+export interface ShapeNodeData extends Record<string, unknown> {
+  node: ArchNode;
+  sourcePosition: Position;
+  targetPosition: Position;
+  appearDelay: number;
+}
+
 export interface ArchitectureEdgeData extends Record<string, unknown> {
   edge: ArchEdge;
   async: boolean;
@@ -47,7 +55,8 @@ export interface ArchitectureEdgeData extends Record<string, unknown> {
 
 export type ComponentFlowNode = Node<ComponentNodeData, 'component'>;
 export type ContainerFlowNode = Node<ContainerNodeData, 'container'>;
-export type ArchitectureFlowNode = ComponentFlowNode | ContainerFlowNode;
+export type ShapeFlowNode = Node<ShapeNodeData, 'shape'>;
+export type ArchitectureFlowNode = ComponentFlowNode | ContainerFlowNode | ShapeFlowNode;
 export type ArchitectureFlowEdge = Edge<ArchitectureEdgeData, 'architecture'>;
 
 export interface FlowElements {
@@ -104,6 +113,10 @@ export function toFlow(document: DiagramDocument, direction: LayoutDirection): F
       position,
       width: size.width,
       height: size.height,
+      // Given a new node object without a measured size, React Flow drops the positions of its
+      // connection points and hides its edges until it measures the node again, so every edit
+      // or drag step would draw them in again. The layout fixes the size, so it is known.
+      measured: { width: size.width, height: size.height },
       ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
     };
     if (isContainerKind(node.kind)) {
@@ -113,6 +126,20 @@ export function toFlow(document: DiagramDocument, direction: LayoutDirection): F
         draggable: false,
         ariaLabel: `${node.label}, ${getNodeDefinition(node.kind).label}`,
         data: { node, depth: depths.get(node.id) ?? 0, appearDelay: appearDelay(node.id) * 0.5 },
+      };
+    }
+    if (isShapeKind(node.kind)) {
+      const handles = HANDLES[direction];
+      return {
+        ...base,
+        type: 'shape',
+        ariaLabel: `${node.label}, ${getNodeDefinition(node.kind).label}`,
+        data: {
+          node,
+          sourcePosition: handles.source,
+          targetPosition: handles.target,
+          appearDelay: appearDelay(node.id),
+        },
       };
     }
     const data = componentData(node, graph, direction, appearDelay(node.id));

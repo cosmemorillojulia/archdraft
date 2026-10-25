@@ -6,7 +6,7 @@ import {
   CONTAINMENT_RULES,
   type ContainerKind,
   DEFAULT_CONTAINER_SIZE,
-  DEFAULT_NODE_SIZE,
+  defaultSizeOf,
   type DiagramDocument,
   type DiagramLayout,
   getNodeDefinition,
@@ -66,7 +66,7 @@ const unchanged = (document: DiagramDocument): Edit => ({ ok: true, document });
 const reject = (reason: string): Edit => ({ ok: false, reason });
 
 export function sizeOfKind(kind: NodeKind): Size {
-  return isContainerKind(kind) ? DEFAULT_CONTAINER_SIZE : DEFAULT_NODE_SIZE;
+  return defaultSizeOf(kind);
 }
 
 /** `base`, or `base-2`, `base-3`… if taken, within the length of an id. */
@@ -347,6 +347,47 @@ export function moveNode(document: DiagramDocument, id: string, position: Point)
     id,
   );
   return { ok: true, document: { graph: nextGraph, layout: nextLayout } };
+}
+
+/**
+ * Gives a node a new size and, when it was resized from its left or top
+ * side, a new position, relative to its container. The containers around it
+ * grow if it no longer fits.
+ */
+export function resizeNode(
+  document: DiagramDocument,
+  id: string,
+  box: { x: number; y: number; width: number; height: number },
+): Edit {
+  const { graph, layout } = document;
+  const node = graph.nodes.find((candidate) => candidate.id === id);
+  if (!node) return unchanged(document);
+  const position = insideParent(round(box), node.parentId);
+  const size = { width: Math.round(box.width), height: Math.round(box.height) };
+  const currentPosition = layoutEntry(layout.positions, id);
+  const currentSize = layoutEntry(layout.sizes, id);
+  if (
+    currentPosition?.x === position.x &&
+    currentPosition.y === position.y &&
+    currentSize?.width === size.width &&
+    currentSize.height === size.height
+  ) {
+    return unchanged(document);
+  }
+  return {
+    ok: true,
+    document: {
+      graph,
+      layout: growAncestors(
+        graph,
+        {
+          positions: { ...layout.positions, [id]: position },
+          sizes: { ...layout.sizes, [id]: size },
+        },
+        id,
+      ),
+    },
+  };
 }
 
 /** Removes a node with everything inside it and every edge they touch, or an edge. */

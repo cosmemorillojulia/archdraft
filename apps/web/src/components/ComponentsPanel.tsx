@@ -1,4 +1,10 @@
-import { NODE_CATALOG, NODE_CATEGORIES, type NodeDefinition, type NodeKind } from '@archdraft/core';
+import {
+  NODE_CATALOG,
+  NODE_CATEGORIES,
+  type NodeCategory,
+  type NodeDefinition,
+  type NodeKind,
+} from '@archdraft/core';
 import { PanelLeftClose, Search, Shapes, X } from 'lucide-react';
 import { AnimatePresence, m, useDragControls } from 'motion/react';
 import { type KeyboardEvent, type RefObject, useEffect, useId, useRef, useState } from 'react';
@@ -9,6 +15,12 @@ import { strings } from '../strings.ts';
 import { Button } from './Button.tsx';
 
 const DEFINITIONS = Object.values(NODE_CATALOG);
+
+/** Shapes first: they are the quickest way to sketch a simple flow. */
+const PALETTE_ORDER = [
+  'shape',
+  ...NODE_CATEGORIES.filter((category) => category !== 'shape'),
+] as const satisfies readonly NodeCategory[];
 
 /** Drag distance or speed, in pixels and pixels per second, that dismisses the sheet. */
 const DISMISS_OFFSET = 120;
@@ -202,7 +214,7 @@ interface PaletteProps extends PaletteActions {
 function Palette({ headingId, columns, onClose, closeIcon, onAdd, draggable, hint }: PaletteProps) {
   const [query, setQuery] = useState('');
   const needle = query.trim().toLowerCase();
-  const groups = NODE_CATEGORIES.map((category) => ({
+  const groups = PALETTE_ORDER.map((category) => ({
     category,
     definitions: DEFINITIONS.filter(
       (definition) =>

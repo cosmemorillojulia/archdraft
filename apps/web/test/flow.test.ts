@@ -1,4 +1,4 @@
-import type { ArchitectureGraph, DiagramLayout } from '@archdraft/core';
+import type { ArchitectureGraph, DiagramDocument, DiagramLayout } from '@archdraft/core';
 import { Position } from '@xyflow/react';
 import { describe, expect, it } from 'vitest';
 import { BUILD_SPREAD, toFlow } from '../src/canvas/flow.ts';
@@ -134,6 +134,39 @@ describe('toFlow', () => {
     expect(byId('api')).toMatchObject({ ariaLabel: 'API, Amazon ECS' });
     expect(byId('api')).not.toHaveProperty('draggable');
     expect(byId('vpc')).toMatchObject({ ariaLabel: 'VPC, Virtual network', draggable: false });
+  });
+
+  it('gives every node its size as already measured, so edges stay drawn when nodes change', () => {
+    const { nodes } = toFlow({ graph, layout }, 'LR');
+    for (const node of nodes) {
+      expect(node.measured).toEqual({ width: node.width, height: node.height });
+    }
+  });
+
+  it('draws generic shapes as shapes, connected along the flow direction', () => {
+    const flowchart: DiagramDocument = {
+      graph: {
+        schemaVersion: 1,
+        title: 'Approval',
+        provider: 'generic',
+        nodes: [
+          { id: 'start', kind: 'circle', label: 'Start' },
+          { id: 'check', kind: 'diamond', label: 'Approved?' },
+        ],
+        edges: [{ id: 'start-check', source: 'start', target: 'check' }],
+      },
+      layout: {
+        positions: { start: { x: 0, y: 0 }, check: { x: 200, y: 0 } },
+        sizes: { start: { width: 96, height: 96 }, check: { width: 140, height: 96 } },
+      },
+    };
+    const { nodes, edges } = toFlow(flowchart, 'TB');
+    expect(nodes[1]).toMatchObject({
+      type: 'shape',
+      ariaLabel: 'Approved?, Diamond',
+      data: { sourcePosition: Position.Bottom, targetPosition: Position.Top },
+    });
+    expect(edges[0]?.data?.sourceCategory).toBe('shape');
   });
 
   it('returns nothing for an empty diagram', () => {

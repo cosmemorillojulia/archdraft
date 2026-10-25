@@ -1,21 +1,30 @@
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from '@xyflow/react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { EASE_OUT } from '../motion.ts';
 import { strings } from '../strings.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import type { ArchitectureFlowEdge } from './flow.ts';
+import { arrowhead } from './geometry.ts';
 
 /** Speed of the flow particle, in diagram pixels per second, and its limits in seconds. */
 const PARTICLE_SPEED = 110;
 const PARTICLE_MIN_S = 1.2;
 const PARTICLE_MAX_S = 4;
 
+/** Seconds the line takes to draw in; the arrowhead appears as it arrives. */
+const DRAW_S = 0.55;
+
 /**
  * A connection: a smooth curve that draws itself in when the diagram builds,
- * dashed when asynchronous, with a particle in the colour of its source that
- * travels along it. When it is selected, or either end is in focus, it turns
- * to the accent colour and shows its label.
+ * dashed when asynchronous, ending in an arrowhead, with a particle in the
+ * colour of its source that travels along it. When it is selected, or either
+ * end is in focus, it turns to the accent colour and shows its label.
+ *
+ * The arrowhead is drawn here rather than as an SVG marker: a marker scales
+ * with the stroke width, cannot fade its colour, and shows before the line
+ * has drawn in. The line stops at the base of the arrowhead, whose tip
+ * touches the target.
  */
 export const ArchitectureEdge = memo(function ArchitectureEdge({
   id,
@@ -29,11 +38,15 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
 }: EdgeProps<ArchitectureFlowEdge>) {
   const canvas = useCanvas();
   const reduceMotion = useReducedMotion() === true;
+  // Drawing in uses a normalised dash, which Chromium does not rescale when the path changes
+  // length (a node moved); once drawn, the line is a plain path.
+  const [drawn, setDrawn] = useState(false);
+  const arrow = arrowhead(targetX, targetY, targetPosition);
   const [path, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
-    targetX,
-    targetY,
+    targetX: arrow.base.x,
+    targetY: arrow.base.y,
     sourcePosition,
     targetPosition,
   });
@@ -44,6 +57,9 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   const active = selected || canvas.edges.has(id);
   const dimmed = canvas.dimOthers && !active;
   const label = edge.label ?? (edge.protocol && strings.protocols[edge.protocol]);
+  const colour = active ? 'var(--accent)' : 'var(--edge)';
+  const strokeWidth = selected ? 2.5 : active ? 2 : 1.5;
+  const delay = canvas.building ? appearDelay : 0;
   const travel = Math.min(
     Math.max(Math.hypot(targetX - sourceX, targetY - sourceY) / PARTICLE_SPEED, PARTICLE_MIN_S),
     PARTICLE_MAX_S,
@@ -58,18 +74,39 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
       <g className="transition-opacity duration-200" style={{ opacity: dimmed ? 0.15 : 1 }}>
         {/* Invisible wide stroke from React Flow, so the edge is easy to point at. */}
         <BaseEdge path={path} style={{ stroke: 'transparent' }} interactionWidth={20} />
+        {drawn ? (
+          <path
+            d={path}
+            fill="none"
+            strokeWidth={strokeWidth}
+            strokeDasharray={async ? '5 5' : undefined}
+            className="transition-[stroke,stroke-width] duration-200"
+            style={{ stroke: colour }}
+          />
+        ) : (
+          <m.path
+            d={path}
+            fill="none"
+            strokeWidth={strokeWidth}
+            strokeDasharray={async ? '5 5' : undefined}
+            className="transition-[stroke,stroke-width] duration-200"
+            style={{ stroke: colour }}
+            {...reveal}
+            transition={{ duration: DRAW_S, delay, ease: EASE_OUT }}
+            onAnimationComplete={() => setDrawn(true)}
+          />
+        )}
         <m.path
-          d={path}
-          fill="none"
-          strokeWidth={selected ? 2.5 : active ? 2 : 1.5}
-          strokeDasharray={async ? '5 5' : undefined}
-          markerEnd={`url(#${active ? canvas.markers.active : canvas.markers.idle})`}
-          className="transition-[stroke,stroke-width] duration-200"
-          style={{ stroke: active ? 'var(--accent)' : 'var(--edge)' }}
-          {...reveal}
-          transition={{ duration: 0.55, delay: canvas.building ? appearDelay : 0, ease: EASE_OUT }}
+          d={arrow.outline}
+          strokeWidth={1.5}
+          strokeLinejoin="round"
+          className="transition-[fill,stroke] duration-200"
+          style={{ fill: colour, stroke: colour }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.15, delay: delay + (canvas.building ? DRAW_S * 0.8 : 0) }}
         />
-        {!reduceMotion && (
+        {canvas.particles && !reduceMotion && (
           <m.circle
             r={async ? 2.25 : 2.5}
             style={{ fill: `var(--cat-${sourceCategory})` }}
