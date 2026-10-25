@@ -1,5 +1,5 @@
 import { type DiagramDocument, DEFAULT_NODE_SIZE } from '@archdraft/core';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PanelSlot } from '../src/components/PanelSlot.tsx';
@@ -181,5 +181,85 @@ describe('Inspector', () => {
     expect(editorStore.getState().connectingFrom).toBe('api');
     // On narrow screens the panel steps aside so the target can be tapped.
     expect(screen.queryByRole('region')).not.toBeInTheDocument();
+  });
+});
+
+describe('Inspector on narrow screens', () => {
+  beforeEach(() => {
+    editorStore.getState().load(document, { direction: 'TB', templateId: null });
+  });
+
+  const handle = (name: string) => screen.getByRole('button', { name });
+
+  it('opens as a strip with the name, the type and the quick actions', () => {
+    render(<PanelSlot placement="bottom" />);
+    inspect('node', 'db');
+    const panel = screen.getByRole('region', { name: 'Database' });
+    expect(within(panel).getByText('Relational database')).toBeInTheDocument();
+    for (const action of [
+      strings.inspector.connect,
+      strings.inspector.duplicate,
+      strings.inspector.delete,
+    ]) {
+      expect(within(panel).getByRole('button', { name: action })).toBeInTheDocument();
+    }
+    expect(within(panel).queryByLabelText(strings.inspector.name)).not.toBeInTheDocument();
+    expect(handle(strings.inspector.expand)).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('expands to every field from its handle and collapses again', async () => {
+    const user = userEvent.setup();
+    render(<PanelSlot placement="bottom" />);
+    inspect('node', 'db');
+    await user.click(handle(strings.inspector.expand));
+    expect(await screen.findByLabelText(strings.inspector.name)).toHaveValue('Database');
+    expect(handle(strings.inspector.collapse)).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(handle(strings.inspector.collapse));
+    await waitFor(() =>
+      expect(screen.queryByLabelText(strings.inspector.name)).not.toBeInTheDocument(),
+    );
+  });
+
+  it('opens collapsed again for the next selection', async () => {
+    const user = userEvent.setup();
+    render(<PanelSlot placement="bottom" />);
+    inspect('node', 'db');
+    await user.click(handle(strings.inspector.expand));
+    inspect('node', 'api');
+    await screen.findByRole('region', { name: 'API' });
+    expect(handle(strings.inspector.expand)).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('duplicates and deletes from the strip', async () => {
+    const user = userEvent.setup();
+    render(<PanelSlot placement="bottom" />);
+    inspect('node', 'api');
+    await user.click(screen.getByRole('button', { name: strings.inspector.duplicate }));
+    expect(editorStore.getState().current?.document.graph.nodes).toHaveLength(4);
+    await user.click(await screen.findByRole('button', { name: strings.inspector.delete }));
+    expect(editorStore.getState().current?.document.graph.nodes).toHaveLength(3);
+  });
+
+  it('shows the ends of a connection in its strip, with only the delete action', () => {
+    render(<PanelSlot placement="bottom" />);
+    inspect('edge', 'api-db');
+    const panel = screen.getByRole('region', { name: strings.inspector.connection });
+    expect(within(panel).getByText('API → Database')).toBeInTheDocument();
+    expect(
+      within(panel).getByRole('button', { name: strings.inspector.delete }),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).queryByRole('button', { name: strings.inspector.duplicate }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('ignores the expanded state beside the diagram', () => {
+    render(<PanelSlot placement="side" />);
+    inspect('node', 'db');
+    expect(screen.getByLabelText(strings.inspector.name)).toHaveValue('Database');
+    expect(
+      screen.queryByRole('button', { name: strings.inspector.expand }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -58,6 +58,11 @@ export interface EditorState {
   readonly selection: Selection | null;
   /** Component that a connection started from the inspector leaves from. */
   readonly connectingFrom: string | null;
+  /**
+   * Selection whose inspector was expanded on a narrow screen. Any other
+   * selection opens it collapsed, as a strip with its name and quick actions.
+   */
+  readonly expandedSelection: Selection | null;
   /** Why the last edit was not made, until it is dismissed. */
   readonly message: EditorMessage | null;
   /** Template being laid out to open next, shown as chosen straight away. */
@@ -86,6 +91,8 @@ export interface EditorActions {
   removeSelection: () => void;
   duplicateSelection: () => void;
   select: (selection: Selection | null) => void;
+  /** Expands or collapses the inspector of the current selection on narrow screens. */
+  expandInspector: (expanded: boolean) => void;
   startConnection: (source: string) => void;
   cancelConnection: () => void;
   undo: () => void;
@@ -102,9 +109,20 @@ const INITIAL_STATE: EditorState = {
   future: [],
   selection: null,
   connectingFrom: null,
+  expandedSelection: null,
   message: null,
   opening: null,
 };
+
+/** Whether the inspector of the current selection is expanded on narrow screens. */
+export function isInspectorExpanded(state: EditorState): boolean {
+  const { selection, expandedSelection } = state;
+  return (
+    selection !== null &&
+    expandedSelection?.type === selection.type &&
+    expandedSelection.id === selection.id
+  );
+}
 
 /** A sentence for the person editing, from a validation issue of the edited graph. */
 export function describeIssue(issue: ValidationIssue, graph: ArchitectureGraph): string {
@@ -197,6 +215,7 @@ export function createEditorStore() {
           future: [],
           selection: null,
           connectingFrom: null,
+          expandedSelection: null,
           opening: null,
         });
       },
@@ -220,6 +239,7 @@ export function createEditorStore() {
         if (selection?.type === 'node') apply((document) => duplicate(document, selection.id));
       },
       select: (selection) => set({ selection, connectingFrom: null }),
+      expandInspector: (expanded) => set({ expandedSelection: expanded ? get().selection : null }),
       startConnection: (source) => set({ connectingFrom: source, message: null }),
       cancelConnection: () => set({ connectingFrom: null }),
       undo: () => {

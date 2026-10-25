@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'motion/react';
-import { useEditor } from '../editor/store.ts';
+import { isInspectorExpanded, useEditor } from '../editor/store.ts';
 import { useReview } from '../review/review-store.ts';
 import type { PanelPlacement } from './FloatingPanel.tsx';
 import { Inspector, useInspecting } from './Inspector.tsx';
@@ -15,13 +15,20 @@ export function PanelSlot({ placement }: { placement: PanelPlacement }) {
   const inspecting = useInspecting(placement);
   const selection = useEditor((state) => state.selection);
   const graph = useEditor((state) => state.current?.document.graph);
+  const expanded = useEditor(isInspectorExpanded);
 
   return (
     <AnimatePresence mode="popLayout" initial={false}>
       {reviewOpen ? (
         <ReviewPanel key="review" placement={placement} />
       ) : inspecting && selection && graph ? (
-        <Inspector key="inspector" placement={placement} selection={selection} graph={graph} />
+        <Inspector
+          key="inspector"
+          placement={placement}
+          selection={selection}
+          graph={graph}
+          expanded={expanded}
+        />
       ) : null}
     </AnimatePresence>
   );
