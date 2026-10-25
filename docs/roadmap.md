@@ -292,9 +292,9 @@ Criterios de aceptación: tests de las figuras en core, layout y editor, de la g
 
 Estado: hecha (2026-10-25). Documentado en `docs/modulos/web.md` y ADR 0020.
 
-Objetivo: a petición del propietario, cambiar entre inglés y español con un único botón con bandera en lugar del enlace al código fuente, y quitar el enlace de React Flow de la esquina del lienzo.
+Objetivo: a petición del propietario, cambiar entre inglés y español con un único botón en lugar del enlace al código fuente (primero con banderas y después, a petición suya, con el código EN o ES del idioma actual), y quitar el enlace de React Flow de la esquina del lienzo.
 
-Entregables: diccionarios inglés y español con las mismas claves, idioma en un store con preferencia guardada y detección del navegador, tipos de nodo, reglas, hallazgos y plantillas en español, plantilla sin editar que sigue al idioma, botón con banderas SVG, nombres de componentes en hasta dos líneas, búsqueda sin tildes y crédito a React Flow en el README.
+Entregables: diccionarios inglés y español con las mismas claves, idioma en un store con preferencia guardada y detección del navegador, tipos de nodo, reglas, hallazgos y plantillas en español, plantilla sin editar que sigue al idioma, botón con el código del idioma, nombres de componentes en hasta dos líneas, búsqueda sin tildes y crédito a React Flow en el README.
 
 Criterios de aceptación: tests de los diccionarios, de los hallazgos en los dos idiomas, de las plantillas traducidas, de la detección y del cambio de idioma en la aplicación; capturas en español en escritorio, oscuro y móvil, y comprobación de que ningún nombre de las plantillas se corta.
 
