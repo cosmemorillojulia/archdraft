@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { type ArchitectureGraph, importJson, toJson } from '../src/index.ts';
+import {
+  type ArchitectureGraph,
+  type DiagramDocument,
+  documentToJson,
+  importDocument,
+  importJson,
+  toJson,
+} from '../src/index.ts';
 import { threeTierGraph } from './fixtures.ts';
 
 describe('toJson', () => {
@@ -152,5 +159,85 @@ describe('importJson', () => {
     const result = importJson(text);
     expect(result.success).toBe(false);
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+});
+
+describe('documentToJson and importDocument', () => {
+  const graph: ArchitectureGraph = {
+    schemaVersion: 1,
+    title: 'Pair',
+    provider: 'aws',
+    nodes: [
+      { id: 'api', kind: 'service', label: 'API' },
+      { id: 'db', kind: 'relational-db', label: 'DB' },
+    ],
+    edges: [{ id: 'api-db', source: 'api', target: 'db', protocol: 'sql' }],
+  };
+  const document: DiagramDocument = {
+    graph,
+    layout: {
+      // Entries out of node order, and one for a node that no longer exists.
+      positions: { db: { x: 300, y: 0 }, api: { x: 0, y: 0 } },
+      sizes: { db: { width: 180, height: 64 }, api: { width: 180, height: 64 } },
+    },
+  };
+
+  it('writes the graph in schema order and the layout in node order', () => {
+    const text = documentToJson(document);
+    expect(Object.keys(JSON.parse(text) as object)).toEqual(['graph', 'layout']);
+    expect(text.indexOf('"api": {')).toBeLessThan(text.indexOf('"db": {'));
+    expect(text).toContain('\n  "graph"');
+  });
+
+  it('writes compact JSON on request', () => {
+    expect(documentToJson(document, { indent: 0 })).not.toContain('\n');
+  });
+
+  it('round-trips a document', () => {
+    const result = importDocument(documentToJson(document));
+    expect(result).toEqual({ success: true, graph, layout: document.layout, warnings: [] });
+  });
+
+  it('reads a bare graph without a layout', () => {
+    expect(importDocument(toJson(graph))).toMatchObject({ success: true, graph, layout: null });
+    expect(importDocument(JSON.stringify({ graph }))).toMatchObject({
+      success: true,
+      layout: null,
+    });
+  });
+
+  it('keeps only the layout entries of nodes in the graph', () => {
+    const text = JSON.stringify({
+      graph,
+      layout: { positions: { api: { x: 1, y: 2 }, ghost: { x: 0, y: 0 } }, sizes: {} },
+    });
+    expect(importDocument(text)).toMatchObject({
+      success: true,
+      layout: { positions: { api: { x: 1, y: 2 } }, sizes: {} },
+    });
+  });
+
+  it('rejects a malformed layout with its path', () => {
+    const text = JSON.stringify({ graph, layout: { positions: { api: { x: 'far' } }, sizes: {} } });
+    const result = importDocument(text);
+    expect(result.success).toBe(false);
+    expect(!result.success && result.issues[0]).toMatchObject({
+      code: 'SCHEMA',
+      path: ['layout', 'positions', 'api', 'x'],
+    });
+  });
+
+  it('rejects what importJson rejects in the graph', () => {
+    expect(importDocument('not json')).toMatchObject({
+      success: false,
+      issues: [{ code: 'INVALID_JSON' }],
+    });
+    expect(importDocument(JSON.stringify({ graph: { ...graph, schemaVersion: 9 } }))).toMatchObject(
+      {
+        success: false,
+        issues: [{ code: 'UNSUPPORTED_SCHEMA_VERSION' }],
+      },
+    );
+    expect(importDocument(JSON.stringify({ graph: 5, layout: {} })).success).toBe(false);
   });
 });
