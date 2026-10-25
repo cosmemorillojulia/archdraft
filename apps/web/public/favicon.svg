@@ -1,6 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="4" fill="#2f4bb8"/>
-  <path d="M7 24 16 7l9 17" fill="none" stroke="#f7f8f6" stroke-width="2.5" stroke-linejoin="round"/>
-  <path d="M11 18h10" stroke="#f7f8f6" stroke-width="2.5"/>
-  <circle cx="16" cy="7" r="2.2" fill="#f7f8f6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Archdraft</title>
+  <!-- Proposal G3: a small diagram shaped as an A, inside the corner marks of a drawing sheet. -->
+  <rect width="512" height="512" rx="108" fill="#12284A"/>
+  <g fill="#8FB0DE">
+    <path d="M60 60H122L104 78H78V104L60 122Z"/>
+    <path d="M452 60H390L408 78H434V104L452 122Z"/>
+    <path d="M60 452H122L104 434H78V408L60 390Z"/>
+    <path d="M452 452H390L408 434H434V408L452 390Z"/>
+    <rect x="190" y="264" width="132" height="46"/>
+  </g>
+  <path d="M256 147 145.5 365.5M256 147 366.5 365.5" fill="none" stroke="#F4F6F9" stroke-width="54"/>
+  <g fill="#F4F6F9">
+    <circle cx="256" cy="147" r="59.4"/>
+    <rect x="93.3" y="313.3" width="104.4" height="104.4" rx="30"/>
+    <rect x="314.3" y="313.3" width="104.4" height="104.4" rx="30"/>
+  </g>
 </svg>
