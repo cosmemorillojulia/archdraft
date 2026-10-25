@@ -26,7 +26,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T09 | Editor: edición, inspector, deshacer y rehacer                   | T08           | hecha (2026-10-25) |
 | T10 | Editor: panel de revisión de diseño                              | T02, T09      | hecha (2026-10-25) |
 | T11 | Editor: persistencia local, importación y enlaces para compartir | T03, T09      | hecha (2026-10-25) |
-| T12 | Editor: exportación desde la interfaz                            | T03, T05, T09 | pendiente          |
+| T12 | Editor: exportación desde la interfaz                            | T03, T05, T09 | hecha (2026-10-25) |
 | T13 | API: esqueleto del Worker                                        | T01           | pendiente          |
 | T14 | packages/ai: interfaz y proveedores LLM                          | T01           | pendiente          |
 | T15 | Pipeline de generación y endpoint /v1/generate                   | T06, T13, T14 | pendiente          |
@@ -224,6 +224,8 @@ Entregables: autoguardado en localStorage con clave versionada y manejo de error
 Criterios de aceptación: ida y vuelta de un enlace sin pérdida; un enlace manipulado muestra un error y no rompe la aplicación.
 
 ### T12. Exportación desde la interfaz
+
+Estado: hecha (2026-10-25). Documentado en `docs/modulos/web.md` y `exportacion.md`.
 
 Objetivo: menú de exportación completo.
 

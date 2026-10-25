@@ -14,6 +14,11 @@ apps/web/
   src/
     main.tsx              # punto de entrada
     App.tsx               # proveedores, cabecera fija, lienzo, capas flotantes y añadir en el centro
+    export/
+      diagram-svg.ts      # diagramToSvg: el documento como imagen vectorial, puro
+      browser.ts          # tema, medida de texto, fuente incrustada y PNG en el navegador
+      icon-markup.tsx     # los iconos de Lucide del lienzo como marcado SVG
+      files.ts            # nombres de fichero por formato y descarga
     palette/
       palette-drag.ts     # arrastrar un mosaico con ratón o con el dedo hasta el diagrama
       PaletteDragGhost.tsx# el nodo que sigue al puntero mientras se arrastra
@@ -397,6 +402,22 @@ Al abrir un enlace, que puede estar manipulado, `decodeDocument` rechaza caracte
 
 «Download JSON» descarga el documento con el título como nombre (`three-tier-web-application.archdraft.json`). «Open JSON file» abre un documento o un grafo suelto, por ejemplo uno escrito a mano o exportado con `toJson`; sin disposición, se coloca con ELK.
 
+### Exportar
+
+La sección Export del mismo menú (T12) ofrece:
+
+| Botón        | Resultado                                                                                                   |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| Copy Mermaid | `toMermaid` en el portapapeles, en la dirección en que está dibujado el diagrama, para pegarlo en un README |
+| Mermaid      | El mismo texto como `<título>.mmd`                                                                          |
+| draw.io      | `toDrawio` con la disposición del editor, como `<título>.drawio`, para seguir editando en draw.io           |
+| SVG          | Una imagen vectorial del diagrama, como `<título>.svg`                                                      |
+| PNG          | La misma imagen rasterizada al doble de tamaño, como `<título>.png`; nunca más de 8192 px por lado          |
+
+Las imágenes no son una captura de la pantalla: `diagramToSvg` (`export/diagram-svg.ts`) dibuja el documento como lo dibuja el lienzo en reposo, sin selección, resaltado ni partículas, y entero aunque la vista muestre solo una parte. Es una función pura; recibe los colores del tema en uso (`readPalette` lee los tokens de la página), los nombres en el idioma de la interfaz, los iconos de Lucide del lienzo (`iconMarkup` los pinta una vez en un elemento suelto) y una función que mide el texto con la fuente del editor (`OffscreenCanvas`). Así los nombres se parten en dos líneas y se recortan como en el lienzo. Orden: grupos, conexiones con sus puntas de flecha, componentes y figuras, y las etiquetas de las conexiones encima; una etiqueta que taparía un nodo (una curva que pasa por detrás de él, ver T30) se omite. El SVG lleva la fuente solo por nombre, para que pese poco y se pueda editar; el PNG se dibuja desde un SVG que la lleva dentro (`@font-face` con el fichero en base64), porque una imagen SVG no puede cargar fuentes de fuera. Si el PNG falla, el menú lo dice y propone el SVG.
+
+Los nombres de fichero salen del título (`fileNameFor(title, format)` en `export/files.ts`), sin tildes y con guiones.
+
 ## Idioma
 
 La interfaz está en inglés y en español (ADR 0020). `i18n/en.ts` y `i18n/es.ts` tienen las mismas claves; el tipo `Strings` se deduce del inglés, así que el compilador avisa si al español le falta o le sobra algo. El idioma vive en un store de Zustand (`i18n/locale.ts`): los componentes leen los textos con `useStrings()` y se vuelven a pintar al cambiar, y el código fuera de React usa `currentStrings()` al escribir un mensaje.
@@ -435,7 +456,8 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 - `app.test.tsx`: hoja modal en pantallas estrechas (foco, `inert`, cierre con Escape, botón y fondo) y panel lateral en anchas (sin bloquear la página, cierre con Escape), cabecera solo con el nombre, sin enlaces ni logotipo, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes en React Flow, resaltado y etiquetas de las conexiones al pasar el ratón, distintivo de proveedor, controles de zoom (acercar, alejar, porcentaje y ajustar), cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
 - `editing.test.tsx`: en móvil, tocar un mosaico añade en el centro, selecciona, cierra la hoja y el inspector sustituye a la barra de descripción; con el dedo, mantener un mosaico lo coge, aparta la hoja y lo añade donde se suelta, soltarlo fuera devuelve la hoja y deslizar no lo coge; en escritorio, clic para inspeccionar y renombrar, Enter sobre un nodo enfocado, Supr, Ctrl+Z y el botón de rehacer, Ctrl+D, arrastrar un mosaico con el ratón al lienzo (con su fantasma y sin un segundo nodo por el clic), cancelar sobre un panel o con Escape, rechazo explicado al conectar con un grupo y cierre con Escape.
 - `persistence.test.ts`: ida y vuelta de un enlace sin pérdida (también con una plantilla), fragmentos que no son enlaces, enlaces dañados y demasiado grandes (incluida una bomba de descompresión), abrir un documento con su dirección, un grafo suelto y una disposición parcial, errores sin tocar el editor, dirección deducida, autoguardado con retardo y al parar, aviso único si no se puede guardar, clave versionada y nombres de fichero.
-- `share.test.tsx`: arranque desde lo guardado, desde un enlace (que se quita de la dirección) y con un enlace manipulado (aviso y plantilla), guardado de las ediciones, enlace del menú que abre el mismo diagrama, copia al portapapeles, descarga, apertura de un fichero y cierre con Escape.
+- `export.test.ts`: SVG bien formado, del tamaño del diagrama con su margen y con todo el texto escapado; orden de grupos, conexiones, nodos y etiquetas; conexiones asíncronas discontinuas con punta de flecha y etiqueta; producto, icono y distintivo de proveedor; nombres en español y fronteras discontinuas; etiqueta omitida si tapa un nodo; fuente incrustada solo si se pide; las seis plantillas; partir y recortar texto, escapar XML, mezclar colores, iconos y nombres de fichero por formato.
+- `share.test.tsx`: arranque desde lo guardado, desde un enlace (que se quita de la dirección) y con un enlace manipulado (aviso y plantilla), guardado de las ediciones, enlace del menú que abre el mismo diagrama, copia al portapapeles, descarga, apertura de un fichero, copia de Mermaid en la dirección del dibujo, descarga de Mermaid, draw.io y SVG con su nombre y su contenido, aviso si la imagen no se puede crear y cierre con Escape.
 - `review.test.tsx`: memoización por versión y por reglas desactivadas, severidad más grave y por componente, clave de un hallazgo, reglas desactivadas guardadas y leídas (con entradas desconocidas o rotas), apertura desde la tarjeta, grupos por severidad, filtros, elegir un hallazgo (selección y foco), paso al inspector, explicación, desactivar y activar reglas, revisión sin hallazgos, puntos en el lienzo y cierre con Escape.
 - `inspector.test.tsx`: campos de componente, grupo y conexión; nombre confirmado al salir como un paso, nombre vacío rechazado y restaurado, Escape, producto y proveedor con vuelta a los valores por defecto, hechos operativos de tres valores, instancias en rango, modo inferido del protocolo, borrar e iniciar una conexión.
 - `i18n.test.tsx`: mismas claves en los dos diccionarios, tipos con nombre y descripción, frase de colocación con artículos, singular y plural, hallazgos en inglés idénticos a los de `core` y en español con los nombres de los componentes para un grafo que dispara todas las reglas, plantillas en español completas, válidas y sin hallazgos, producto por defecto, detección del idioma, ediciones en español, cambio de idioma (texto, `lang`, preferencia guardada, código EN o ES del botón, plantilla sin editar traducida sin paso en el historial y diagrama editado que no se traduce), plantillas abiertas en español, búsqueda sin tildes y por el nombre inglés, y lienzo sin el enlace de React Flow.
