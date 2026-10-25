@@ -25,7 +25,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T08 | Editor: lienzo que representa el grafo                           | T04, T06, T07 | hecha (2026-10-25) |
 | T09 | Editor: edición, inspector, deshacer y rehacer                   | T08           | hecha (2026-10-25) |
 | T10 | Editor: panel de revisión de diseño                              | T02, T09      | hecha (2026-10-25) |
-| T11 | Editor: persistencia local, importación y enlaces para compartir | T03, T09      | pendiente          |
+| T11 | Editor: persistencia local, importación y enlaces para compartir | T03, T09      | hecha (2026-10-25) |
 | T12 | Editor: exportación desde la interfaz                            | T03, T05, T09 | pendiente          |
 | T13 | API: esqueleto del Worker                                        | T01           | pendiente          |
 | T14 | packages/ai: interfaz y proveedores LLM                          | T01           | pendiente          |
@@ -211,6 +211,8 @@ Entregables: panel flotante que se abre desde el estado de la revisión de la ba
 Criterios de aceptación: recálculo memoizado por versión del documento; tests del panel.
 
 ### T11. Persistencia local, importación y enlaces para compartir
+
+Estado: hecha (2026-10-25). Documentado en `docs/modulos/web.md`, `docs/modulos/exportacion.md` y ADR 0019. Para no perder la colocación manual, fichero, enlace y autoguardado guardan el documento con su disposición; la carga pasa por `importDocument`, que comparte con `importJson` el tratamiento del grafo.
 
 Objetivo: no perder trabajo y poder compartirlo sin servidor.
 

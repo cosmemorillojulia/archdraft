@@ -10,22 +10,24 @@ packages/core/src/
     labels.ts      # textos comunes: subtítulo del nodo y etiqueta de la arista
     mermaid.ts     # toMermaid
     drawio.ts      # toDrawio
-    json.ts        # toJson, importJson
+    json.ts        # toJson, importJson, documentToJson, importDocument
     index.ts       # API pública del módulo
   migrations.ts    # cadena de migraciones por schemaVersion
 ```
 
 ## API pública
 
-| Export                                | Tipo      | Uso                                                                            |
-| ------------------------------------- | --------- | ------------------------------------------------------------------------------ |
-| `toMermaid(graph, { direction? })`    | Función   | Texto `flowchart` de Mermaid. Dirección `LR` (por defecto), `TB`, `RL` o `BT`  |
-| `MERMAID_DIRECTIONS`                  | Constante | Direcciones admitidas, para el selector de la interfaz                         |
-| `toDrawio(graph, layout)`             | Función   | Fichero `.drawio` sin comprimir, con las posiciones de un `DiagramLayout`      |
-| `toJson(graph)`                       | Función   | JSON indentado con orden de claves fijo                                        |
-| `importJson(text)`                    | Función   | Parseo, migración y validación de un fichero o enlace. Nunca lanza excepciones |
-| `migrateDocument(document, options?)` | Función   | Aplica la cadena de migraciones; lo usa `importJson`                           |
-| `MIGRATIONS`, `Migration`             | Constante | Migraciones registradas, indexadas por la versión de origen                    |
+| Export                                  | Tipo      | Uso                                                                                               |
+| --------------------------------------- | --------- | ------------------------------------------------------------------------------------------------- |
+| `toMermaid(graph, { direction? })`      | Función   | Texto `flowchart` de Mermaid. Dirección `LR` (por defecto), `TB`, `RL` o `BT`                     |
+| `MERMAID_DIRECTIONS`                    | Constante | Direcciones admitidas, para el selector de la interfaz                                            |
+| `toDrawio(graph, layout)`               | Función   | Fichero `.drawio` sin comprimir, con las posiciones de un `DiagramLayout`                         |
+| `toJson(graph)`                         | Función   | JSON indentado con orden de claves fijo                                                           |
+| `importJson(text)`                      | Función   | Parseo, migración y validación de un fichero o enlace. Nunca lanza excepciones                    |
+| `documentToJson(document, { indent? })` | Función   | Documento con disposición, `{ graph, layout }`, en orden estable; `indent: 0` lo escribe compacto |
+| `importDocument(text)`                  | Función   | Lee un documento con disposición o un grafo suelto. Nunca lanza excepciones                       |
+| `migrateDocument(document, options?)`   | Función   | Aplica la cadena de migraciones; lo usa `importJson`                                              |
+| `MIGRATIONS`, `Migration`               | Constante | Migraciones registradas, indexadas por la versión de origen                                       |
 
 `toMermaid`, `toDrawio` y `toJson` esperan un grafo válido. `toMermaid` y `toDrawio` lanzan un error de programación si una arista apunta a un nodo inexistente, porque eso solo ocurre si alguien se salta `parseArchitectureGraph` o `validateGraph`.
 
@@ -180,6 +182,27 @@ XML 1.0 no admite algunos caracteres ni siquiera como referencia: controles C0 s
 3. `parseArchitectureGraph` aplica el esquema y la validación estructural.
 
 Un `__proto__` en el JSON es una propiedad propia del objeto resultante, no modifica prototipos, y el esquema estricto lo rechaza como clave desconocida.
+
+## Documento con disposición
+
+El editor guarda, comparte y descarga el documento completo, no solo el grafo, para no perder la colocación manual (ADR 0019):
+
+```json
+{
+  "graph": { "schemaVersion": 1, "title": "…", "provider": "aws", "nodes": [], "edges": [] },
+  "layout": {
+    "positions": { "api": { "x": 0, "y": 0 } },
+    "sizes": { "api": { "width": 180, "height": 64 } }
+  }
+}
+```
+
+`documentToJson` escribe el grafo con el mismo orden que `toJson` y las entradas de la disposición en el orden de los nodos, así que el texto también es estable. `importDocument(text)` devuelve `{ success, graph, layout, warnings }` o `{ success: false, issues }`:
+
+1. JSON inválido: `INVALID_JSON`, como `importJson`.
+2. Si el objeto tiene la clave `graph`, es un documento; si no, es un grafo suelto y `layout` vale `null`.
+3. El grafo pasa por `migrateDocument` y `parseArchitectureGraph`, igual que en `importJson`.
+4. La disposición se valida con `DiagramLayoutSchema`. Un error se informa como `SCHEMA` con la ruta bajo `layout`. Las entradas de nodos que no están en el grafo se descartan; las que faltan se dejan faltar, y el editor coloca esos nodos con ELK.
 
 ## Migraciones
 
