@@ -22,4 +22,13 @@ describe('logo', () => {
     expect(png.subarray(1, 4).toString()).toBe('PNG');
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([180, 180]);
   });
+
+  it('has a 1200 × 630 card for sharing, announced with absolute URLs', () => {
+    const html = read('index.html');
+    const site = 'https://cosmemorillojulia.github.io/archdraft/';
+    expect(html).toContain(`<meta property="og:image" content="${site}og-image.png" />`);
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image" />');
+    const png = readFileSync(fileOf('public/og-image.png'));
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630]);
+  });
 });

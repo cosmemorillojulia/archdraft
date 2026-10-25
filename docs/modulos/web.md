@@ -137,6 +137,10 @@ La utilidad `floating` da a cada capa una superficie al 88 % de opacidad con des
 
 El icono de la aplicación es la propuesta G3, elegida por el propietario entre varias rondas: un pequeño diagrama con forma de A (un nodo redondo arriba, dos cuadrados abajo y una conexión que hace de travesaño) dentro de las marcas de esquina de una hoja de dibujo. Tres colores: marino `#12284A` de fondo, papel `#F4F6F9` para el grafo y acero claro `#8FB0DE` para las marcas y el travesaño. Se ve como icono de la pestaña (`public/favicon.svg`, en una cuadrícula de 512 con esquinas redondeadas) y en la pantalla de inicio de iOS (`public/apple-touch-icon.png`, 180 × 180 y cuadrado, porque iOS redondea los iconos), y encabeza el README. La cabecera sigue sin logotipo gráfico: el nombre en mayúsculas inclinadas hace de marca (ADR 0015).
 
+### Tarjeta para compartir
+
+`public/og-image.png` (1200 × 630) es la imagen que muestran WhatsApp, LinkedIn, X o Slack al pegar el enlace: logo, nombre, lema y una captura del editor con la plantilla de tres capas. Las etiquetas `og:*` y `twitter:card` de `index.html` la anuncian con URL absolutas, porque los rastreadores no resuelven rutas relativas. Si cambia el aspecto del editor, hay que regenerar la imagen a mano; `test/brand.test.ts` solo comprueba que existe, que mide 1200 × 630 y que está enlazada.
+
 ### Tipografía
 
 Instrument Sans variable (peso 400 a 700, anchura 75 % a 100 %), autoalojada con `@fontsource-variable/instrument-sans`: unos 57 KB para el alfabeto latino básico. Escala: 14 px para la interfaz, 18 px bold para el nombre en la cabecera, 13 px semibold para la etiqueta de un nodo y 11 a 12 px para textos secundarios. Sin mayúsculas sostenidas, salvo el nombre de la cabecera, que hace de logotipo: en mayúsculas con `text-transform` (el texto sigue siendo Archdraft para los lectores de pantalla), con un espaciado de 0,06 em y una inclinación de 8° (`skewX`) en lugar de la cursiva de Instrument Sans, que sería otro archivo de fuente solo para esta palabra; en mayúsculas, la cursiva apenas cambia la forma de las letras.
