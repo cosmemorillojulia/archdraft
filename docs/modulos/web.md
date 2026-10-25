@@ -139,7 +139,7 @@ El icono de la aplicación es la propuesta G3, elegida por el propietario entre 
 
 ### Tarjeta para compartir
 
-`public/og-image.png` (1200 × 630) es la imagen que muestran WhatsApp, LinkedIn, X o Slack al pegar el enlace: logo, nombre, lema y una captura del editor con la plantilla de tres capas. Las etiquetas `og:*` y `twitter:card` de `index.html` la anuncian con URL absolutas, porque los rastreadores no resuelven rutas relativas. Si cambia el aspecto del editor, hay que regenerar la imagen a mano; `test/brand.test.ts` solo comprueba que existe, que mide 1200 × 630 y que está enlazada.
+`public/og-image.png` (1200 × 630, unos 260 KB, por debajo de los 300 KB que exige WhatsApp) es la imagen que muestran WhatsApp, LinkedIn, X o Slack al pegar el enlace: logo, nombre con la misma tipografía inclinada de la cabecera, lema y un diagrama pequeño en modo oscuro con un componente de cada categoría de color (API en AWS con inicio de sesión, función, IA, datos, cola, monitorización y un sistema externo a cada lado de la región). No es una captura del editor, sino un dibujo con los mismos colores e iconos; se renderizó a 3x y se redujo para que quede nítida. Las etiquetas `og:*` y `twitter:card` de `index.html` la anuncian con URL absolutas, porque los rastreadores no resuelven rutas relativas. Si cambian los colores o la tipografía del editor, hay que regenerar la imagen a mano; `test/brand.test.ts` solo comprueba que existe, que mide 1200 × 630 y que está enlazada.
 
 ### Tipografía
 
