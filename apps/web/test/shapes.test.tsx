@@ -12,7 +12,7 @@ import { PanelSlot } from '../src/components/PanelSlot.tsx';
 import { editorStore } from '../src/editor/store.ts';
 import { SAVED_DOCUMENT_KEY } from '../src/persist/autosave.ts';
 import { FLOW_ANIMATION_KEY, preferencesStore } from '../src/preferences.ts';
-import { strings } from '../src/strings.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 /** A small flowchart drawn with generic shapes, and one component. */
 const flowchart: DiagramDocument = {
@@ -76,8 +76,8 @@ describe('generic shapes', () => {
       within(diagram).getByText('Approved?').closest('.react-flow__node-shape'),
     ).not.toBeNull();
     const card = screen.getByRole('region', { name: 'Approval flow' });
-    expect(card).toHaveTextContent(`1${strings.card.components}`);
-    expect(card).toHaveTextContent(`3${strings.card.shapes}`);
+    expect(card).toHaveTextContent(`1${strings.card.components(1)}`);
+    expect(card).toHaveTextContent(`3${strings.card.shapes(3)}`);
   });
 
   it('have a name and a description, but no product, provider or operations', () => {

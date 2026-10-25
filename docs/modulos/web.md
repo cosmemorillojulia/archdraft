@@ -14,7 +14,12 @@ apps/web/
   src/
     main.tsx              # punto de entrada
     App.tsx               # proveedores, cabecera fija, lienzo, capas flotantes y añadir en el centro
-    strings.ts            # todas las cadenas visibles (ADR 0009)
+    i18n/
+      en.ts               # textos en inglés y el tipo Strings (ADR 0009 y 0020)
+      es.ts               # textos en español, con las mismas claves
+      locale.ts           # idioma: store, useStrings, currentStrings, detección y lang de la página
+      templates.ts        # plantillas en español, por id de nodo y de arista
+      labels.ts           # productName: producto de un nodo con el nombre del tipo en su idioma
     theme.ts              # useTheme: tema claro u oscuro, guardado, con fundido de colores
     motion.ts             # tokens de movimiento: curva y muelles compartidos
     motion-features.ts    # funciones de Motion que se cargan aparte
@@ -22,7 +27,7 @@ apps/web/
     preferences.ts        # preferencias de la vista: animación del flujo (localStorage)
     icons.ts              # icono de Lucide de cada tipo de nodo
     styles.css            # tokens, tema oscuro, utilidad floating, estilos de React Flow
-    components/           # Button, Header, HistoryControls, DiagramCard, ComponentsPanel, PromptDock,
+    components/           # Button, Header, HistoryControls, LanguageToggle, DiagramCard, ComponentsPanel, PromptDock,
                           # FloatingPanel, PanelSlot, Inspector, fields (campos del inspector),
                           # ReviewPanel, EditorNotice, ShareMenu (compartir y ficheros)
     persist/
@@ -80,7 +85,7 @@ La `base` de Vite es `/archdraft/` también en desarrollo: GitHub Pages sirve el
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Archdraft  Describe a cloud architecture…    Source code  ◐  │  cabecera fija
+│ ARCHDRAFT  Describe a cloud architecture…  ↶ ↷ Share [ES] ◐ │  cabecera fija
 ├──────────────────────────────────────────────────────────────┤
 │ [Show components]              [Título del diagrama     AWS] │
 │                                [10 components 8 connections] │
@@ -155,7 +160,7 @@ Animaciones del recorrido:
 
 | Pieza             | Contenido                                                                                                                                                                                                                                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Header`          | Barra fija: nombre del producto en mayúsculas inclinadas, sin logotipo gráfico, descripción, deshacer y rehacer (`HistoryControls`), compartir y ficheros (`ShareMenu`), enlace al código (solo icono en móvil) y cambio de tema                                                   |
+| `Header`          | Barra fija: nombre del producto en mayúsculas inclinadas, sin logotipo gráfico, descripción, deshacer y rehacer (`HistoryControls`), compartir y ficheros (`ShareMenu`), idioma (`LanguageToggle`) y cambio de tema                                                                |
 | `DiagramCard`     | Tarjeta flotante: título, proveedor, descripción recortada a dos líneas, número de componentes y conexiones, y estado de la revisión de diseño en el color del hallazgo más grave; es el botón que abre la revisión, y una región `role="status"` oculta anuncia sus cambios       |
 | `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón. Cada mosaico es un botón «Add …» (ver Edición)                                                                                 |
 | `PromptDock`      | Campo que crece con el texto (`field-sizing: content`) con ejemplos rotatorios decorativos (`aria-hidden`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, y las seis plantillas con icono en una cápsula con indicador deslizante (`aria-pressed`) |
@@ -217,11 +222,11 @@ La versión empaquetada de elkjs, al ejecutarse en un contexto con `self` y sin 
 
 El zoom va del 20 % al 200 % y los botones muestran el porcentaje actual. Cada diagrama que se abre (una plantilla, o deshacer hasta otro diagrama) se muestra entero: `initialViewport` lo encaja y lo centra en la parte del lienzo que no tapan las capas flotantes (`canvasInsets` en `App.tsx`), sin pasar del 120 % para que uno pequeño no se agrande y sin bajar del 20 %; si ni así cabe, empieza arriba y centrado. El botón de ajustar hace el mismo cálculo con una animación. En móvil, las plantillas se ven enteras entre el 34 % y el 54 %, así que los textos de los nodos quedan pequeños hasta acercar con los dedos; antes, por T29, la vista inicial no bajaba del 90 % en móvil (60 % en escritorio) y empezaba arriba; se cambió a petición del propietario para ver siempre el diagrama completo al abrirlo. Al abrir o cerrar la paleta en escritorio, la vista se desliza la mitad del ancho del panel para seguir centrada en el espacio libre.
 
-Los botones de zoom y el de la animación del flujo están abajo a la izquierda, en un grupo llamado «View»; en pantallas estrechas suben por encima de la barra de descripción y miden 40 px para el dedo. A partir de 1280 px aparece un minimapa abajo a la derecha, con los nodos en el color de su categoría, que también sirve para desplazarse y hacer zoom. Se mantiene la atribución de React Flow.
+Los botones de zoom y el de la animación del flujo están abajo a la izquierda, en un grupo llamado «View»; en pantallas estrechas suben por encima de la barra de descripción y miden 40 px para el dedo. A partir de 1280 px aparece un minimapa abajo a la derecha, con los nodos en el color de su categoría, que también sirve para desplazarse y hacer zoom. El enlace de atribución que React Flow pone en la esquina está oculto (`proOptions.hideAttribution`); su licencia MIT lo permite y su documentación lo contempla, y el crédito está en el README.
 
 ### Nodos y aristas
 
-- Componente: tarjeta con el icono sobre el color de su categoría, el nombre y el producto en una línea cada uno, recortados con puntos suspensivos y completos en el `title`; el distintivo de proveedor flota sobre el borde superior.
+- Componente: tarjeta con el icono sobre el color de su categoría, el nombre en hasta dos líneas y el producto en una, recortados con puntos suspensivos y completos en el `title`; el distintivo de proveedor flota sobre el borde superior.
 - Contenedor: rectángulo opaco teñido con el acento, más intenso cuanto más anidado, para que los puntos del fondo no se vean dentro; `boundary` con borde discontinuo; cabecera con icono y nombre.
 - Figura genérica: caja, círculo, rombo o nota con el nombre centrado (hasta tres líneas), en gris neutro; la nota, en amarillo papel. El rombo y la nota se dibujan con un SVG que se estira con la figura y un trazo que no se deforma. Seleccionada, muestra tiradores para cambiar su tamaño (`NodeResizer`; el círculo mantiene la proporción, mínimo 40 px). El tamaño en curso vive en el lienzo, como el arrastre, y llega al store al soltar como un solo paso (`resizeNode`, que redondea, respeta el relleno del grupo y hace crecer los grupos).
 - Arista: curva de Bézier entre los conectores, trazada al aparecer (las asíncronas, discontinuas, aparecen con un fundido porque el trazado también usa `stroke-dasharray`), con una partícula en bucle y una punta de flecha propia. La punta no es un `marker` de SVG: un marcador escala con el grosor del trazo, no puede fundir su color y se ve antes de que la línea termine de trazarse. `arrowhead` (`geometry.ts`) calcula un triángulo de 9 × 9 px con la punta en el borde del destino, y la curva termina en el centro de su base; la punta aparece cuando llega la línea y cambia de color con ella. Cuando termina de trazarse, la línea pasa a ser un `path` normal: el trazado usa un guion normalizado (`pathLength`) que Chromium no reescala cuando la curva cambia de longitud, y la línea se quedaba corta al mover un nodo.
@@ -363,6 +368,19 @@ Al abrir un enlace, que puede estar manipulado, `decodeDocument` rechaza caracte
 
 «Download JSON» descarga el documento con el título como nombre (`three-tier-web-application.archdraft.json`). «Open JSON file» abre un documento o un grafo suelto, por ejemplo uno escrito a mano o exportado con `toJson`; sin disposición, se coloca con ELK.
 
+## Idioma
+
+La interfaz está en inglés y en español (ADR 0020). `i18n/en.ts` y `i18n/es.ts` tienen las mismas claves; el tipo `Strings` se deduce del inglés, así que el compilador avisa si al español le falta o le sobra algo. El idioma vive en un store de Zustand (`i18n/locale.ts`): los componentes leen los textos con `useStrings()` y se vuelven a pintar al cambiar, y el código fuera de React usa `currentStrings()` al escribir un mensaje.
+
+- Idioma inicial: el elegido antes (`archdraft:locale` en `localStorage`), si no español cuando el primer idioma del navegador empieza por `es`, y si no inglés. `document.documentElement.lang` lo sigue.
+- `LanguageToggle`, en la cabecera entre compartir y el tema: un botón con la bandera del idioma al que lleva (la de España en inglés, la del Reino Unido en español), dibujada en SVG porque los emojis de bandera no se ven en Windows. Al pulsarlo la bandera gira sobre su eje vertical en 280 ms. Su nombre es «Ver en español» o «View in English», con el `lang` de ese idioma.
+- Nombres y descripciones de los tipos, producto genérico, reglas y hallazgos: el inglés reutiliza los textos de `@archdraft/core`; el español redacta cada hallazgo a partir de la regla, la gravedad, los nodos y aristas implicados y los atributos del primer nodo.
+- Plantillas: se abren en el idioma de la interfaz (`localizedTemplate`, que devuelve siempre el mismo objeto para la misma plantilla e idioma). Si se cambia de idioma con una plantilla sin editar, se sustituye por la del idioma nuevo con la misma disposición y sin paso en el historial (`followLanguage` y `replaceGraph`); mover nodos no cuenta como editar. Un diagrama editado, abierto de un fichero o de un enlace no se traduce.
+- Los componentes nuevos se llaman como su tipo en el idioma de la interfaz («Caché», «Caché 2»).
+- El buscador de la paleta ignora mayúsculas y tildes y encuentra también por el nombre en inglés: «cache» encuentra «Caché» y «relational» encuentra «Base de datos relacional».
+- Los nombres de las plantillas en la barra se acortaron en español («Tres capas», «Analítica») para que quepan en el ancho de la barra en escritorio.
+- Límites conocidos: los mensajes de validación que vienen de `core` o de Zod siguen en inglés, y un aviso que ya está en pantalla no cambia de idioma.
+
 ## Tema
 
 `useTheme` parte del tema que ya aplicó el script de `index.html` (preferencia guardada o tema del sistema) y lo guarda en `localStorage` solo cuando el usuario lo cambia. Si el almacenamiento está bloqueado, el tema se aplica igualmente durante la visita y se registra un aviso en la consola. El script inline evita el destello del tema equivocado antes de que cargue React; si el almacenamiento está bloqueado, usa el tema del sistema. El tema se decide al cargar: un cambio del tema del sistema con la página abierta se aplica al recargar. El estado del tema vive en `Header`, de modo que un cambio solo vuelve a pintar el botón.
@@ -385,12 +403,13 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 
 ## Tests
 
-- `app.test.tsx`: hoja modal en pantallas estrechas (foco, `inert`, cierre con Escape, botón y fondo) y panel lateral en anchas (sin bloquear la página, cierre con Escape), cabecera solo con el nombre, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes en React Flow, resaltado y etiquetas de las conexiones al pasar el ratón, distintivo de proveedor, controles de zoom (acercar, alejar, porcentaje y ajustar), cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
+- `app.test.tsx`: hoja modal en pantallas estrechas (foco, `inert`, cierre con Escape, botón y fondo) y panel lateral en anchas (sin bloquear la página, cierre con Escape), cabecera solo con el nombre y sin enlaces, con las banderas como únicos dibujos, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes en React Flow, resaltado y etiquetas de las conexiones al pasar el ratón, distintivo de proveedor, controles de zoom (acercar, alejar, porcentaje y ajustar), cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
 - `editing.test.tsx`: en móvil, tocar un mosaico añade en el centro, selecciona, cierra la hoja y el inspector sustituye a la barra de descripción; en escritorio, clic para inspeccionar y renombrar, Enter sobre un nodo enfocado, Supr, Ctrl+Z y el botón de rehacer, Ctrl+D, soltar un mosaico en el lienzo, rechazo explicado al conectar con un grupo y cierre con Escape.
 - `persistence.test.ts`: ida y vuelta de un enlace sin pérdida (también con una plantilla), fragmentos que no son enlaces, enlaces dañados y demasiado grandes (incluida una bomba de descompresión), abrir un documento con su dirección, un grafo suelto y una disposición parcial, errores sin tocar el editor, dirección deducida, autoguardado con retardo y al parar, aviso único si no se puede guardar, clave versionada y nombres de fichero.
 - `share.test.tsx`: arranque desde lo guardado, desde un enlace (que se quita de la dirección) y con un enlace manipulado (aviso y plantilla), guardado de las ediciones, enlace del menú que abre el mismo diagrama, copia al portapapeles, descarga, apertura de un fichero y cierre con Escape.
 - `review.test.tsx`: memoización por versión y por reglas desactivadas, severidad más grave y por componente, clave de un hallazgo, reglas desactivadas guardadas y leídas (con entradas desconocidas o rotas), apertura desde la tarjeta, grupos por severidad, filtros, elegir un hallazgo (selección y foco), paso al inspector, explicación, desactivar y activar reglas, revisión sin hallazgos, puntos en el lienzo y cierre con Escape.
 - `inspector.test.tsx`: campos de componente, grupo y conexión; nombre confirmado al salir como un paso, nombre vacío rechazado y restaurado, Escape, producto y proveedor con vuelta a los valores por defecto, hechos operativos de tres valores, instancias en rango, modo inferido del protocolo, borrar e iniciar una conexión.
+- `i18n.test.tsx`: mismas claves en los dos diccionarios, tipos con nombre y descripción, frase de colocación con artículos, singular y plural, hallazgos en inglés idénticos a los de `core` y en español con los nombres de los componentes para un grafo que dispara todas las reglas, plantillas en español completas, válidas y sin hallazgos, producto por defecto, detección del idioma, ediciones en español, cambio de idioma (texto, `lang`, preferencia guardada, bandera, plantilla sin editar traducida sin paso en el historial y diagrama editado que no se traduce), plantillas abiertas en español, búsqueda sin tildes y por el nombre inglés, y lienzo sin el enlace de React Flow.
 - `shapes.test.tsx`: figuras primero en la paleta, dibujadas con su nombre y contadas aparte en la tarjeta, inspector sin producto ni proveedor y con «Connect», botón de la animación del flujo (partículas, `aria-pressed`, `title` y preferencia guardada), flechas cuya base es el final de la línea y aristas que no se vuelven a montar al seleccionar o editar un nodo.
 - `operations.test.ts`: ids y nombres numerados, reglas de contención, grupo bajo un punto, añadir (nivel superior, dentro de un grupo, hueco libre, crecimiento de grupos, límite de nodos), conectar (repetida, con un grupo), mover (dentro del grupo, sin cambios, fuera de todos, a otro grupo, relleno, nunca dentro de sí), cambiar el tamaño (redondeo, sin cambios, relleno y crecimiento de grupos), borrar con contenido, duplicar con contenido y aristas internas, y actualizaciones de campos.
 - `store.test.ts`: historial (deshacer, rehacer, rama nueva, límite de 100, ediciones sin cambios), cambio de tamaño como un paso, rechazos con su mensaje, ids de mensaje, borrar y duplicar la selección, conexión pendiente y apertura de diagramas como paso del historial.

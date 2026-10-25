@@ -6,7 +6,7 @@ import { App } from '../src/App.tsx';
 import { KIND_MIME } from '../src/canvas/palette-drop.ts';
 import { editorStore } from '../src/editor/store.ts';
 import { WIDE_SCREEN } from '../src/media.ts';
-import { strings } from '../src/strings.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 const template = ARCHITECTURE_TEMPLATES['three-tier-web'];
 

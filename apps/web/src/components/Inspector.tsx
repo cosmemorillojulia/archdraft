@@ -12,7 +12,6 @@ import {
   LIMITS,
   type NodeAttributes,
   resolveEdgeMode,
-  resolveServiceName,
 } from '@archdraft/core';
 import { ArrowRight, Cable, Copy, Spline, Trash2, X } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
@@ -21,16 +20,24 @@ import type { EdgePatch, NodePatch, Selection } from '../editor/operations.ts';
 import { editorStore, useEditor } from '../editor/store.ts';
 import { KIND_ICONS } from '../icons.ts';
 import { EASE_OUT } from '../motion.ts';
-import { strings } from '../strings.ts';
+import type { Strings } from '../i18n/en.ts';
+import { productName } from '../i18n/labels.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 import { ChoiceField, NumberField, SelectField, TextField } from './fields.tsx';
 import { FloatingPanel, type PanelPlacement } from './FloatingPanel.tsx';
 
 type Flag = Exclude<keyof NodeAttributes, 'replicas'>;
-const FLAGS = Object.keys(strings.inspector.attributes) as Flag[];
+const FLAGS: readonly Flag[] = [
+  'multiAz',
+  'autoscaling',
+  'publiclyAccessible',
+  'encryptedAtRest',
+  'managed',
+];
 type TriState = 'unset' | 'yes' | 'no';
 
-const TRI_STATE_OPTIONS: readonly { value: TriState; label: string }[] = [
+const triStateOptions = (strings: Strings): readonly { value: TriState; label: string }[] => [
   { value: 'unset', label: strings.inspector.notSet },
   { value: 'yes', label: strings.inspector.yes },
   { value: 'no', label: strings.inspector.no },
@@ -153,6 +160,7 @@ function NodeForm({
   graph: ArchitectureGraph;
   headingId: string;
 }) {
+  const strings = useStrings();
   const definition = getNodeDefinition(node.kind);
   const Icon = KIND_ICONS[node.kind];
   const container = isContainerKind(node.kind);
@@ -160,7 +168,7 @@ function NodeForm({
   const plain = container || isShapeKind(node.kind);
   const update = (patch: NodePatch) => editorStore.getState().updateNode(node.id, patch);
   const { service: _service, ...withoutService } = node;
-  const defaultService = resolveServiceName(withoutService, graph);
+  const defaultService = productName(withoutService, graph, strings.kinds);
   const attributes = node.attributes ?? {};
 
   const providerOptions = [
@@ -178,7 +186,7 @@ function NodeForm({
         closeLabel={strings.inspector.close}
         onClose={() => editorStore.getState().select(null)}
         title={node.label}
-        subtitle={definition.label}
+        subtitle={strings.kinds[node.kind].label}
         icon={
           <span
             className="flex size-9 shrink-0 items-center justify-center rounded-[10px]"
@@ -246,7 +254,7 @@ function NodeForm({
                 key={flag}
                 label={strings.inspector.attributes[flag]}
                 value={toTriState(attributes[flag])}
-                options={TRI_STATE_OPTIONS}
+                options={triStateOptions(strings)}
                 onChange={(value) =>
                   update({
                     attributes: cleanAttributes({ ...attributes, [flag]: fromTriState(value) }),
@@ -295,6 +303,7 @@ function EdgeForm({
   graph: ArchitectureGraph;
   headingId: string;
 }) {
+  const strings = useStrings();
   const labelOf = (id: string) => graph.nodes.find((node) => node.id === id)?.label ?? id;
   const update = (patch: EdgePatch) => editorStore.getState().updateEdge(edge.id, patch);
   const { mode: _mode, ...withoutMode } = edge;

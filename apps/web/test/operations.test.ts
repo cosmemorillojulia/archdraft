@@ -24,7 +24,7 @@ import {
   updateEdge,
   updateNode,
 } from '../src/editor/operations.ts';
-import { strings } from '../src/strings.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 /*
  * A region holding a network with one subnet, a service inside the subnet,

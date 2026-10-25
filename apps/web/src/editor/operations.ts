@@ -18,7 +18,7 @@ import {
   type Size,
 } from '@archdraft/core';
 import { absoluteBoxes, type Box, nestingDepths } from '../canvas/geometry.ts';
-import { strings } from '../strings.ts';
+import { currentStrings } from '../i18n/locale.ts';
 
 /**
  * Edits of a diagram document as pure functions. Each one returns the next
@@ -249,17 +249,20 @@ function originOf(boxes: ReadonlyMap<string, Box>, parentId: string | undefined)
 /**
  * Adds a node of `kind` centred on `centre` (diagram coordinates), or as
  * close as possible without touching another node, inside the innermost
- * container there that can hold it, and selects it.
+ * container there that can hold it, and selects it. Its name is `name`,
+ * numbered if taken; by default the English name of the kind.
  */
-export function addNode(document: DiagramDocument, kind: NodeKind, centre: Point): Edit {
+export function addNode(
+  document: DiagramDocument,
+  kind: NodeKind,
+  centre: Point,
+  name: string = getNodeDefinition(kind).label,
+): Edit {
   const { graph, layout } = document;
-  if (graph.nodes.length >= LIMITS.maxNodes) return reject(strings.edit.tooManyNodes);
+  if (graph.nodes.length >= LIMITS.maxNodes) return reject(currentStrings().edit.tooManyNodes);
 
   const id = uniqueId(kind, new Set(graph.nodes.map((node) => node.id)));
-  const label = uniqueLabel(
-    getNodeDefinition(kind).label,
-    new Set(graph.nodes.map((node) => node.label)),
-  );
+  const label = uniqueLabel(name, new Set(graph.nodes.map((node) => node.label)));
   const size = sizeOfKind(kind);
   const parentId = containerAt(document, centre, kind);
   const origin = originOf(absoluteBoxes(graph, layout), parentId);
@@ -291,9 +294,9 @@ export function addNode(document: DiagramDocument, kind: NodeKind, centre: Point
 export function connect(document: DiagramDocument, source: string, target: string): Edit {
   const { graph } = document;
   if (graph.edges.some((edge) => edge.source === source && edge.target === target)) {
-    return reject(strings.edit.alreadyConnected);
+    return reject(currentStrings().edit.alreadyConnected);
   }
-  if (graph.edges.length >= LIMITS.maxEdges) return reject(strings.edit.tooManyEdges);
+  if (graph.edges.length >= LIMITS.maxEdges) return reject(currentStrings().edit.tooManyEdges);
   const base = `${source}-${target}`;
   const id = uniqueId(
     base.length <= LIMITS.idLength ? base : 'edge',
@@ -433,10 +436,10 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
   if (originals.length === 0) return unchanged(document);
   const innerEdges = graph.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
   if (graph.nodes.length + originals.length > LIMITS.maxNodes) {
-    return reject(strings.edit.tooManyNodes);
+    return reject(currentStrings().edit.tooManyNodes);
   }
   if (graph.edges.length + innerEdges.length > LIMITS.maxEdges) {
-    return reject(strings.edit.tooManyEdges);
+    return reject(currentStrings().edit.tooManyEdges);
   }
 
   const takenIds = new Set(graph.nodes.map((node) => node.id));

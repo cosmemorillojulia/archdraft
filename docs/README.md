@@ -37,5 +37,6 @@ Referencia:
 | [0017](adr/0017-estado-del-editor-con-zustand.md)          | Estado del editor en un store de Zustand con historial y validación en cada edición |
 | [0018](adr/0018-cambio-de-tema-con-transicion-de-vista.md) | Cambio de tema con un fundido cruzado de View Transitions                           |
 | [0019](adr/0019-enlaces-y-autoguardado-sin-servidor.md)    | Documento con disposición, enlaces comprimidos en el fragmento y autoguardado local |
+| [0020](adr/0020-interfaz-en-ingles-y-espanol.md)           | Interfaz en inglés y español                                                        |
 
 Cada nueva página de módulo o ADR se añade a este índice.

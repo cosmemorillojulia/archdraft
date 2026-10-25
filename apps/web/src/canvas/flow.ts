@@ -6,14 +6,16 @@ import {
   type DiagramDocument,
   type NodeCategory,
   getNodeDefinition,
+  type NodeKind,
   isContainerKind,
   isShapeKind,
   layoutEntry,
   resolveEdgeMode,
-  resolveServiceName,
 } from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
 import { type Edge, type Node, Position } from '@xyflow/react';
+import { en, type KindText } from '../i18n/en.ts';
+import { productName } from '../i18n/labels.ts';
 import { absoluteBoxes, boundsOf, nestingDepths } from './geometry.ts';
 
 /** Seconds the diagram takes to build from its first layer to its last. */
@@ -78,13 +80,19 @@ const HANDLES: Record<LayoutDirection, { source: Position; target: Position }> =
  *   convention for sub flows, and parents come before their children as
  *   React Flow requires.
  * - Nodes without a layout entry are left out, with their edges.
+ * - Kind names, in accessible names and as the product of components that
+ *   name none, come from `kinds`, in the language of the interface.
  * - Each element carries the delay of its entrance, so the diagram builds
  *   along its flow direction.
  * - Containers are not draggable here: dragging a large group by accident
  *   would get in the way of panning. The canvas makes the selected one
  *   draggable.
  */
-export function toFlow(document: DiagramDocument, direction: LayoutDirection): FlowElements {
+export function toFlow(
+  document: DiagramDocument,
+  direction: LayoutDirection,
+  kinds: Readonly<Record<NodeKind, KindText>> = en.kinds,
+): FlowElements {
   const { graph, layout } = document;
   const boxes = absoluteBoxes(graph, layout);
   const bounds = boundsOf(boxes.values());
@@ -124,7 +132,7 @@ export function toFlow(document: DiagramDocument, direction: LayoutDirection): F
         ...base,
         type: 'container',
         draggable: false,
-        ariaLabel: `${node.label}, ${getNodeDefinition(node.kind).label}`,
+        ariaLabel: `${node.label}, ${kinds[node.kind].label}`,
         data: { node, depth: depths.get(node.id) ?? 0, appearDelay: appearDelay(node.id) * 0.5 },
       };
     }
@@ -133,7 +141,7 @@ export function toFlow(document: DiagramDocument, direction: LayoutDirection): F
       return {
         ...base,
         type: 'shape',
-        ariaLabel: `${node.label}, ${getNodeDefinition(node.kind).label}`,
+        ariaLabel: `${node.label}, ${kinds[node.kind].label}`,
         data: {
           node,
           sourcePosition: handles.source,
@@ -142,7 +150,7 @@ export function toFlow(document: DiagramDocument, direction: LayoutDirection): F
         },
       };
     }
-    const data = componentData(node, graph, direction, appearDelay(node.id));
+    const data = componentData(node, graph, direction, appearDelay(node.id), kinds);
     return {
       ...base,
       type: 'component',
@@ -151,9 +159,9 @@ export function toFlow(document: DiagramDocument, direction: LayoutDirection): F
     };
   });
 
-  const kinds = new Map(graph.nodes.map((node) => [node.id, node.kind]));
+  const kindOf = new Map(graph.nodes.map((node) => [node.id, node.kind]));
   const edges = graph.edges.flatMap((edge): ArchitectureFlowEdge[] => {
-    const sourceKind = kinds.get(edge.source);
+    const sourceKind = kindOf.get(edge.source);
     if (sourceKind === undefined || !boxes.has(edge.source) || !boxes.has(edge.target)) return [];
     return [
       {
@@ -179,12 +187,13 @@ function componentData(
   graph: ArchitectureGraph,
   direction: LayoutDirection,
   appearDelay: number,
+  kinds: Readonly<Record<NodeKind, KindText>>,
 ): ComponentNodeData {
   const handles = HANDLES[direction];
   return {
     node,
     category: getNodeDefinition(node.kind).category,
-    service: resolveServiceName(node, graph),
+    service: productName(node, graph, kinds),
     ...(node.provider !== undefined && node.provider !== graph.provider
       ? { providerBadge: node.provider }
       : {}),

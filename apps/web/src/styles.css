@@ -193,7 +193,6 @@
 /* React Flow, restyled with the tokens of the visual system. */
 .archdraft-flow {
   --xy-background-color: transparent;
-  --xy-attribution-background-color: transparent;
   font-family: var(--font-sans);
 }
 
@@ -203,11 +202,6 @@
 
 .archdraft-flow .react-flow__pane.dragging {
   cursor: grabbing;
-}
-
-.archdraft-flow .react-flow__attribution a {
-  color: var(--muted);
-  font-size: 9px;
 }
 
 /* Edge labels above every node: groups are opaque and would hide labels of edges inside them. */

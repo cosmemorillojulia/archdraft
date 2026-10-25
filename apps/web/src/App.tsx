@@ -28,7 +28,7 @@ import { editorStore, useEditor } from './editor/store.ts';
 import { EXTRA_WIDE_SCREEN, useMediaQuery, WIDE_SCREEN } from './media.ts';
 import { useReview } from './review/review-store.ts';
 import { EASE_OUT } from './motion.ts';
-import { strings } from './strings.ts';
+import { useStrings } from './i18n/locale.ts';
 
 /** Width of the palette panel plus its margins, in pixels. */
 const PALETTE_WIDTH = 304;
@@ -91,6 +91,7 @@ export function App() {
  * diagram card on wide screens, and in place of the prompt on narrow ones.
  */
 function Editor() {
+  const strings = useStrings();
   // The diagram is the first thing to see; the palette opens on demand.
   const [paletteOpen, setPaletteOpen] = useState(false);
   const wide = useMediaQuery(WIDE_SCREEN);

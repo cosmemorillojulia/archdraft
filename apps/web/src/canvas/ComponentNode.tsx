@@ -4,7 +4,7 @@ import { memo } from 'react';
 import { KIND_ICONS } from '../icons.ts';
 import { SPRING_POP } from '../motion.ts';
 import { SEVERITY_COLOR } from '../review/findings.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import type { ComponentFlowNode } from './flow.ts';
 
@@ -19,6 +19,7 @@ export const ComponentNode = memo(function ComponentNode({
   data,
   isConnectable,
 }: NodeProps<ComponentFlowNode>) {
+  const strings = useStrings();
   const { node, category, service, providerBadge, sourcePosition, targetPosition, appearDelay } =
     data;
   const Icon = KIND_ICONS[node.kind];
@@ -64,7 +65,8 @@ export const ComponentNode = memo(function ComponentNode({
             <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] leading-tight font-semibold">
+            {/* Long names, frequent in Spanish, take a second line instead of being cut. */}
+            <span className="line-clamp-2 text-[13px] leading-tight font-semibold break-words">
               {node.label}
             </span>
             <span className="block truncate text-[11px] leading-tight text-muted">{service}</span>

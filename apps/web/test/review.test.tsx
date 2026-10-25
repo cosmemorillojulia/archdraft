@@ -18,7 +18,7 @@ import {
   loadDisabledRules,
   reviewStore,
 } from '../src/review/review-store.ts';
-import { strings } from '../src/strings.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 /*
  * A user calls a database directly (public-database, error), the database

@@ -1,6 +1,6 @@
 import { documentToJson } from '@archdraft/core';
 import { editorStore } from '../editor/store.ts';
-import { strings } from '../strings.ts';
+import { currentStrings } from '../i18n/locale.ts';
 
 /**
  * Where the open diagram is kept between visits. The version in the key is
@@ -42,7 +42,7 @@ export function startAutosave(store = editorStore): () => void {
       console.warn('Could not save the diagram', error);
       if (!warned) {
         warned = true;
-        store.getState().notify(strings.persist.saveFailed);
+        store.getState().notify(currentStrings().persist.saveFailed);
       }
     }
   };

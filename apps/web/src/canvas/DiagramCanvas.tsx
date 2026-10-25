@@ -26,7 +26,7 @@ import { findingKey, severityByNode, useFindings } from '../review/findings.ts';
 import { reviewStore, useReview } from '../review/review-store.ts';
 import { EASE_OUT } from '../motion.ts';
 import { usePreferences } from '../preferences.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { ArchitectureEdge } from './ArchitectureEdge.tsx';
 import { CanvasContext, relatedTo, type ShapeBox } from './canvas-context.ts';
 import { ComponentNode } from './ComponentNode.tsx';
@@ -68,6 +68,7 @@ const FOCUS_MS = 450;
 const DRAGGED_Z = 1000;
 
 const CONNECTION_LINE_STYLE = { stroke: 'var(--accent)', strokeWidth: 1.5 };
+const PRO_OPTIONS = { hideAttribution: true };
 const NO_ISSUES: ReadonlyMap<string, LintSeverity> = new Map();
 
 export interface DiagramCanvasProps {
@@ -87,6 +88,7 @@ export interface DiagramCanvasProps {
  * and its zoom controls, and turns clicks, drags and drops into edits.
  */
 export function DiagramCanvas(props: DiagramCanvasProps) {
+  const strings = useStrings();
   const current = useEditor((state) => state.current);
   return (
     <AnimatePresence mode="wait">
@@ -110,6 +112,7 @@ interface FlowProps extends DiagramCanvasProps {
 }
 
 function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlacement }: FlowProps) {
+  const strings = useStrings();
   const { document: diagram, direction } = snapshot;
   const selection = useEditor((state) => state.selection);
   const particles = usePreferences((state) => state.flowAnimation);
@@ -121,7 +124,10 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const containerRef = useRef<HTMLDivElement>(null);
   const pointerType = useRef('mouse');
 
-  const elements = useMemo(() => toFlow(diagram, direction), [diagram, direction]);
+  const elements = useMemo(
+    () => toFlow(diagram, direction, strings.kinds),
+    [diagram, direction, strings],
+  );
   const boxes = useMemo(() => absoluteBoxes(diagram.graph, diagram.layout), [diagram]);
   const content = useMemo(() => {
     const bounds = boundsOf(boxes.values());
@@ -419,6 +425,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
           edges={elements.edges}
           nodeTypes={NODE_TYPES}
           edgeTypes={EDGE_TYPES}
+          // React Flow is credited in the README; its MIT licence allows hiding the corner link.
+          proOptions={PRO_OPTIONS}
           onInit={onInit}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}

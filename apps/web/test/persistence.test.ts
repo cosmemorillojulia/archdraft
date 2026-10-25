@@ -17,7 +17,7 @@ import {
   shareLink,
   ShareLinkError,
 } from '../src/persist/share-link.ts';
-import { strings } from '../src/strings.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 /** A user calling an API placed below it, so the flow runs top to bottom. */
 const document: DiagramDocument = {

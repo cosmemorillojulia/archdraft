@@ -1,6 +1,6 @@
 # ADR 0009: Inglés en código e interfaz, español en la documentación de diseño
 
-- Estado: aceptada
+- Estado: aceptada; la interfaz pasa a ser bilingüe en ADR 0020
 - Fecha: 2026-10-20
 
 ## Contexto

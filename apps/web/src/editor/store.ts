@@ -3,7 +3,6 @@ import {
   ArchitectureGraphSchema,
   CONTAINMENT_RULES,
   type DiagramDocument,
-  getNodeDefinition,
   isContainerKind,
   type NodeKind,
   type Point,
@@ -15,7 +14,7 @@ import {
 import type { LayoutDirection } from '@archdraft/layout';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
-import { strings } from '../strings.ts';
+import { currentStrings } from '../i18n/locale.ts';
 import {
   addNode,
   connect,
@@ -68,6 +67,11 @@ export interface EditorState {
 export interface EditorActions {
   /** Marks a template as chosen while it is laid out. */
   beginOpening: (templateId: TemplateId | null) => void;
+  /**
+   * Puts `graph` in place of the graph of the open diagram, keeping its layout
+   * and without a step in the history: the same diagram in another language.
+   */
+  replaceGraph: (graph: ArchitectureGraph) => void;
   /** Opens a diagram. Undo returns to the previous one. */
   load: (
     document: DiagramDocument,
@@ -102,10 +106,9 @@ const INITIAL_STATE: EditorState = {
   opening: null,
 };
 
-const kindName = (kind: NodeKind) => getNodeDefinition(kind).label.toLowerCase();
-
 /** A sentence for the person editing, from a validation issue of the edited graph. */
 export function describeIssue(issue: ValidationIssue, graph: ArchitectureGraph): string {
+  const strings = currentStrings();
   switch (issue.code) {
     case 'EDGE_SELF_LOOP':
       return strings.edit.selfLoop;
@@ -114,10 +117,7 @@ export function describeIssue(issue: ValidationIssue, graph: ArchitectureGraph):
     case 'INVALID_CONTAINMENT': {
       const node = graph.nodes.find((candidate) => candidate.id === issue.nodeIds?.[0]);
       if (node && isContainerKind(node.kind)) {
-        return strings.edit.placement(
-          kindName(node.kind),
-          CONTAINMENT_RULES[node.kind].parents.map(kindName),
-        );
+        return strings.edit.placement(node.kind, CONTAINMENT_RULES[node.kind].parents);
       }
       return strings.edit.invalid(issue.message);
     }
@@ -131,7 +131,7 @@ function firstProblem(graph: ArchitectureGraph): string | null {
   const parsed = ArchitectureGraphSchema.safeParse(graph);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
-    return strings.edit.invalid(issue?.message ?? '');
+    return currentStrings().edit.invalid(issue?.message ?? '');
   }
   const error = validateGraph(graph).find((issue) => issue.severity === 'error');
   return error ? describeIssue(error, graph) : null;
@@ -200,7 +200,12 @@ export function createEditorStore() {
           opening: null,
         });
       },
-      addNode: (kind, centre) => apply((document) => addNode(document, kind, centre)),
+      replaceGraph: (graph) => {
+        const { current } = get();
+        if (current) set({ current: { ...current, document: { ...current.document, graph } } });
+      },
+      addNode: (kind, centre) =>
+        apply((document) => addNode(document, kind, centre, currentStrings().kinds[kind].label)),
       connect: (source, target) => apply((document) => connect(document, source, target)),
       moveNode: (id, position) => apply((document) => moveNode(document, id, position)),
       resizeNode: (id, box) => apply((document) => resizeNode(document, id, box)),

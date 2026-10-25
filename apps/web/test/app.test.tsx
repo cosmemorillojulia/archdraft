@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App.tsx';
 import { WIDE_SCREEN } from '../src/media.ts';
-import { strings } from '../src/strings.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 const diagramOf = (title: string) =>
   screen.findByRole('group', { name: strings.canvas.diagramLabel(title) });
@@ -25,8 +25,14 @@ describe('App', () => {
     const header = screen.getByRole('banner');
     expect(within(header).getByRole('heading', { level: 1 })).toHaveTextContent(strings.appName);
     expect(header).toHaveTextContent(strings.tagline);
-    expect(within(header).getByRole('link', { name: strings.header.sourceCode })).toBeVisible();
-    expect(header.querySelector('svg:not(.lucide)')).toBeNull();
+    expect(within(header).queryByRole('link')).not.toBeInTheDocument();
+    expect(
+      within(header).getByRole('button', { name: strings.header.language.label }),
+    ).toBeInTheDocument();
+    // No logo: the only drawings besides the icons are the flags of the language switch.
+    for (const drawing of header.querySelectorAll('svg:not(.lucide)')) {
+      expect(drawing.closest('[data-flag]')).not.toBeNull();
+    }
   });
 
   it('summarises the current diagram in a card', async () => {
@@ -34,8 +40,10 @@ describe('App', () => {
     const graph = ARCHITECTURE_TEMPLATES['three-tier-web'];
     const card = await screen.findByRole('region', { name: graph.title });
     const components = graph.nodes.filter((node) => !isContainerKind(node.kind)).length;
-    expect(card).toHaveTextContent(`${components}${strings.card.components}`);
-    expect(card).toHaveTextContent(`${graph.edges.length}${strings.card.connections}`);
+    expect(card).toHaveTextContent(`${components}${strings.card.components(components)}`);
+    expect(card).toHaveTextContent(
+      `${graph.edges.length}${strings.card.connections(graph.edges.length)}`,
+    );
     expect(within(card).getByText(strings.providers.aws)).toBeInTheDocument();
     expect(within(card).getByRole('status')).toHaveTextContent(strings.review.clean);
   });

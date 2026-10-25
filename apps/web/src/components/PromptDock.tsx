@@ -13,7 +13,7 @@ import {
 import { AnimatePresence, m } from 'motion/react';
 import { useEffect, useId, useState } from 'react';
 import { EASE_OUT, SPRING_SLIDE } from '../motion.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
 const TEMPLATE_ICONS = {
@@ -39,6 +39,7 @@ interface PromptDockProps {
  * Generation needs the API (T20), so the send button stays disabled and says why.
  */
 export function PromptDock({ templateId, onTemplateChange }: PromptDockProps) {
+  const strings = useStrings();
   const inputId = useId();
   const soonId = useId();
   const [value, setValue] = useState('');
@@ -121,6 +122,7 @@ export function PromptDock({ templateId, onTemplateChange }: PromptDockProps) {
 
 /** Example prompts that take turns where the placeholder would be. Decorative only. */
 function ExamplePrompts() {
+  const strings = useStrings();
   const [index, setIndex] = useState(0);
   const examples = strings.prompt.examples;
 

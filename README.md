@@ -11,7 +11,7 @@ Describe a cloud architecture in plain language and get an editable, reviewable 
 3. **Review**: a rule engine flags design risks as you edit: single points of failure, databases exposed to the internet, long synchronous call chains.
 4. **Export**: Mermaid, draw.io, PNG/SVG or JSON. Share a diagram with a link; nothing is stored on a server.
 
-Diagrams are provider-agnostic and can be rendered for AWS, Google Cloud or Azure.
+Diagrams are provider-agnostic and can be rendered for AWS, Google Cloud or Azure. The editor is available in English and Spanish.
 
 ## Architecture
 
@@ -68,6 +68,10 @@ pnpm check      # format, lint, typecheck, tests with coverage, build
 | `pnpm lint`          | Type-aware ESLint               |
 | `pnpm typecheck`     | `tsc --noEmit` in every package |
 | `pnpm format`        | Format with Prettier            |
+
+## Acknowledgements
+
+The canvas is built on [React Flow](https://reactflow.dev) by xyflow (MIT licence) and laid out with [ELK](https://eclipse.dev/elk/) through elkjs. The editor hides React Flow's corner link, which its licence allows; this section is where the credit lives instead.
 
 ## Documentation
 

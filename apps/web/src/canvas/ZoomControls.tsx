@@ -2,7 +2,7 @@ import { useReactFlow, useViewport } from '@xyflow/react';
 import { Activity, Maximize, Minus, Plus } from 'lucide-react';
 import { Button } from '../components/Button.tsx';
 import { preferencesStore, usePreferences } from '../preferences.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 
 /** Duration of the animated zoom steps, in milliseconds. */
 const ZOOM_STEP_MS = 220;
@@ -21,6 +21,7 @@ interface ZoomControlsProps {
  * zoom too; these buttons are the visible, keyboard-friendly way to do it.
  */
 export function ZoomControls({ onFit, minZoom, maxZoom }: ZoomControlsProps) {
+  const strings = useStrings();
   const { zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
   const flowAnimation = usePreferences((state) => state.flowAnimation);

@@ -7,7 +7,7 @@ import { useEditor } from '../editor/store.ts';
 import { useMediaQuery, WIDE_SCREEN } from '../media.ts';
 import { EASE_OUT } from '../motion.ts';
 import { LONG_LINK_CHARS, shareLink } from '../persist/share-link.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
 /** File name for a diagram: its title in lower case with dashes. */
@@ -39,6 +39,7 @@ function download(document: DiagramDocument): void {
  * compressed, in its fragment.
  */
 export function ShareMenu() {
+  const strings = useStrings();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -116,6 +117,7 @@ export function ShareMenu() {
 }
 
 function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: () => void }) {
+  const strings = useStrings();
   const document = useEditor((state) => state.current?.document);
   const wide = useMediaQuery(WIDE_SCREEN);
   const [created, setCreated] = useState<{ for: DiagramDocument; link: string } | null>(null);

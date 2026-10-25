@@ -1,10 +1,11 @@
 import { Redo2, Undo2 } from 'lucide-react';
 import { editorStore, useEditor } from '../editor/store.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
 /** Undo and redo, also on Ctrl or ⌘ + Z and Ctrl or ⌘ + Shift + Z. */
 export function HistoryControls() {
+  const strings = useStrings();
   const canUndo = useEditor((state) => state.past.length > 0);
   const canRedo = useEditor((state) => state.future.length > 0);
   return (

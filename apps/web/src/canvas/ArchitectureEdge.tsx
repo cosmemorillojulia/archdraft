@@ -2,7 +2,7 @@ import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from '@xyf
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { memo, useState } from 'react';
 import { EASE_OUT } from '../motion.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import type { ArchitectureFlowEdge } from './flow.ts';
 import { arrowhead } from './geometry.ts';
@@ -36,6 +36,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   targetPosition,
   data,
 }: EdgeProps<ArchitectureFlowEdge>) {
+  const strings = useStrings();
   const canvas = useCanvas();
   const reduceMotion = useReducedMotion() === true;
   // Drawing in uses a normalised dash, which Chromium does not rescale when the path changes

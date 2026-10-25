@@ -3,7 +3,7 @@ import { AnimatePresence, m } from 'motion/react';
 import { useEffect } from 'react';
 import { editorStore, useEditor } from '../editor/store.ts';
 import { EASE_OUT, SPRING_POP } from '../motion.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
 /** How long a rejected edit stays explained before the notice leaves. */
@@ -21,6 +21,7 @@ const ENTER = {
  * of a connection started from the inspector.
  */
 export function EditorNotice() {
+  const strings = useStrings();
   const message = useEditor((state) => state.message);
   const connecting = useEditor((state) => state.connectingFrom !== null);
 
