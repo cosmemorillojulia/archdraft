@@ -50,7 +50,7 @@ classDiagram
 ```
 
 - Grafo (`ArchitectureGraph`): el diagrama completo. Declara el proveedor por defecto.
-- Nodo (`ArchNode`): un componente (servicio, base de datos, cola...) o un contenedor (región, red, subred, zona, frontera lógica). Lo distingue su `kind`.
+- Nodo (`ArchNode`): un componente (servicio, base de datos, cola...), un contenedor (región, red, subred, zona, frontera lógica) o una figura genérica (caja, círculo, rombo, nota). Lo distingue su `kind`.
 - Arista (`ArchEdge`): una interacción dirigida entre dos componentes. Va del que inicia la interacción al que la recibe: la API llama a la base de datos, la cola entrega mensajes al worker.
 - Atributos (`NodeAttributes`): hechos operativos sobre los que razonan las reglas de diseño.
 
@@ -58,12 +58,12 @@ classDiagram
 
 Definidos en `kinds.ts` como listas `as const`, de las que salen a la vez los tipos de TypeScript y los enumerados de Zod.
 
-| Vocabulario | Valores                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------- |
-| Proveedores | `generic`, `aws`, `gcp`, `azure`                                                                            |
-| Categorías  | `actor`, `edge`, `compute`, `data`, `messaging`, `security`, `observability`, `ai`, `external`, `container` |
-| Protocolos  | `https`, `http`, `grpc`, `websocket`, `sql`, `tcp`, `amqp`, `kafka`, `event`, `other`                       |
-| Modos       | `sync`, `async`                                                                                             |
+| Vocabulario | Valores                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| Proveedores | `generic`, `aws`, `gcp`, `azure`                                                                                     |
+| Categorías  | `actor`, `edge`, `compute`, `data`, `messaging`, `security`, `observability`, `ai`, `external`, `shape`, `container` |
+| Protocolos  | `https`, `http`, `grpc`, `websocket`, `sql`, `tcp`, `amqp`, `kafka`, `event`, `other`                                |
+| Modos       | `sync`, `async`                                                                                                      |
 
 ### Tipos de nodo
 
@@ -78,7 +78,12 @@ Definidos en `kinds.ts` como listas `as const`, de las que salen a la vez los ti
 | observability | `monitoring`                                                                                          |
 | ai            | `llm`                                                                                                 |
 | external      | `external-system`                                                                                     |
+| shape         | `box`, `circle`, `diamond`, `note`                                                                    |
 | container     | `region`, `availability-zone`, `network`, `subnet`, `boundary`                                        |
+
+### Figuras genéricas
+
+Las figuras (`SHAPE_KINDS`, `isShapeKind`) sirven para flujos sencillos y anotaciones que no son arquitectura: un paso, un inicio o un fin, una decisión, una nota. No tienen producto en ningún proveedor ni atributos operativos, se conectan como cualquier componente y pueden ir dentro de contenedores. Las reglas de diseño las ignoran (ver [reglas de diseño](modulos/lint.md)) y la tarjeta del diagrama las cuenta aparte. Cada una tiene su tamaño por defecto en `SHAPE_SIZES`; `defaultSizeOf(kind)` devuelve el de cualquier tipo.
 
 ## Catálogo
 

@@ -29,6 +29,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/web`: design review panel, opened from the review status of the diagram card: findings grouped by severity with filters, the rule behind each one, a click to select and centre the components involved, severity marks on the canvas, and rules that can be turned off in the browser. The review is recalculated once per version of the document.
 - `@archdraft/core`: `documentToJson` and `importDocument` for a diagram with its layout (`{ graph, layout }`), also reading a bare graph; the graph goes through the same steps as `importJson`.
 - `@archdraft/web`: the open diagram is saved in the browser and restored on the next visit; a Share menu creates a link with the whole diagram compressed in its fragment, warns when it is long, and downloads or opens JSON files (ADR 0019). Damaged or manipulated links and files are explained and never break the editor.
+- `@archdraft/core`: generic shapes (`box`, `circle`, `diamond` and `note`, category `shape`) for simple flows, with `SHAPE_KINDS`, `isShapeKind`, `SHAPE_SIZES` and `defaultSizeOf`; Mermaid and draw.io draw them as their own shapes and the design rules ignore them.
+- `@archdraft/web`: generic shapes first in the palette, resizable on the canvas, with a reduced inspector and counted apart in the diagram card; a button under the zoom controls hides or shows the particles on connections and the choice is remembered in the browser.
 - `@archdraft/core`: six architecture templates (`ARCHITECTURE_TEMPLATES`) for the gallery and the generation prompt: three-tier web application, serverless API, event-driven microservices, RAG chatbot, analytics pipeline and static site with a headless CMS. They cover every provider, are valid without warnings and have no design findings.
 
 ### Changed
@@ -38,3 +40,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/web`: every diagram opens fitted whole in the free part of the canvas, on phones too, instead of at a readable minimum zoom.
 - `@archdraft/web`: the theme change is a cross-fade made with View Transitions where the browser supports them (ADR 0018), smoother on large diagrams; elsewhere the colour blend remains, and it no longer jumps at the end.
 - `CONTAINER_PADDING` moved from `@archdraft/layout` to `@archdraft/core`, so the editor can place components inside groups without loading ELK.
+
+### Fixed
+
+- `@archdraft/web`: arrowheads were hidden inside the target or out of place, because connection points were measured in the middle of the entrance animation; they are now drawn by the edge, with the line ending at their base and the tip on the border.
+- `@archdraft/web`: edges were unmounted and drawn in again after every edit or drag step, and looked cut short while a node moved, because React Flow dropped the measured size of each new node object; nodes now carry the size of the layout as measured.
