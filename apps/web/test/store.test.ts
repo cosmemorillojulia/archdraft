@@ -1,6 +1,6 @@
 import { ARCHITECTURE_TEMPLATES, type DiagramDocument, DEFAULT_NODE_SIZE } from '@archdraft/core';
 import { describe, expect, it } from 'vitest';
-import { createEditorStore, HISTORY_LIMIT } from '../src/editor/store.ts';
+import { createEditorStore, HISTORY_LIMIT, isInspectorExpanded } from '../src/editor/store.ts';
 import { en as strings } from '../src/i18n/en.ts';
 
 /** A user and a service in a network. */
@@ -167,6 +167,32 @@ describe('editor store', () => {
     store.getState().startConnection('api');
     store.getState().select(null);
     expect(store.getState().connectingFrom).toBeNull();
+  });
+
+  it('keeps the inspector expanded only for the selection it was expanded for', () => {
+    const store = loaded();
+    const expanded = () => isInspectorExpanded(store.getState());
+    store.getState().expandInspector(true);
+    expect(expanded()).toBe(false);
+
+    store.getState().select({ type: 'node', id: 'api' });
+    store.getState().expandInspector(true);
+    expect(expanded()).toBe(true);
+    store.getState().select({ type: 'node', id: 'api' });
+    expect(expanded()).toBe(true);
+
+    // A duplicate is selected, so it opens collapsed.
+    store.getState().duplicateSelection();
+    expect(expanded()).toBe(false);
+    store.getState().select({ type: 'node', id: 'api' });
+    expect(expanded()).toBe(true);
+    store.getState().expandInspector(false);
+    expect(expanded()).toBe(false);
+
+    store.getState().expandInspector(true);
+    store.getState().load(document, { direction: 'LR', templateId: null });
+    store.getState().select({ type: 'node', id: 'api' });
+    expect(expanded()).toBe(false);
   });
 
   it('makes opening another diagram undoable, with a new key', () => {
