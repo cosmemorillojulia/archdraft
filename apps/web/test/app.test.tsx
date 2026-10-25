@@ -29,10 +29,10 @@ describe('App', () => {
     expect(header.querySelector('svg:not(.lucide)')).toBeNull();
   });
 
-  it('summarises the current diagram in a card', () => {
+  it('summarises the current diagram in a card', async () => {
     render(<App />);
     const graph = ARCHITECTURE_TEMPLATES['three-tier-web'];
-    const card = screen.getByRole('region', { name: graph.title });
+    const card = await screen.findByRole('region', { name: graph.title });
     const components = graph.nodes.filter((node) => !isContainerKind(node.kind)).length;
     expect(card).toHaveTextContent(`${components}${strings.card.components}`);
     expect(card).toHaveTextContent(`${graph.edges.length}${strings.card.connections}`);

@@ -23,7 +23,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T06 | Plantillas de arquitectura                                       | T02           | hecha (2026-10-24) |
 | T07 | Editor: estructura, sistema visual y despliegue en Pages         | T01           | hecha (2026-10-24) |
 | T08 | Editor: lienzo que representa el grafo                           | T04, T06, T07 | hecha (2026-10-25) |
-| T09 | Editor: edición, inspector, deshacer y rehacer                   | T08           | pendiente          |
+| T09 | Editor: edición, inspector, deshacer y rehacer                   | T08           | hecha (2026-10-25) |
 | T10 | Editor: panel de revisión de diseño                              | T02, T09      | pendiente          |
 | T11 | Editor: persistencia local, importación y enlaces para compartir | T03, T09      | pendiente          |
 | T12 | Editor: exportación desde la interfaz                            | T03, T05, T09 | pendiente          |
@@ -183,6 +183,8 @@ Criterios de aceptación: las seis plantillas se ven sin solapes; el adaptador t
 Documentación: ampliar `docs/modulos/web.md`.
 
 ### T09. Edición, inspector, deshacer y rehacer
+
+Estado: hecha (2026-10-25). Documentado en `docs/modulos/web.md` y ADR 0017. Además de lo previsto: conectar desde el inspector tocando el destino, avisos de rechazo, nodos nuevos en el hueco libre más cercano y selección con el teclado.
 
 Objetivo: editar el diagrama a mano.
 

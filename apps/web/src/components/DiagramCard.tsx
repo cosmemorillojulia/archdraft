@@ -15,7 +15,7 @@ export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
     <m.section
       layout
       aria-labelledby={headingId}
-      className="floating pointer-events-auto w-full overflow-hidden rounded-panel px-4 py-3 md:w-80"
+      className="floating pointer-events-auto w-full shrink-0 overflow-hidden rounded-panel px-4 py-3 md:w-80"
       transition={{ layout: { duration: 0.35, ease: EASE_OUT } }}
     >
       <AnimatePresence mode="popLayout" initial={false}>

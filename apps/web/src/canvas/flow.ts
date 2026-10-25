@@ -71,6 +71,9 @@ const HANDLES: Record<LayoutDirection, { source: Position; target: Position }> =
  * - Nodes without a layout entry are left out, with their edges.
  * - Each element carries the delay of its entrance, so the diagram builds
  *   along its flow direction.
+ * - Containers are not draggable here: dragging a large group by accident
+ *   would get in the way of panning. The canvas makes the selected one
+ *   draggable.
  */
 export function toFlow(document: DiagramDocument, direction: LayoutDirection): FlowElements {
   const { graph, layout } = document;
@@ -107,13 +110,17 @@ export function toFlow(document: DiagramDocument, direction: LayoutDirection): F
       return {
         ...base,
         type: 'container',
+        draggable: false,
+        ariaLabel: `${node.label}, ${getNodeDefinition(node.kind).label}`,
         data: { node, depth: depths.get(node.id) ?? 0, appearDelay: appearDelay(node.id) * 0.5 },
       };
     }
+    const data = componentData(node, graph, direction, appearDelay(node.id));
     return {
       ...base,
       type: 'component',
-      data: componentData(node, graph, direction, appearDelay(node.id)),
+      ariaLabel: data.service === node.label ? node.label : `${node.label}, ${data.service}`,
+      data,
     };
   });
 

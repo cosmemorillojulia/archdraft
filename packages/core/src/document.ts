@@ -42,6 +42,8 @@ export type DiagramDocument = z.infer<typeof DiagramDocumentSchema>;
 export const DEFAULT_NODE_SIZE: Size = { width: 180, height: 64 };
 /** Size of an empty container, which has no children to grow around. */
 export const DEFAULT_CONTAINER_SIZE: Size = { width: 240, height: 140 };
+/** Space between a container's border and its children; the top leaves room for its title. */
+export const CONTAINER_PADDING = { top: 48, right: 24, bottom: 24, left: 24 } as const;
 
 export function createEmptyLayout(): DiagramLayout {
   return { positions: {}, sizes: {} };

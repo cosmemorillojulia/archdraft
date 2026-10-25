@@ -1,4 +1,25 @@
-import type { CloudProvider, NodeCategory, TemplateId } from '@archdraft/core';
+import {
+  type CloudProvider,
+  type EdgeProtocol,
+  LIMITS,
+  type NodeAttributes,
+  type NodeCategory,
+  type TemplateId,
+} from '@archdraft/core';
+
+/** "a subnet", "an availability zone". */
+function withArticle(noun: string): string {
+  return `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
+}
+
+/** "a, b or c". */
+function listOf(items: readonly string[], conjunction: string): string {
+  return items.length <= 1
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} ${conjunction} ${items.at(-1) ?? ''}`;
+}
+
+const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /**
  * Every user-facing string lives here (ADR 0009), so that a second language
@@ -12,6 +33,8 @@ export const strings = {
     themeToDark: 'Switch to dark theme',
     themeToLight: 'Switch to light theme',
     sourceCode: 'Source code',
+    undo: 'Undo',
+    redo: 'Redo',
   },
   card: {
     components: 'components',
@@ -33,6 +56,9 @@ export const strings = {
     close: 'Hide components',
     search: 'Search components',
     noMatches: (query: string) => `No components match “${query}”.`,
+    add: (label: string) => `Add ${label}`,
+    hintWide: 'Click to add at the centre, or drag onto the diagram.',
+    hintNarrow: 'Tap to add to the diagram.',
     categories: {
       actor: 'People and clients',
       edge: 'Entry and traffic',
@@ -78,6 +104,9 @@ export const strings = {
       out: 'Zoom out',
       fit: 'Fit diagram to screen',
     },
+    connecting: 'Choose a component to connect',
+    cancelConnecting: 'Cancel',
+    dismiss: 'Dismiss',
     /** Badge on components that run outside the provider of the diagram. */
     providerBadges: {
       generic: 'External',
@@ -85,5 +114,65 @@ export const strings = {
       gcp: 'GCP',
       azure: 'Azure',
     } satisfies Record<CloudProvider, string>,
+  },
+  protocols: {
+    https: 'HTTPS',
+    http: 'HTTP',
+    grpc: 'gRPC',
+    websocket: 'WebSocket',
+    sql: 'SQL',
+    tcp: 'TCP',
+    amqp: 'AMQP',
+    kafka: 'Kafka',
+    event: 'Event',
+    other: 'Other',
+  } satisfies Record<EdgeProtocol, string>,
+  /** Why an edit was not made. */
+  edit: {
+    tooManyNodes: `A diagram can have up to ${LIMITS.maxNodes} components and groups.`,
+    tooManyEdges: `A diagram can have up to ${LIMITS.maxEdges} connections.`,
+    alreadyConnected: 'These components are already connected.',
+    selfLoop: 'A component cannot connect to itself.',
+    groupEndpoint: 'Groups cannot be connected. Connect the components inside them.',
+    /** Where a group of `kind` may go, e.g. "A subnet goes inside a virtual network or an availability zone." */
+    placement: (kind: string, parents: readonly string[]) =>
+      `${capitalised(withArticle(kind))} goes inside ${listOf(parents.map(withArticle), 'or')}.`,
+    invalid: (detail: string) => `That change would make the diagram invalid: ${detail}`,
+  },
+  inspector: {
+    close: 'Close',
+    connection: 'Connection',
+    name: 'Name',
+    product: 'Product',
+    provider: 'Runs on',
+    providerDefault: (provider: string) => `Diagram default (${provider})`,
+    description: 'Description',
+    operations: 'Operations',
+    replicas: 'Instances',
+    notSet: 'Not set',
+    yes: 'Yes',
+    no: 'No',
+    attributes: {
+      multiAz: 'Several zones',
+      autoscaling: 'Autoscaling',
+      publiclyAccessible: 'Public access',
+      encryptedAtRest: 'Encrypted at rest',
+      managed: 'Managed service',
+    } satisfies Record<Exclude<keyof NodeAttributes, 'replicas'>, string>,
+    label: 'Label',
+    protocol: 'Protocol',
+    protocolNone: 'Not specified',
+    mode: 'Mode',
+    modes: { auto: 'Auto', sync: 'Sync', async: 'Async' },
+    modeHint: (mode: 'sync' | 'async') =>
+      mode === 'sync' ? 'The source waits for a reply.' : 'The source does not wait for a reply.',
+    connect: 'Connect',
+    duplicate: 'Duplicate',
+    delete: 'Delete',
+    errors: {
+      required: 'Enter a name.',
+      tooLong: (max: number) => `Use ${max} characters or fewer.`,
+      replicas: `Enter a whole number from 1 to ${LIMITS.maxReplicas}.`,
+    },
   },
 } as const;

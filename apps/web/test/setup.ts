@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, beforeEach, vi } from 'vitest';
+import { editorStore } from '../src/editor/store.ts';
 
 // Animations jump to their end state, so tests check outcomes without waiting for them.
 MotionGlobalConfig.skipAnimations = true;
@@ -61,6 +62,8 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  // Each test starts with an empty editor.
+  editorStore.setState(editorStore.getInitialState(), true);
   localStorage.clear();
   delete document.documentElement.dataset.theme;
   vi.unstubAllGlobals();

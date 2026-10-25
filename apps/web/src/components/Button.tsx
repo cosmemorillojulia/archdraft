@@ -1,11 +1,12 @@
 import type { ComponentProps } from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-on-accent enabled:hover:bg-accent-hover',
   secondary: 'border border-line bg-surface text-ink enabled:hover:bg-surface-muted',
   ghost: 'text-muted enabled:hover:bg-surface-muted enabled:hover:text-ink',
+  danger: 'text-danger enabled:hover:bg-[color-mix(in_srgb,var(--danger)_10%,transparent)]',
 };
 
 /** `icon` is a square button for a single icon; give it an `aria-label`. */
