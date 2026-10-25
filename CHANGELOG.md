@@ -33,5 +33,6 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - `DEFAULT_NODE_SIZE` and `DEFAULT_CONTAINER_SIZE` moved from `@archdraft/layout` to `@archdraft/core`.
 - `@archdraft/web`: the header shows the product name in slanted capitals, as a wordmark.
+- `@archdraft/web`: every diagram opens fitted whole in the free part of the canvas, on phones too, instead of at a readable minimum zoom.
 - `@archdraft/web`: the theme change is a cross-fade made with View Transitions where the browser supports them (ADR 0018), smoother on large diagrams; elsewhere the colour blend remains, and it no longer jumps at the end.
 - `CONTAINER_PADDING` moved from `@archdraft/layout` to `@archdraft/core`, so the editor can place components inside groups without loading ELK.

@@ -23,13 +23,6 @@ import { useReview } from './review/review-store.ts';
 import { EASE_OUT } from './motion.ts';
 import { strings } from './strings.ts';
 
-/**
- * Zoom of the first view: the diagram is not shrunk below it and the canvas
- * pans instead, so node labels stay at 12 px or more on phones.
- */
-const NARROW_READABLE_ZOOM = 0.9;
-const WIDE_READABLE_ZOOM = 0.6;
-
 /** Width of the palette panel plus its margins, in pixels. */
 const PALETTE_WIDTH = 304;
 
@@ -121,7 +114,6 @@ function Editor() {
           <main ref={canvasRef} aria-label={strings.canvas.label} className="absolute inset-0">
             <DiagramCanvas
               insets={insets}
-              readableZoom={wide ? WIDE_READABLE_ZOOM : NARROW_READABLE_ZOOM}
               showMiniMap={extraWide}
               controlsClassName={wide ? 'bottom-4 left-3' : 'bottom-34 left-3'}
               inspectorPlacement={wide ? 'side' : 'bottom'}

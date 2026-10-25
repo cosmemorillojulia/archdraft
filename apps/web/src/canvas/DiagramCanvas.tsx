@@ -72,8 +72,6 @@ const NO_ISSUES: ReadonlyMap<string, LintSeverity> = new Map();
 export interface DiagramCanvasProps {
   /** Space covered by the floating interface, kept clear when the diagram is fitted. */
   insets: Insets;
-  /** Zoom of the first view: the diagram is not shrunk below it, the canvas pans instead. */
-  readableZoom: number;
   showMiniMap: boolean;
   /** Classes that place the zoom controls clear of the floating interface. */
   controlsClassName: string;
@@ -110,14 +108,7 @@ interface FlowProps extends DiagramCanvasProps {
   snapshot: Snapshot;
 }
 
-function Flow({
-  snapshot,
-  insets,
-  readableZoom,
-  showMiniMap,
-  controlsClassName,
-  inspectorPlacement,
-}: FlowProps) {
+function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlacement }: FlowProps) {
   const { document: diagram, direction } = snapshot;
   const selection = useEditor((state) => state.selection);
   const findings = useFindings();
@@ -216,30 +207,29 @@ function Flow({
     selection,
   ]);
 
-  const viewportFor = useCallback(
-    (min: number) => {
-      const element = containerRef.current;
-      if (!content || !element) return null;
-      return initialViewport(
-        content,
-        { width: element.clientWidth, height: element.clientHeight },
-        insets,
-        { min, max: INITIAL_MAX_ZOOM },
-      );
-    },
-    [content, insets],
-  );
+  /** The whole diagram, centred in the part of the canvas the floating interface leaves free. */
+  const fittedViewport = useCallback(() => {
+    const element = containerRef.current;
+    if (!content || !element) return null;
+    return initialViewport(
+      content,
+      { width: element.clientWidth, height: element.clientHeight },
+      insets,
+      { min: MIN_ZOOM, max: INITIAL_MAX_ZOOM },
+    );
+  }, [content, insets]);
 
-  // React Flow calls this once per mount: later edits never move the view.
+  // React Flow calls this once per mount, that is, every time a diagram opens: it opens whole.
+  // Later edits never move the view.
   const onInit = useCallback(() => {
-    const viewport = viewportFor(readableZoom);
+    const viewport = fittedViewport();
     if (viewport) void flow.setViewport(viewport);
-  }, [flow, readableZoom, viewportFor]);
+  }, [flow, fittedViewport]);
 
   const fit = useCallback(() => {
-    const viewport = viewportFor(MIN_ZOOM);
+    const viewport = fittedViewport();
     if (viewport) void flow.setViewport(viewport, { duration: FIT_DURATION_MS });
-  }, [flow, viewportFor]);
+  }, [flow, fittedViewport]);
 
   // When a panel opens or closes beside the diagram, glide the view to stay centred in the free space.
   const previousLeft = useRef(insets.left);
