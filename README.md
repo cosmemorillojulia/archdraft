@@ -1,3 +1,5 @@
+<p align="center"><img src="apps/web/public/favicon.svg" alt="" width="96" height="96" /></p>
+
 # Archdraft
 
 Describe a cloud architecture in plain language and get an editable, reviewable diagram.
