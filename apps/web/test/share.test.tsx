@@ -11,7 +11,7 @@ import { App } from '../src/App.tsx';
 import { editorStore } from '../src/editor/store.ts';
 import { SAVED_DOCUMENT_KEY } from '../src/persist/autosave.ts';
 import { decodeDocument, encodeDocument, linkPayload } from '../src/persist/share-link.ts';
-import { strings } from '../src/strings.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 const document: DiagramDocument = {
   graph: {

@@ -1,10 +1,4 @@
-import {
-  LINT_RULES,
-  LINT_SEVERITIES,
-  type LintFinding,
-  type LintRule,
-  type LintSeverity,
-} from '@archdraft/core';
+import { LINT_SEVERITIES, type LintFinding, type LintSeverity } from '@archdraft/core';
 import {
   ChevronRight,
   ClipboardCheck,
@@ -20,12 +14,13 @@ import { editorStore, useEditor } from '../editor/store.ts';
 import { EASE_OUT } from '../motion.ts';
 import { findingKey, SEVERITY_COLOR, useFindings } from '../review/findings.ts';
 import { reviewStore, useReview } from '../review/review-store.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 import { FloatingPanel, type PanelPlacement } from './FloatingPanel.tsx';
 import { PanelHeader } from './Inspector.tsx';
 
-const RULES = new Map<string, LintRule>(LINT_RULES.map((rule) => [rule.id, rule]));
+/** A finding as the panel shows it: what is wrong and what to do, in the language of the interface. */
+type Describe = (finding: LintFinding) => { message: string; suggestion: string };
 
 const SEVERITY_ICON = { error: OctagonAlert, warning: TriangleAlert, info: Info } as const;
 
@@ -41,6 +36,7 @@ const severityStyle = (severity: LintSeverity): Record<`--${string}`, string> =>
  * be explained and turned off.
  */
 export function ReviewPanel({ placement }: { placement: PanelPlacement }) {
+  const strings = useStrings();
   const findings = useFindings();
   const disabledRules = useReview((state) => state.disabledRules);
   const activeKey = useReview((state) => state.activeKey);
@@ -49,6 +45,12 @@ export function ReviewPanel({ placement }: { placement: PanelPlacement }) {
   const headingId = useId();
 
   const labelOf = (id: string) => graph?.nodes.find((node) => node.id === id)?.label ?? id;
+  const describe: Describe = (finding) =>
+    strings.lint.finding({
+      finding,
+      labels: finding.nodeIds.map(labelOf),
+      attributes: graph?.nodes.find((node) => node.id === finding.nodeIds[0])?.attributes,
+    });
   const countOf = (severity: LintSeverity) =>
     findings.filter((finding) => finding.severity === severity).length;
   const groups = LINT_SEVERITIES.filter((severity) => !hidden.has(severity))
@@ -118,6 +120,7 @@ export function ReviewPanel({ placement }: { placement: PanelPlacement }) {
               findings={group.findings}
               activeKey={activeKey}
               labelOf={labelOf}
+              describe={describe}
             />
           ))
         )}
@@ -134,7 +137,7 @@ export function ReviewPanel({ placement }: { placement: PanelPlacement }) {
             <p className="mt-1.5 text-muted">{strings.review.disabledNote}</p>
             <ul className="mt-1.5 flex flex-col gap-1">
               {disabledRules.map((id) => {
-                const title = RULES.get(id)?.title ?? id;
+                const title = strings.lint.rules[id].title;
                 return (
                   <li key={id} className="flex items-center justify-between gap-2">
                     <span>{title}</span>
@@ -162,12 +165,15 @@ function FindingGroup({
   findings,
   activeKey,
   labelOf,
+  describe,
 }: {
   severity: LintSeverity;
   findings: readonly LintFinding[];
   activeKey: string | null;
   labelOf: (id: string) => string;
+  describe: Describe;
 }) {
+  const strings = useStrings();
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="pb-1">
@@ -193,6 +199,7 @@ function FindingGroup({
                 finding={finding}
                 active={key === activeKey}
                 labelOf={labelOf}
+                describe={describe}
               />
             );
           })}
@@ -206,17 +213,21 @@ function FindingRow({
   finding,
   active,
   labelOf,
+  describe,
 }: {
   finding: LintFinding;
   active: boolean;
   labelOf: (id: string) => string;
+  describe: Describe;
 }) {
+  const strings = useStrings();
   const [explained, setExplained] = useState(false);
   const explanationId = useId();
-  const rule = RULES.get(finding.ruleId);
+  const rule = strings.lint.rules[finding.ruleId];
+  const { message, suggestion } = describe(finding);
   const Icon = SEVERITY_ICON[finding.severity];
   const subject = finding.nodeIds[0];
-  const ruleTitle = rule?.title ?? finding.ruleId;
+  const ruleTitle = rule.title;
 
   const show = () => {
     reviewStore.getState().focusFinding(findingKey(finding));
@@ -252,8 +263,8 @@ function FindingRow({
           style={{ color: 'var(--severity)' }}
         />
         <span className="min-w-0">
-          <span className="block text-[13px] leading-snug font-medium">{finding.message}</span>
-          <span className="mt-1 block text-xs leading-snug text-muted">{finding.suggestion}</span>
+          <span className="block text-[13px] leading-snug font-medium">{message}</span>
+          <span className="mt-1 block text-xs leading-snug text-muted">{suggestion}</span>
         </span>
       </button>
       <div className="flex items-center gap-0.5 pr-1 pb-1.5 pl-8 [&>button]:h-7 [&>button]:gap-1 [&>button]:px-2 [&>button]:text-xs">
@@ -297,7 +308,7 @@ function FindingRow({
           className="mx-2.5 mb-2.5 ml-8 rounded-[8px] bg-surface-muted px-2.5 py-2 text-xs"
         >
           <p className="font-semibold">{ruleTitle}</p>
-          <p className="mt-0.5 leading-relaxed text-muted">{rule?.description}</p>
+          <p className="mt-0.5 leading-relaxed text-muted">{rule.description}</p>
         </div>
       )}
     </m.li>

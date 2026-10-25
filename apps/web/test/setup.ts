@@ -3,6 +3,7 @@ import { cleanup } from '@testing-library/react';
 import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { editorStore } from '../src/editor/store.ts';
+import { localeStore } from '../src/i18n/locale.ts';
 import { preferencesStore } from '../src/preferences.ts';
 import { reviewStore } from '../src/review/review-store.ts';
 
@@ -68,6 +69,8 @@ afterEach(() => {
   editorStore.setState(editorStore.getInitialState(), true);
   reviewStore.setState(reviewStore.getInitialState(), true);
   preferencesStore.setState(preferencesStore.getInitialState(), true);
+  localeStore.setState(localeStore.getInitialState(), true);
+  document.documentElement.lang = 'en';
   localStorage.clear();
   delete document.documentElement.dataset.theme;
   document.documentElement.classList.remove('theme-fade');

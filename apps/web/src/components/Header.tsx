@@ -1,19 +1,20 @@
-import { CodeXml, Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { useTheme } from '../theme.ts';
 import { Button } from './Button.tsx';
 import { HistoryControls } from './HistoryControls.tsx';
+import { LanguageToggle } from './LanguageToggle.tsx';
 import { ShareMenu } from './ShareMenu.tsx';
-
-const REPOSITORY_URL = 'https://github.com/cosmemorillojulia/archdraft';
 
 /**
  * Fixed application bar: the product name, what it does, undo and redo,
- * sharing and files, the code and the theme. The theme state lives here, so a theme change re-renders only the
- * header while the page blends into the new colours.
+ * sharing and files, the language and the theme. The theme state lives here,
+ * so a theme change re-renders only the header while the page blends into the
+ * new colours.
  */
 export function Header() {
+  const strings = useStrings();
   const [theme, toggleTheme] = useTheme();
   const themeLabel = theme === 'dark' ? strings.header.themeToLight : strings.header.themeToDark;
   return (
@@ -29,14 +30,7 @@ export function Header() {
         <HistoryControls />
         <span aria-hidden="true" className="mx-1 h-5 w-px bg-line" />
         <ShareMenu />
-        <a
-          href={REPOSITORY_URL}
-          title={strings.header.sourceCode}
-          className="inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink max-md:px-2"
-        >
-          <CodeXml size={16} aria-hidden="true" className="md:hidden" />
-          <span className="max-md:sr-only">{strings.header.sourceCode}</span>
-        </a>
+        <LanguageToggle />
         <Button
           variant="ghost"
           size="icon"

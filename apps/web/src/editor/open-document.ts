@@ -1,5 +1,4 @@
 import {
-  ARCHITECTURE_TEMPLATES,
   type ArchitectureGraph,
   type DiagramDocument,
   type DiagramLayout,
@@ -11,7 +10,8 @@ import type { LayoutDirection } from '@archdraft/layout';
 import { absoluteBoxes } from '../canvas/geometry.ts';
 import { layoutDiagram } from '../canvas/layout-client.ts';
 import { decodeDocument, linkPayload, ShareLinkError } from '../persist/share-link.ts';
-import { strings } from '../strings.ts';
+import { currentStrings, localeStore, type Locale } from '../i18n/locale.ts';
+import { localizedTemplate } from '../i18n/templates.ts';
 import { editorStore } from './store.ts';
 
 /** Where a diagram comes from, for the message when it cannot be opened. */
@@ -21,8 +21,8 @@ export type DocumentSource = 'file' | 'link' | 'saved';
 let latestRequest = 0;
 
 /**
- * Lays out a template and opens it in the editor. When templates are picked
- * in quick succession only the last one opens.
+ * Lays out a template, in the language of the interface, and opens it in the
+ * editor. When templates are picked in quick succession only the last one opens.
  */
 export async function openTemplate(
   id: TemplateId,
@@ -30,7 +30,7 @@ export async function openTemplate(
   store = editorStore,
 ): Promise<void> {
   const request = ++latestRequest;
-  const graph = ARCHITECTURE_TEMPLATES[id];
+  const graph = localizedTemplate(id, localeStore.getState().locale);
   store.getState().beginOpening(id);
   try {
     const layout = await layoutDiagram(graph, direction);
@@ -41,9 +41,22 @@ export async function openTemplate(
     console.error('Could not lay out the template', error);
     if (request === latestRequest) {
       store.getState().beginOpening(null);
-      store.getState().notify(strings.canvas.layoutFailed);
+      store.getState().notify(currentStrings().canvas.layoutFailed);
     }
   }
+}
+
+/**
+ * After the language changes from `previous`, a template that has not been
+ * edited is shown in the new language, where it stays. Moving its nodes does
+ * not count as editing it: the layout is kept.
+ */
+export function followLanguage(previous: Locale, store = editorStore): void {
+  const current = store.getState().current;
+  const templateId = current?.templateId ?? null;
+  if (!current || templateId === null) return;
+  if (current.document.graph !== localizedTemplate(templateId, previous)) return;
+  store.getState().replaceGraph(localizedTemplate(templateId, localeStore.getState().locale));
 }
 
 /**
@@ -91,7 +104,9 @@ export async function openDocumentText(
   const result = importDocument(text);
   if (!result.success) {
     console.warn(`Could not open the ${source} diagram`, result.issues);
-    store.getState().notify(strings.persist.openFailed[source](result.issues[0]?.message ?? ''));
+    store
+      .getState()
+      .notify(currentStrings().persist.openFailed[source](result.issues[0]?.message ?? ''));
     return false;
   }
 
@@ -103,7 +118,7 @@ export async function openDocumentText(
       layout = await layoutDiagram(graph, shown, layout ?? undefined);
     } catch (error) {
       console.error('Could not lay out the diagram', error);
-      if (request === latestRequest) store.getState().notify(strings.canvas.layoutFailed);
+      if (request === latestRequest) store.getState().notify(currentStrings().canvas.layoutFailed);
       return false;
     }
     shown = inferDirection({ graph, layout }) ?? shown;
@@ -124,6 +139,7 @@ export async function openLink(
     text = await decodeDocument(encoded);
   } catch (error) {
     console.warn('Could not decode the shared link', error);
+    const strings = currentStrings();
     const reason =
       error instanceof ShareLinkError && error.reason === 'too-large'
         ? strings.persist.linkTooLarge

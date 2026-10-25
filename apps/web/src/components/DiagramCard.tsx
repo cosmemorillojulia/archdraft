@@ -14,13 +14,14 @@ import { type CSSProperties, useId } from 'react';
 import { EASE_OUT } from '../motion.ts';
 import { SEVERITY_COLOR, useFindings, worstSeverity } from '../review/findings.ts';
 import { reviewStore, useReview } from '../review/review-store.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 
 /**
  * Floating summary of the current diagram: what it is, its size and its
  * design review, whose status opens the review panel.
  */
 export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
+  const strings = useStrings();
   const headingId = useId();
   const components = graph.nodes.filter(
     (node) => !isContainerKind(node.kind) && !isShapeKind(node.kind),
@@ -62,18 +63,18 @@ export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
         <span className="inline-flex items-center gap-1.5">
           <Boxes size={14} aria-hidden="true" />
           <Count value={components} />
-          {strings.card.components}
+          {strings.card.components(components)}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <Cable size={14} aria-hidden="true" />
           <Count value={graph.edges.length} />
-          {strings.card.connections}
+          {strings.card.connections(graph.edges.length)}
         </span>
         {shapes > 0 && (
           <span className="inline-flex items-center gap-1.5">
             <Shapes size={14} aria-hidden="true" />
             <Count value={shapes} />
-            {strings.card.shapes}
+            {strings.card.shapes(shapes)}
           </span>
         )}
         <ReviewStatus />
@@ -105,6 +106,7 @@ const STATUS_ICON = { error: OctagonAlert, warning: TriangleAlert, info: Info } 
 
 /** Review status in the colour of the most severe finding; it opens and closes the review. */
 function ReviewStatus() {
+  const strings = useStrings();
   const findings = useFindings();
   const open = useReview((state) => state.open);
   const worst = worstSeverity(findings);

@@ -1,10 +1,17 @@
 import {
   type CloudProvider,
+  type ContainerKind,
   type EdgeProtocol,
   LIMITS,
+  LINT_RULES,
+  type LintFinding,
+  type LintRuleId,
   type LintSeverity,
+  NODE_CATALOG,
+  NODE_KINDS,
   type NodeAttributes,
   type NodeCategory,
+  type NodeKind,
   type TemplateId,
 } from '@archdraft/core';
 
@@ -22,25 +29,57 @@ function listOf(items: readonly string[], conjunction: string): string {
 
 const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
+/** Name and one-line description of a kind of node, as the palette and the inspector show them. */
+export interface KindText {
+  readonly label: string;
+  readonly description: string;
+}
+
+/** What a finding is about, so that each language can word it. */
+export interface FindingFacts {
+  readonly finding: LintFinding;
+  /** Labels of `finding.nodeIds`, in the same order. */
+  readonly labels: readonly string[];
+  /** Attributes of the first node of the finding. */
+  readonly attributes: NodeAttributes | undefined;
+}
+
+/** English names come from the catalog in @archdraft/core, which is written in English. */
+const KINDS = Object.fromEntries(
+  NODE_KINDS.map((kind) => [
+    kind,
+    { label: NODE_CATALOG[kind].label, description: NODE_CATALOG[kind].description },
+  ]),
+) as Record<NodeKind, KindText>;
+
+const RULES = Object.fromEntries(
+  LINT_RULES.map((rule) => [rule.id, { title: rule.title, description: rule.description }]),
+) as Record<LintRuleId, { readonly title: string; readonly description: string }>;
+
+const kindNoun = (kind: NodeKind) => withArticle(KINDS[kind].label.toLowerCase());
+
 /**
- * Every user-facing string lives here (ADR 0009), so that a second language
- * can be added later without touching the components. Node kind labels and
- * descriptions come from the catalog in @archdraft/core.
+ * English texts of the interface. Every user-facing string lives in a
+ * dictionary (ADR 0009, ADR 0020); `es.ts` has the same keys in Spanish.
+ * Kind names and design rules reuse the English texts of @archdraft/core.
  */
-export const strings = {
+export const en = {
+  /** BCP 47 tag of the language, for the `lang` attribute and number formats. */
+  lang: 'en',
   appName: 'Archdraft',
   tagline: 'Describe a cloud architecture and get a diagram you can edit and review',
   header: {
     themeToDark: 'Switch to dark theme',
     themeToLight: 'Switch to light theme',
-    sourceCode: 'Source code',
+    /** The language switch, written in the language it switches to. */
+    language: { label: 'Ver en español', lang: 'es' },
     undo: 'Undo',
     redo: 'Redo',
   },
   card: {
-    components: 'components',
-    connections: 'connections',
-    shapes: 'shapes',
+    components: (count: number) => (count === 1 ? 'component' : 'components'),
+    connections: (count: number) => (count === 1 ? 'connection' : 'connections'),
+    shapes: (count: number) => (count === 1 ? 'shape' : 'shapes'),
   },
   providers: {
     generic: 'Any cloud',
@@ -196,8 +235,8 @@ export const strings = {
     selfLoop: 'A component cannot connect to itself.',
     groupEndpoint: 'Groups cannot be connected. Connect the components inside them.',
     /** Where a group of `kind` may go, e.g. "A subnet goes inside a virtual network or an availability zone." */
-    placement: (kind: string, parents: readonly string[]) =>
-      `${capitalised(withArticle(kind))} goes inside ${listOf(parents.map(withArticle), 'or')}.`,
+    placement: (kind: ContainerKind, parents: readonly ContainerKind[]) =>
+      `${capitalised(kindNoun(kind))} goes inside ${listOf(parents.map(kindNoun), 'or')}.`,
     invalid: (detail: string) => `That change would make the diagram invalid: ${detail}`,
   },
   inspector: {
@@ -236,4 +275,23 @@ export const strings = {
       replicas: `Enter a whole number from 1 to ${LIMITS.maxReplicas}.`,
     },
   },
+  kinds: KINDS,
+  lint: {
+    rules: RULES,
+    finding: ({ finding }: FindingFacts): { message: string; suggestion: string } => ({
+      message: finding.message,
+      suggestion: finding.suggestion,
+    }),
+  },
 } as const;
+
+type Widen<T> = T extends string
+  ? string
+  : T extends (...args: infer A) => infer R
+    ? (...args: A) => Widen<R>
+    : T extends object
+      ? { readonly [K in keyof T]: Widen<T[K]> }
+      : T;
+
+/** Shape of a dictionary: the keys of the English one, with any text. */
+export type Strings = Widen<typeof en>;

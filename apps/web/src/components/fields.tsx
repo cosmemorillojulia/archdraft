@@ -1,5 +1,5 @@
 import { type KeyboardEvent, type ReactNode, useId, useRef, useState } from 'react';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 
 /**
  * Form fields of the inspector. Text fields keep a draft while typing and
@@ -82,6 +82,7 @@ export function TextField({
   multiline = false,
   onCommit,
 }: TextFieldProps) {
+  const strings = useStrings();
   const id = useId();
   const errorId = `${id}-error`;
   const { draft, setDraft, cancel, takeCancelled } = useDraft(value);

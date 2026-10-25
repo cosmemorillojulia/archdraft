@@ -11,7 +11,7 @@ import { type KeyboardEvent, type RefObject, useEffect, useId, useRef, useState 
 import { KIND_MIME } from '../canvas/palette-drop.ts';
 import { KIND_ICONS } from '../icons.ts';
 import { EASE_OUT, SPRING_POP, SPRING_SLIDE } from '../motion.ts';
-import { strings } from '../strings.ts';
+import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
 const DEFINITIONS = Object.values(NODE_CATALOG);
@@ -21,6 +21,13 @@ const PALETTE_ORDER = [
   'shape',
   ...NODE_CATEGORIES.filter((category) => category !== 'shape'),
 ] as const satisfies readonly NodeCategory[];
+
+/** Lower case without accents, so that "cache" finds "Caché". */
+const folded = (text: string) =>
+  text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
 
 /** Drag distance or speed, in pixels and pixels per second, that dismisses the sheet. */
 const DISMISS_OFFSET = 120;
@@ -47,6 +54,7 @@ export function ComponentsPanel({
   onOpenChange,
   onAdd,
 }: PaletteToggleProps & PaletteActions) {
+  const strings = useStrings();
   const headingId = useId();
   return (
     <AnimatePresence mode="wait" initial={false}>
@@ -98,6 +106,7 @@ interface ComponentsSheetProps extends PaletteToggleProps {
 
 /** Narrow screens: round button that opens the palette as a bottom sheet. */
 export function ComponentsSheetToggle({ open, onOpenChange, toggleRef }: ComponentsSheetProps) {
+  const strings = useStrings();
   return (
     <m.button
       ref={toggleRef}
@@ -127,6 +136,7 @@ export function ComponentsSheet({
   toggleRef,
   onAdd,
 }: ComponentsSheetProps & PaletteActions) {
+  const strings = useStrings();
   const headingId = useId();
   const dragControls = useDragControls();
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -212,13 +222,17 @@ interface PaletteProps extends PaletteActions {
 }
 
 function Palette({ headingId, columns, onClose, closeIcon, onAdd, draggable, hint }: PaletteProps) {
+  const strings = useStrings();
   const [query, setQuery] = useState('');
-  const needle = query.trim().toLowerCase();
+  const needle = folded(query.trim());
+  // The English name also matches, since many cloud terms are known in English.
+  const matches = (definition: NodeDefinition) =>
+    folded(strings.kinds[definition.kind].label).includes(needle) ||
+    folded(definition.label).includes(needle);
   const groups = PALETTE_ORDER.map((category) => ({
     category,
     definitions: DEFINITIONS.filter(
-      (definition) =>
-        definition.category === category && definition.label.toLowerCase().includes(needle),
+      (definition) => definition.category === category && matches(definition),
     ),
   })).filter((group) => group.definitions.length > 0);
   let order = 0;
@@ -316,7 +330,9 @@ interface PaletteTileProps extends PaletteActions {
 }
 
 function PaletteTile({ definition, delay, onAdd, draggable }: PaletteTileProps) {
+  const strings = useStrings();
   const Icon = KIND_ICONS[definition.kind];
+  const text = strings.kinds[definition.kind];
   return (
     <m.li
       layout
@@ -328,8 +344,8 @@ function PaletteTile({ definition, delay, onAdd, draggable }: PaletteTileProps) 
     >
       <button
         type="button"
-        title={definition.description}
-        aria-label={strings.components.add(definition.label)}
+        title={text.description}
+        aria-label={strings.components.add(text.label)}
         draggable={draggable}
         onDragStart={(event) => {
           event.dataTransfer.setData(KIND_MIME, definition.kind);
@@ -350,7 +366,7 @@ function PaletteTile({ definition, delay, onAdd, draggable }: PaletteTileProps) 
           <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
         </span>
         <span aria-hidden="true" className="text-[0.6875rem] leading-tight">
-          {definition.label}
+          {text.label}
         </span>
       </button>
     </m.li>

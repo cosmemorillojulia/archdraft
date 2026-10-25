@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PanelSlot } from '../src/components/PanelSlot.tsx';
 import { editorStore } from '../src/editor/store.ts';
-import { strings } from '../src/strings.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 const document: DiagramDocument = {
   graph: {

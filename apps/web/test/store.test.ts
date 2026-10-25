@@ -1,7 +1,7 @@
 import { ARCHITECTURE_TEMPLATES, type DiagramDocument, DEFAULT_NODE_SIZE } from '@archdraft/core';
 import { describe, expect, it } from 'vitest';
 import { createEditorStore, HISTORY_LIMIT } from '../src/editor/store.ts';
-import { strings } from '../src/strings.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 /** A user and a service in a network. */
 const document: DiagramDocument = {
