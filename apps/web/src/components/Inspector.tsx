@@ -13,9 +13,9 @@ import {
   type NodeAttributes,
   resolveEdgeMode,
 } from '@archdraft/core';
-import { ArrowRight, Cable, Copy, Spline, Trash2, X } from 'lucide-react';
-import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useId } from 'react';
+import { ArrowRight, Cable, Copy, type LucideIcon, Spline, Trash2, X } from 'lucide-react';
+import { AnimatePresence, type DragControls, m, type PanInfo, useDragControls } from 'motion/react';
+import { type ReactNode, useId, useRef } from 'react';
 import type { EdgePatch, NodePatch, Selection } from '../editor/operations.ts';
 import { editorStore, useEditor } from '../editor/store.ts';
 import { KIND_ICONS } from '../icons.ts';
@@ -23,9 +23,9 @@ import { EASE_OUT } from '../motion.ts';
 import type { Strings } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
 import { useStrings } from '../i18n/locale.ts';
-import { Button } from './Button.tsx';
+import { Button, type ButtonProps } from './Button.tsx';
 import { ChoiceField, NumberField, SelectField, TextField } from './fields.tsx';
-import { FloatingPanel, type PanelPlacement } from './FloatingPanel.tsx';
+import { FloatingPanel, type PanelDrag, type PanelPlacement } from './FloatingPanel.tsx';
 
 type Flag = Exclude<keyof NodeAttributes, 'replicas'>;
 const FLAGS: readonly Flag[] = [
@@ -54,10 +54,20 @@ function cleanAttributes(attributes: NodeAttributes): NodeAttributes | undefined
   return entries.length === 0 ? undefined : Object.fromEntries(entries);
 }
 
+/** Distance in pixels, or speed in pixels per second, that expands or collapses the sheet. */
+const SHEET_DRAG_DISTANCE = 40;
+const SHEET_DRAG_VELOCITY = 300;
+/** Pointer movement in pixels below which a press on the handle counts as a tap. */
+const TAP_SLOP = 6;
+/** Cross-fade between the contents of two selections, or of the strip and the full panel. */
+const SWAP = { duration: 0.15, ease: EASE_OUT };
+
 interface InspectorProps {
   placement: PanelPlacement;
   selection: Selection;
   graph: ArchitectureGraph;
+  /** On narrow screens, whether it shows every field or only a strip; ignored beside the diagram. */
+  expanded: boolean;
 }
 
 /** Whether the inspector has something to show. */
@@ -79,50 +89,98 @@ export function useInspecting(placement: PanelPlacement): boolean {
  * with its button, Escape or a click on the empty canvas. It draws only from
  * its props, so that it can play its exit with the last selection
  * (PanelSlot.tsx).
+ *
+ * On narrow screens it opens as a strip with the name, the type and the
+ * quick actions, so that most of the diagram stays in view. Dragging its
+ * handle up, or tapping it, expands it to every field; dragging it down
+ * collapses it again. Each new selection opens collapsed.
  */
-export function Inspector({ placement, selection, graph }: InspectorProps) {
+export function Inspector({ placement, selection, graph, expanded }: InspectorProps) {
   const headingId = useId();
+  const dragControls = useDragControls();
   const node =
     selection.type === 'node' ? graph.nodes.find((item) => item.id === selection.id) : undefined;
   const edge =
     selection.type === 'edge' ? graph.edges.find((item) => item.id === selection.id) : undefined;
+  const sheet = placement === 'bottom';
+  const compact = sheet && !expanded;
+
+  const drag: PanelDrag = {
+    controls: dragControls,
+    onDragEnd: ({ offset, velocity }: PanInfo) => {
+      const up = offset.y < -SHEET_DRAG_DISTANCE || velocity.y < -SHEET_DRAG_VELOCITY;
+      const down = offset.y > SHEET_DRAG_DISTANCE || velocity.y > SHEET_DRAG_VELOCITY;
+      if (up !== down) editorStore.getState().expandInspector(up);
+    },
+  };
 
   return (
-    <FloatingPanel placement={placement} labelledBy={headingId}>
+    <FloatingPanel placement={placement} labelledBy={headingId} {...(sheet && { drag })}>
+      {sheet && <SheetHandle expanded={expanded} controls={dragControls} />}
       <AnimatePresence mode="popLayout" initial={false}>
         <m.div
-          key={selection.id}
+          key={compact ? `${selection.id}:compact` : selection.id}
+          layout={sheet ? 'position' : false}
+          // While the sheet changes size, the old content leaves at once and the new one follows.
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15, ease: EASE_OUT }}
+          animate={{ opacity: 1, transition: { ...SWAP, ...(sheet && { delay: 0.06 }) } }}
+          exit={{ opacity: 0, transition: sheet ? { duration: 0.06 } : SWAP }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          {node && <NodeForm node={node} graph={graph} headingId={headingId} />}
-          {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} />}
+          {node && <NodeForm node={node} graph={graph} headingId={headingId} compact={compact} />}
+          {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} compact={compact} />}
         </m.div>
       </AnimatePresence>
     </FloatingPanel>
   );
 }
 
-export function PanelHeader({
-  headingId,
-  title,
-  subtitle,
-  icon,
-  closeLabel,
-  onClose,
-}: {
+/**
+ * Grip at the top of the inspector on narrow screens. Dragging it up or down
+ * moves the whole panel (FloatingPanel.tsx); a tap, or Enter, toggles it.
+ */
+function SheetHandle({ expanded, controls }: { expanded: boolean; controls: DragControls }) {
+  const strings = useStrings();
+  const pressedAt = useRef(0);
+  const label = expanded ? strings.inspector.collapse : strings.inspector.expand;
+  return (
+    <m.button
+      type="button"
+      // Kept undistorted while the panel changes size.
+      layout="position"
+      aria-expanded={expanded}
+      aria-label={label}
+      title={label}
+      onPointerDown={(event) => {
+        pressedAt.current = event.clientY;
+        controls.start(event);
+      }}
+      onClick={(event) => {
+        // A drag ends with a click too; only a press that stayed put, or a key, toggles.
+        const tapped = event.detail === 0 || Math.abs(event.clientY - pressedAt.current) < TAP_SLOP;
+        if (tapped) editorStore.getState().expandInspector(!expanded);
+      }}
+      className="group flex w-full shrink-0 cursor-grab touch-none justify-center rounded-t-panel pt-2 pb-1 focus-visible:-outline-offset-2 active:cursor-grabbing"
+    >
+      <span
+        aria-hidden="true"
+        className="h-1 w-9 rounded-full bg-line transition-colors group-hover:bg-muted"
+      />
+    </m.button>
+  );
+}
+
+interface PanelTitleProps {
   headingId: string;
   title: string;
   subtitle?: string;
   icon: ReactNode;
-  closeLabel: string;
-  onClose: () => void;
-}) {
+}
+
+/** Icon, title and subtitle at the top of a panel. */
+function PanelTitle({ headingId, title, subtitle, icon }: PanelTitleProps) {
   return (
-    <div className="flex items-center gap-3 border-b border-line py-2.5 pr-2 pl-3.5">
+    <>
       {icon}
       <div className="min-w-0 flex-1">
         <h2 id={headingId} className="truncate leading-tight font-semibold">
@@ -130,6 +188,21 @@ export function PanelHeader({
         </h2>
         {subtitle !== undefined && <p className="truncate text-xs text-muted">{subtitle}</p>}
       </div>
+    </>
+  );
+}
+
+export function PanelHeader({
+  closeLabel,
+  onClose,
+  ...title
+}: PanelTitleProps & {
+  closeLabel: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 border-b border-line py-2.5 pr-2 pl-3.5">
+      <PanelTitle {...title} />
       <Button
         variant="ghost"
         size="icon"
@@ -143,6 +216,16 @@ export function PanelHeader({
   );
 }
 
+/** The collapsed inspector: the title of the selection beside its quick actions. */
+function PanelStrip({ actions, ...title }: PanelTitleProps & { actions: ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 pr-2 pb-2.5 pl-3.5">
+      <PanelTitle {...title} />
+      <div className="flex shrink-0 items-center gap-0.5 [&>button]:size-10">{actions}</div>
+    </div>
+  );
+}
+
 function Actions({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-0.5 border-t border-line px-2 py-1.5 [&>button]:h-8 [&>button]:gap-1.5 [&>button]:px-2 [&>button]:text-[13px]">
@@ -151,14 +234,36 @@ function Actions({ children }: { children: ReactNode }) {
   );
 }
 
+/** A button of the actions bar, or only its icon, named by its label, in the strip. */
+function ActionButton({
+  compact,
+  icon: Icon,
+  label,
+  ...props
+}: ButtonProps & { compact: boolean; icon: LucideIcon; label: string }) {
+  return (
+    <Button
+      size={compact ? 'icon' : 'default'}
+      {...(compact && { 'aria-label': label, title: label })}
+      {...props}
+    >
+      <Icon size={compact ? 18 : 15} aria-hidden="true" />
+      {!compact && label}
+    </Button>
+  );
+}
+
 function NodeForm({
   node,
   graph,
   headingId,
+  compact,
 }: {
   node: ArchNode;
   graph: ArchitectureGraph;
   headingId: string;
+  /** Only the title and the quick actions (the collapsed inspector). */
+  compact: boolean;
 }) {
   const strings = useStrings();
   const definition = getNodeDefinition(node.kind);
@@ -179,25 +284,61 @@ function NodeForm({
     ...CLOUD_PROVIDERS.map((provider) => ({ value: provider, label: strings.providers[provider] })),
   ];
 
+  const title = {
+    headingId,
+    title: node.label,
+    subtitle: strings.kinds[node.kind].label,
+    icon: (
+      <span
+        className="flex size-9 shrink-0 items-center justify-center rounded-[10px]"
+        style={{
+          color: `var(--cat-${definition.category})`,
+          backgroundColor: `var(--cat-${definition.category}-bg)`,
+        }}
+      >
+        <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+      </span>
+    ),
+  };
+  const actions = (
+    <>
+      {!container && (
+        <ActionButton
+          compact={compact}
+          variant="ghost"
+          icon={Spline}
+          label={strings.inspector.connect}
+          onClick={() => editorStore.getState().startConnection(node.id)}
+        />
+      )}
+      <ActionButton
+        compact={compact}
+        variant="ghost"
+        icon={Copy}
+        label={strings.inspector.duplicate}
+        aria-keyshortcuts="Control+D Meta+D"
+        onClick={() => editorStore.getState().duplicateSelection()}
+      />
+      <ActionButton
+        compact={compact}
+        variant="danger"
+        icon={Trash2}
+        label={strings.inspector.delete}
+        aria-keyshortcuts="Delete Backspace"
+        onClick={() => editorStore.getState().removeSelection()}
+        {...(!compact && { className: 'ml-auto' })}
+      />
+    </>
+  );
+
+  if (compact) return <PanelStrip {...title} actions={actions} />;
+
   return (
     <>
       <PanelHeader
-        headingId={headingId}
+        {...title}
         closeLabel={strings.inspector.close}
         onClose={() => editorStore.getState().select(null)}
-        title={node.label}
-        subtitle={strings.kinds[node.kind].label}
-        icon={
-          <span
-            className="flex size-9 shrink-0 items-center justify-center rounded-[10px]"
-            style={{
-              color: `var(--cat-${definition.category})`,
-              backgroundColor: `var(--cat-${definition.category}-bg)`,
-            }}
-          >
-            <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-          </span>
-        }
       />
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overscroll-contain px-3.5 py-3">
         <TextField
@@ -265,31 +406,7 @@ function NodeForm({
           </section>
         )}
       </div>
-      <Actions>
-        {!container && (
-          <Button variant="ghost" onClick={() => editorStore.getState().startConnection(node.id)}>
-            <Spline size={15} aria-hidden="true" />
-            {strings.inspector.connect}
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          aria-keyshortcuts="Control+D Meta+D"
-          onClick={() => editorStore.getState().duplicateSelection()}
-        >
-          <Copy size={15} aria-hidden="true" />
-          {strings.inspector.duplicate}
-        </Button>
-        <Button
-          variant="danger"
-          aria-keyshortcuts="Delete Backspace"
-          onClick={() => editorStore.getState().removeSelection()}
-          className="ml-auto"
-        >
-          <Trash2 size={15} aria-hidden="true" />
-          {strings.inspector.delete}
-        </Button>
-      </Actions>
+      <Actions>{actions}</Actions>
     </>
   );
 }
@@ -298,10 +415,13 @@ function EdgeForm({
   edge,
   graph,
   headingId,
+  compact,
 }: {
   edge: ArchEdge;
   graph: ArchitectureGraph;
   headingId: string;
+  /** Only the title and the quick actions (the collapsed inspector). */
+  compact: boolean;
 }) {
   const strings = useStrings();
   const labelOf = (id: string) => graph.nodes.find((node) => node.id === id)?.label ?? id;
@@ -309,18 +429,43 @@ function EdgeForm({
   const { mode: _mode, ...withoutMode } = edge;
   const inferred = resolveEdgeMode(withoutMode);
 
+  const title = {
+    headingId,
+    title: strings.inspector.connection,
+    icon: (
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-surface-muted text-muted">
+        <Cable size={18} strokeWidth={1.75} aria-hidden="true" />
+      </span>
+    ),
+  };
+  const remove = (
+    <ActionButton
+      compact={compact}
+      variant="danger"
+      icon={Trash2}
+      label={strings.inspector.delete}
+      aria-keyshortcuts="Delete Backspace"
+      onClick={() => editorStore.getState().removeSelection()}
+      {...(!compact && { className: 'ml-auto' })}
+    />
+  );
+
+  if (compact) {
+    return (
+      <PanelStrip
+        {...title}
+        subtitle={`${labelOf(edge.source)} → ${labelOf(edge.target)}`}
+        actions={remove}
+      />
+    );
+  }
+
   return (
     <>
       <PanelHeader
-        headingId={headingId}
+        {...title}
         closeLabel={strings.inspector.close}
         onClose={() => editorStore.getState().select(null)}
-        title={strings.inspector.connection}
-        icon={
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-surface-muted text-muted">
-            <Cable size={18} strokeWidth={1.75} aria-hidden="true" />
-          </span>
-        }
       />
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overscroll-contain px-3.5 py-3">
         <p className="flex items-center gap-2 text-sm">
@@ -361,17 +506,7 @@ function EdgeForm({
           <p className="text-xs text-muted">{strings.inspector.modeHint(edge.mode ?? inferred)}</p>
         </div>
       </div>
-      <Actions>
-        <Button
-          variant="danger"
-          aria-keyshortcuts="Delete Backspace"
-          onClick={() => editorStore.getState().removeSelection()}
-          className="ml-auto"
-        >
-          <Trash2 size={15} aria-hidden="true" />
-          {strings.inspector.delete}
-        </Button>
-      </Actions>
+      <Actions>{remove}</Actions>
     </>
   );
 }

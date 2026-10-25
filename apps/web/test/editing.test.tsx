@@ -48,12 +48,14 @@ describe('editing on narrow screens', () => {
     await user.click(within(sheet).getByRole('button', { name: strings.components.add('Queue') }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(nodeIds()).toContain('queue');
+    // The inspector takes the place of the prompt, as a strip that expands from its handle.
     const inspector = await screen.findByRole('region', { name: 'Queue' });
-    expect(within(inspector).getByLabelText(strings.inspector.name)).toHaveValue('Queue');
-    // The inspector takes the place of the prompt.
     await waitFor(() =>
       expect(screen.queryByRole('textbox', { name: strings.prompt.label })).not.toBeInTheDocument(),
     );
+    expect(within(inspector).queryByLabelText(strings.inspector.name)).not.toBeInTheDocument();
+    await user.click(within(inspector).getByRole('button', { name: strings.inspector.expand }));
+    expect(await within(inspector).findByLabelText(strings.inspector.name)).toHaveValue('Queue');
   });
 });
 
