@@ -263,6 +263,38 @@ describe('App', () => {
     expect(document.documentElement.dataset.theme).toBe('light');
   });
 
+  it('cross-fades the theme with a view transition where the browser has them', async () => {
+    const user = userEvent.setup();
+    const startViewTransition = vi.fn((update: () => void) => {
+      update();
+      return {};
+    });
+    Object.defineProperty(document, 'startViewTransition', {
+      value: startViewTransition,
+      configurable: true,
+    });
+    try {
+      render(<App />);
+      await user.click(screen.getByRole('button', { name: strings.header.themeToDark }));
+      expect(startViewTransition).toHaveBeenCalledOnce();
+      expect(document.documentElement.dataset.theme).toBe('dark');
+      expect(document.documentElement).not.toHaveClass('theme-fade');
+      expect(
+        await screen.findByRole('button', { name: strings.header.themeToLight }),
+      ).toBeInTheDocument();
+    } finally {
+      Reflect.deleteProperty(document, 'startViewTransition');
+    }
+  });
+
+  it('blends every colour instead where view transitions are missing', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: strings.header.themeToDark }));
+    expect(document.documentElement).toHaveClass('theme-fade');
+    await waitFor(() => expect(document.documentElement).not.toHaveClass('theme-fade'));
+  });
+
   it('starts from the theme applied before the first paint', () => {
     document.documentElement.dataset.theme = 'dark';
     render(<App />);

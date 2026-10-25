@@ -66,5 +66,6 @@ afterEach(() => {
   editorStore.setState(editorStore.getInitialState(), true);
   localStorage.clear();
   delete document.documentElement.dataset.theme;
+  document.documentElement.classList.remove('theme-fade');
   vi.unstubAllGlobals();
 });

@@ -35,5 +35,6 @@ Referencia:
 | [0015](adr/0015-animaciones-con-motion-y-cabecera-fija.md) | Animaciones con Motion y cabecera fija                                              |
 | [0016](adr/0016-cambio-de-tema-con-fundido-de-colores.md)  | Cambio de tema con fundido de colores                                               |
 | [0017](adr/0017-estado-del-editor-con-zustand.md)          | Estado del editor en un store de Zustand con historial y validación en cada edición |
+| [0018](adr/0018-cambio-de-tema-con-transicion-de-vista.md) | Cambio de tema con un fundido cruzado de View Transitions                           |
 
 Cada nueva página de módulo o ADR se añade a este índice.

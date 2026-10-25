@@ -157,17 +157,27 @@
 }
 
 /*
- * Theme change: theme.ts adds this class for the length of the change, so that
- * every colour of the page blends into the new theme at once. It is not added
- * when the system asks for reduced motion.
+ * Theme change (ADR 0018): the browser cross-fades a snapshot of the page in
+ * the old theme into the page in the new one. The curve starts and ends
+ * gently, so neither theme appears or disappears with a jump.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/*
+ * Theme change where view transitions are not available: theme.ts adds this
+ * class while the theme changes, so every colour of the page blends at once.
  */
 .theme-fade,
 .theme-fade *,
 .theme-fade *::before,
 .theme-fade *::after {
   transition-property: background-color, border-color, color, fill, stroke, box-shadow !important;
-  transition-duration: 420ms !important;
-  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  transition-duration: 450ms !important;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
   transition-delay: 0s !important;
 }
 
