@@ -3,12 +3,13 @@ import { AnimatePresence, m } from 'motion/react';
 import { strings } from '../strings.ts';
 import { useTheme } from '../theme.ts';
 import { Button } from './Button.tsx';
+import { HistoryControls } from './HistoryControls.tsx';
 
 const REPOSITORY_URL = 'https://github.com/cosmemorillojulia/archdraft';
 
 /**
- * Fixed application bar: the product name, what it does, the code and the
- * theme. The theme state lives here, so a theme change re-renders only the
+ * Fixed application bar: the product name, what it does, undo and redo, the
+ * code and the theme. The theme state lives here, so a theme change re-renders only the
  * header while the page blends into the new colours.
  */
 export function Header() {
@@ -21,6 +22,8 @@ export function Header() {
         <p className="hidden truncate text-sm text-muted md:block">{strings.tagline}</p>
       </div>
       <div className="flex items-center gap-1">
+        <HistoryControls />
+        <span aria-hidden="true" className="mx-1 h-5 w-px bg-line" />
         <a
           href={REPOSITORY_URL}
           className="rounded-control px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink"

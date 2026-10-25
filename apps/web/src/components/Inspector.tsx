@@ -1,0 +1,364 @@
+import {
+  type ArchEdge,
+  type ArchitectureGraph,
+  type ArchNode,
+  CLOUD_PROVIDERS,
+  type CloudProvider,
+  EDGE_PROTOCOLS,
+  type EdgeProtocol,
+  getNodeDefinition,
+  isContainerKind,
+  LIMITS,
+  type NodeAttributes,
+  resolveEdgeMode,
+  resolveServiceName,
+} from '@archdraft/core';
+import { ArrowRight, Cable, Copy, Spline, Trash2, X } from 'lucide-react';
+import { AnimatePresence, m } from 'motion/react';
+import { type ReactNode, useId } from 'react';
+import type { EdgePatch, NodePatch } from '../editor/operations.ts';
+import { editorStore, useEditor } from '../editor/store.ts';
+import { KIND_ICONS } from '../icons.ts';
+import { EASE_OUT, SPRING_SLIDE } from '../motion.ts';
+import { strings } from '../strings.ts';
+import { Button } from './Button.tsx';
+import { ChoiceField, NumberField, SelectField, TextField } from './fields.tsx';
+
+type Flag = Exclude<keyof NodeAttributes, 'replicas'>;
+const FLAGS = Object.keys(strings.inspector.attributes) as Flag[];
+type TriState = 'unset' | 'yes' | 'no';
+
+const TRI_STATE_OPTIONS: readonly { value: TriState; label: string }[] = [
+  { value: 'unset', label: strings.inspector.notSet },
+  { value: 'yes', label: strings.inspector.yes },
+  { value: 'no', label: strings.inspector.no },
+];
+
+const toTriState = (value: boolean | undefined): TriState =>
+  value === undefined ? 'unset' : value ? 'yes' : 'no';
+const fromTriState = (value: TriState): boolean | undefined =>
+  value === 'unset' ? undefined : value === 'yes';
+
+/** Attributes without the empty ones; undefined when none is left. */
+function cleanAttributes(attributes: NodeAttributes): NodeAttributes | undefined {
+  const entries = Object.entries(attributes).filter(([, value]) => value !== undefined);
+  return entries.length === 0 ? undefined : Object.fromEntries(entries);
+}
+
+interface InspectorProps {
+  /** Beside the diagram on wide screens; across the bottom on narrow ones. */
+  placement: 'side' | 'bottom';
+}
+
+/**
+ * Floating panel with the properties of the selected component, group or
+ * connection (ADR 0014). It appears when something is selected and closes
+ * with its button, Escape or a click on the empty canvas.
+ */
+export function Inspector({ placement }: InspectorProps) {
+  const selection = useEditor((state) => state.selection);
+  const graph = useEditor((state) => state.current?.document.graph);
+  // On narrow screens the panel steps aside while a connection waits for its target.
+  const connecting = useEditor((state) => state.connectingFrom !== null);
+  const headingId = useId();
+
+  const node =
+    selection?.type === 'node' ? graph?.nodes.find((item) => item.id === selection.id) : undefined;
+  const edge =
+    selection?.type === 'edge' ? graph?.edges.find((item) => item.id === selection.id) : undefined;
+  const open =
+    graph !== undefined &&
+    (node !== undefined || edge !== undefined) &&
+    !(connecting && placement === 'bottom');
+  const offset = placement === 'side' ? { x: 24, y: 0 } : { x: 0, y: 24 };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <m.section
+          key="inspector"
+          aria-labelledby={headingId}
+          initial={{ opacity: 0, ...offset }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          exit={{ opacity: 0, ...offset, transition: { duration: 0.16, ease: EASE_OUT } }}
+          transition={SPRING_SLIDE}
+          className={`floating pointer-events-auto flex min-h-0 flex-col overflow-hidden rounded-panel ${
+            placement === 'side' ? 'max-h-full w-full' : 'max-h-[min(52dvh,480px)] w-full'
+          }`}
+        >
+          <AnimatePresence mode="popLayout" initial={false}>
+            <m.div
+              key={selection?.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15, ease: EASE_OUT }}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              {node && <NodeForm node={node} graph={graph} headingId={headingId} />}
+              {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} />}
+            </m.div>
+          </AnimatePresence>
+        </m.section>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function PanelHeader({
+  headingId,
+  title,
+  subtitle,
+  icon,
+}: {
+  headingId: string;
+  title: string;
+  subtitle?: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 border-b border-line py-2.5 pr-2 pl-3.5">
+      {icon}
+      <div className="min-w-0 flex-1">
+        <h2 id={headingId} className="truncate leading-tight font-semibold">
+          {title}
+        </h2>
+        {subtitle !== undefined && <p className="truncate text-xs text-muted">{subtitle}</p>}
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={strings.inspector.close}
+        title={strings.inspector.close}
+        onClick={() => editorStore.getState().select(null)}
+      >
+        <X size={17} aria-hidden="true" />
+      </Button>
+    </div>
+  );
+}
+
+function Actions({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-0.5 border-t border-line px-2 py-1.5 [&>button]:h-8 [&>button]:gap-1.5 [&>button]:px-2 [&>button]:text-[13px]">
+      {children}
+    </div>
+  );
+}
+
+function NodeForm({
+  node,
+  graph,
+  headingId,
+}: {
+  node: ArchNode;
+  graph: ArchitectureGraph;
+  headingId: string;
+}) {
+  const definition = getNodeDefinition(node.kind);
+  const Icon = KIND_ICONS[node.kind];
+  const container = isContainerKind(node.kind);
+  const update = (patch: NodePatch) => editorStore.getState().updateNode(node.id, patch);
+  const { service: _service, ...withoutService } = node;
+  const defaultService = resolveServiceName(withoutService, graph);
+  const attributes = node.attributes ?? {};
+
+  const providerOptions = [
+    {
+      value: 'default' as const,
+      label: strings.inspector.providerDefault(strings.providers[graph.provider]),
+    },
+    ...CLOUD_PROVIDERS.map((provider) => ({ value: provider, label: strings.providers[provider] })),
+  ];
+
+  return (
+    <>
+      <PanelHeader
+        headingId={headingId}
+        title={node.label}
+        subtitle={definition.label}
+        icon={
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-[10px]"
+            style={{
+              color: `var(--cat-${definition.category})`,
+              backgroundColor: `var(--cat-${definition.category}-bg)`,
+            }}
+          >
+            <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+        }
+      />
+      <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overscroll-contain px-3.5 py-3">
+        <TextField
+          label={strings.inspector.name}
+          value={node.label}
+          maxLength={LIMITS.labelLength}
+          required
+          onCommit={(label) => update({ label })}
+        />
+        {!container && (
+          <>
+            <TextField
+              label={strings.inspector.product}
+              value={node.service ?? ''}
+              placeholder={defaultService}
+              maxLength={LIMITS.serviceLength}
+              onCommit={(service) => update({ service: service === '' ? undefined : service })}
+            />
+            <SelectField<CloudProvider | 'default'>
+              label={strings.inspector.provider}
+              value={node.provider ?? 'default'}
+              options={providerOptions}
+              onChange={(provider) =>
+                update({ provider: provider === 'default' ? undefined : provider })
+              }
+            />
+          </>
+        )}
+        <TextField
+          label={strings.inspector.description}
+          value={node.description ?? ''}
+          maxLength={LIMITS.descriptionLength}
+          multiline
+          onCommit={(description) =>
+            update({ description: description === '' ? undefined : description })
+          }
+        />
+        {!container && (
+          <section className="flex flex-col gap-2.5 border-t border-line pt-3.5">
+            <h3 className="text-xs font-semibold">{strings.inspector.operations}</h3>
+            <NumberField
+              label={strings.inspector.replicas}
+              value={attributes.replicas}
+              min={1}
+              max={LIMITS.maxReplicas}
+              placeholder={strings.inspector.notSet}
+              error={strings.inspector.errors.replicas}
+              onCommit={(replicas) =>
+                update({ attributes: cleanAttributes({ ...attributes, replicas }) })
+              }
+            />
+            {FLAGS.map((flag) => (
+              <ChoiceField
+                key={flag}
+                label={strings.inspector.attributes[flag]}
+                value={toTriState(attributes[flag])}
+                options={TRI_STATE_OPTIONS}
+                onChange={(value) =>
+                  update({
+                    attributes: cleanAttributes({ ...attributes, [flag]: fromTriState(value) }),
+                  })
+                }
+              />
+            ))}
+          </section>
+        )}
+      </div>
+      <Actions>
+        {!container && (
+          <Button variant="ghost" onClick={() => editorStore.getState().startConnection(node.id)}>
+            <Spline size={15} aria-hidden="true" />
+            {strings.inspector.connect}
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          aria-keyshortcuts="Control+D Meta+D"
+          onClick={() => editorStore.getState().duplicateSelection()}
+        >
+          <Copy size={15} aria-hidden="true" />
+          {strings.inspector.duplicate}
+        </Button>
+        <Button
+          variant="danger"
+          aria-keyshortcuts="Delete Backspace"
+          onClick={() => editorStore.getState().removeSelection()}
+          className="ml-auto"
+        >
+          <Trash2 size={15} aria-hidden="true" />
+          {strings.inspector.delete}
+        </Button>
+      </Actions>
+    </>
+  );
+}
+
+function EdgeForm({
+  edge,
+  graph,
+  headingId,
+}: {
+  edge: ArchEdge;
+  graph: ArchitectureGraph;
+  headingId: string;
+}) {
+  const labelOf = (id: string) => graph.nodes.find((node) => node.id === id)?.label ?? id;
+  const update = (patch: EdgePatch) => editorStore.getState().updateEdge(edge.id, patch);
+  const { mode: _mode, ...withoutMode } = edge;
+  const inferred = resolveEdgeMode(withoutMode);
+
+  return (
+    <>
+      <PanelHeader
+        headingId={headingId}
+        title={strings.inspector.connection}
+        icon={
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-surface-muted text-muted">
+            <Cable size={18} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+        }
+      />
+      <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overscroll-contain px-3.5 py-3">
+        <p className="flex items-center gap-2 text-sm">
+          <span className="truncate font-medium">{labelOf(edge.source)}</span>
+          <ArrowRight size={14} aria-hidden="true" className="shrink-0 text-muted" />
+          <span className="truncate font-medium">{labelOf(edge.target)}</span>
+        </p>
+        <TextField
+          label={strings.inspector.label}
+          value={edge.label ?? ''}
+          placeholder={edge.protocol && strings.protocols[edge.protocol]}
+          maxLength={LIMITS.labelLength}
+          onCommit={(label) => update({ label: label === '' ? undefined : label })}
+        />
+        <SelectField<EdgeProtocol | 'none'>
+          label={strings.inspector.protocol}
+          value={edge.protocol ?? 'none'}
+          options={[
+            { value: 'none', label: strings.inspector.protocolNone },
+            ...EDGE_PROTOCOLS.map((protocol) => ({
+              value: protocol,
+              label: strings.protocols[protocol],
+            })),
+          ]}
+          onChange={(protocol) => update({ protocol: protocol === 'none' ? undefined : protocol })}
+        />
+        <div className="flex flex-col gap-1.5">
+          <ChoiceField<'auto' | 'sync' | 'async'>
+            label={strings.inspector.mode}
+            value={edge.mode ?? 'auto'}
+            options={[
+              { value: 'auto', label: strings.inspector.modes.auto },
+              { value: 'sync', label: strings.inspector.modes.sync },
+              { value: 'async', label: strings.inspector.modes.async },
+            ]}
+            onChange={(mode) => update({ mode: mode === 'auto' ? undefined : mode })}
+          />
+          <p className="text-xs text-muted">{strings.inspector.modeHint(edge.mode ?? inferred)}</p>
+        </div>
+      </div>
+      <Actions>
+        <Button
+          variant="danger"
+          aria-keyshortcuts="Delete Backspace"
+          onClick={() => editorStore.getState().removeSelection()}
+          className="ml-auto"
+        >
+          <Trash2 size={15} aria-hidden="true" />
+          {strings.inspector.delete}
+        </Button>
+      </Actions>
+    </>
+  );
+}

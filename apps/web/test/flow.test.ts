@@ -128,6 +128,14 @@ describe('toFlow', () => {
     expect(edges).toEqual([]);
   });
 
+  it('names nodes for assistive technology and leaves groups in place until selected', () => {
+    const { nodes } = toFlow({ graph, layout }, 'LR');
+    const byId = (id: string) => nodes.find((node) => node.id === id);
+    expect(byId('api')).toMatchObject({ ariaLabel: 'API, Amazon ECS' });
+    expect(byId('api')).not.toHaveProperty('draggable');
+    expect(byId('vpc')).toMatchObject({ ariaLabel: 'VPC, Virtual network', draggable: false });
+  });
+
   it('returns nothing for an empty diagram', () => {
     expect(
       toFlow(

@@ -29,7 +29,8 @@ const TEMPLATE_ICONS = {
 const EXAMPLE_INTERVAL_MS = 3600;
 
 interface PromptDockProps {
-  templateId: TemplateId;
+  /** Template the diagram was opened from, if any. */
+  templateId: TemplateId | null;
   onTemplateChange: (id: TemplateId) => void;
 }
 

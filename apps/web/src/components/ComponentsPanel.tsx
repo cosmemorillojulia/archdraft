@@ -1,7 +1,8 @@
-import { NODE_CATALOG, NODE_CATEGORIES, type NodeDefinition } from '@archdraft/core';
+import { NODE_CATALOG, NODE_CATEGORIES, type NodeDefinition, type NodeKind } from '@archdraft/core';
 import { PanelLeftClose, Search, Shapes, X } from 'lucide-react';
 import { AnimatePresence, m, useDragControls } from 'motion/react';
 import { type KeyboardEvent, type RefObject, useEffect, useId, useRef, useState } from 'react';
+import { KIND_MIME } from '../canvas/palette-drop.ts';
 import { KIND_ICONS } from '../icons.ts';
 import { EASE_OUT, SPRING_POP, SPRING_SLIDE } from '../motion.ts';
 import { strings } from '../strings.ts';
@@ -18,11 +19,22 @@ interface PaletteToggleProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface PaletteActions {
+  /** Adds a component or group of this kind at the centre of the view. */
+  onAdd: (kind: NodeKind) => void;
+}
+
 /**
  * Wide screens: floating panel beside the diagram. It slides in from the
  * left, its tiles cascade in, and the grid reflows smoothly while filtering.
+ * A tile adds its component at the centre of the view when clicked, or where
+ * it is dropped when dragged onto the diagram.
  */
-export function ComponentsPanel({ open, onOpenChange }: PaletteToggleProps) {
+export function ComponentsPanel({
+  open,
+  onOpenChange,
+  onAdd,
+}: PaletteToggleProps & PaletteActions) {
   const headingId = useId();
   return (
     <AnimatePresence mode="wait" initial={false}>
@@ -41,6 +53,9 @@ export function ComponentsPanel({ open, onOpenChange }: PaletteToggleProps) {
             columns={3}
             onClose={() => onOpenChange(false)}
             closeIcon="panel"
+            onAdd={onAdd}
+            draggable
+            hint={strings.components.hintWide}
           />
         </m.section>
       ) : (
@@ -92,8 +107,14 @@ export function ComponentsSheetToggle({ open, onOpenChange, toggleRef }: Compone
 /**
  * Bottom sheet with the palette. It slides up with a spring, and closes with
  * its button, Escape, a tap on the backdrop, or by dragging its handle down.
+ * Tapping a tile adds its component at the centre of the view.
  */
-export function ComponentsSheet({ open, onOpenChange, toggleRef }: ComponentsSheetProps) {
+export function ComponentsSheet({
+  open,
+  onOpenChange,
+  toggleRef,
+  onAdd,
+}: ComponentsSheetProps & PaletteActions) {
   const headingId = useId();
   const dragControls = useDragControls();
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -153,21 +174,32 @@ export function ComponentsSheet({ open, onOpenChange, toggleRef }: ComponentsShe
           >
             <span aria-hidden="true" className="h-1.5 w-10 rounded-full bg-line" />
           </div>
-          <Palette headingId={headingId} columns={4} onClose={close} closeIcon="x" />
+          <Palette
+            headingId={headingId}
+            columns={4}
+            onClose={close}
+            closeIcon="x"
+            onAdd={onAdd}
+            draggable={false}
+            hint={strings.components.hintNarrow}
+          />
         </m.div>
       )}
     </AnimatePresence>
   );
 }
 
-interface PaletteProps {
+interface PaletteProps extends PaletteActions {
   headingId: string;
   columns: 3 | 4;
   onClose: () => void;
   closeIcon: 'panel' | 'x';
+  /** Whether tiles can be dragged onto the diagram. */
+  draggable: boolean;
+  hint: string;
 }
 
-function Palette({ headingId, columns, onClose, closeIcon }: PaletteProps) {
+function Palette({ headingId, columns, onClose, closeIcon, onAdd, draggable, hint }: PaletteProps) {
   const [query, setQuery] = useState('');
   const needle = query.trim().toLowerCase();
   const groups = NODE_CATEGORIES.map((category) => ({
@@ -202,6 +234,7 @@ function Palette({ headingId, columns, onClose, closeIcon }: PaletteProps) {
           <CloseIcon size={17} aria-hidden="true" />
         </Button>
       </div>
+      <p className="-mt-1 px-4 pb-2 text-xs text-muted">{hint}</p>
       <div className="px-3 pb-2">
         <label className="flex h-9 items-center gap-2 rounded-control bg-surface-muted px-3 text-muted transition-shadow focus-within:ring-2 focus-within:ring-focus">
           <Search size={15} aria-hidden="true" />
@@ -250,6 +283,8 @@ function Palette({ headingId, columns, onClose, closeIcon }: PaletteProps) {
                       key={definition.kind}
                       definition={definition}
                       delay={Math.min(order++ * 0.012, 0.3)}
+                      onAdd={onAdd}
+                      draggable={draggable}
                     />
                   ))}
                 </AnimatePresence>
@@ -262,28 +297,50 @@ function Palette({ headingId, columns, onClose, closeIcon }: PaletteProps) {
   );
 }
 
-function PaletteTile({ definition, delay }: { definition: NodeDefinition; delay: number }) {
+interface PaletteTileProps extends PaletteActions {
+  definition: NodeDefinition;
+  delay: number;
+  draggable: boolean;
+}
+
+function PaletteTile({ definition, delay, onAdd, draggable }: PaletteTileProps) {
   const Icon = KIND_ICONS[definition.kind];
   return (
     <m.li
       layout
-      title={definition.description}
       initial={{ opacity: 0, scale: 0.85, y: 6 }}
       animate={{ opacity: 1, scale: 1, y: 0, transition: { ...SPRING_POP, delay } }}
       exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.12 } }}
       whileHover={{ y: -2 }}
-      className="group flex cursor-default flex-col items-center gap-1.5 rounded-control px-1 py-2.5 text-center transition-colors hover:bg-surface-muted"
+      whileTap={{ scale: 0.95 }}
     >
-      <span
-        className="flex size-9 items-center justify-center rounded-[10px] transition-transform duration-200 group-hover:scale-110"
-        style={{
-          color: `var(--cat-${definition.category})`,
-          backgroundColor: `var(--cat-${definition.category}-bg)`,
+      <button
+        type="button"
+        title={definition.description}
+        aria-label={strings.components.add(definition.label)}
+        draggable={draggable}
+        onDragStart={(event) => {
+          event.dataTransfer.setData(KIND_MIME, definition.kind);
+          event.dataTransfer.effectAllowed = 'copy';
         }}
+        onClick={() => onAdd(definition.kind)}
+        className={`group flex w-full flex-col items-center gap-1.5 rounded-control px-1 py-2.5 text-center transition-colors hover:bg-surface-muted ${
+          draggable ? 'cursor-grab active:cursor-grabbing' : ''
+        }`}
       >
-        <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-      </span>
-      <span className="text-[0.6875rem] leading-tight">{definition.label}</span>
+        <span
+          className="flex size-9 items-center justify-center rounded-[10px] transition-transform duration-200 group-hover:scale-110"
+          style={{
+            color: `var(--cat-${definition.category})`,
+            backgroundColor: `var(--cat-${definition.category}-bg)`,
+          }}
+        >
+          <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+        </span>
+        <span aria-hidden="true" className="text-[0.6875rem] leading-tight">
+          {definition.label}
+        </span>
+      </button>
     </m.li>
   );
 }
