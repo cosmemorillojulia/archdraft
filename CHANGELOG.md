@@ -43,6 +43,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/web`: the theme change is a cross-fade made with View Transitions where the browser supports them (ADR 0018), smoother on large diagrams; elsewhere the colour blend remains, and it no longer jumps at the end.
 - `CONTAINER_PADDING` moved from `@archdraft/layout` to `@archdraft/core`, so the editor can place components inside groups without loading ELK.
 - `@archdraft/web`: the header no longer links to the source code, React Flow's corner link is hidden (it is credited in the README), component names take up to two lines instead of being cut, the palette search ignores accents, and the diagram card says 1 component instead of 1 components.
+- `@archdraft/web`: new logo, a small diagram shaped as an A inside drawing-sheet corner marks, as the page icon, the iOS home screen icon and at the top of the README.
 - `@archdraft/web`: on touch screens the floating panels are nearly opaque instead of blurred, so the canvas under them is cheaper to redraw.
 
 ### Fixed

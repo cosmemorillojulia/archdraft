@@ -10,7 +10,7 @@ Estado: estructura y despliegue (T07), lienzo con React Flow y zoom (T08), redis
 apps/web/
   index.html              # aplica el tema guardado antes del primer pintado
   vite.config.ts          # base /archdraft/, plugins de React y Tailwind, configuración de Vitest
-  public/favicon.svg
+  public/favicon.svg      # logo (G3); apple-touch-icon.png, la misma figura para iOS
   src/
     main.tsx              # punto de entrada
     App.tsx               # proveedores, cabecera fija, lienzo, capas flotantes y añadir en el centro
@@ -127,6 +127,10 @@ Contraste WCAG medido: texto principal sobre superficie, 17,4:1 en claro y 14,0:
 ### Capas flotantes
 
 La utilidad `floating` da a cada capa una superficie al 88 % de opacidad con desenfoque de fondo, un filete de un píxel y una sombra de dos niveles. En pantallas táctiles (`pointer: coarse`) la superficie es casi opaca (96 %) y sin desenfoque: una capa desenfocada se vuelve a pintar cada vez que cambia el lienzo que tiene debajo, en cada paso de un arrastre, y es lo que más cuesta en un móvil. Solo la llevan los elementos que flotan sobre el lienzo; dentro de un panel no hay tarjetas ni sombras. Radios por capa: 16 px en paneles (`rounded-panel`), 10 px en controles (`rounded-control`) y píldora en las plantillas.
+
+### Logo
+
+El icono de la aplicación es la propuesta G3, elegida por el propietario entre varias rondas: un pequeño diagrama con forma de A (un nodo redondo arriba, dos cuadrados abajo y una conexión que hace de travesaño) dentro de las marcas de esquina de una hoja de dibujo. Tres colores: marino `#12284A` de fondo, papel `#F4F6F9` para el grafo y acero claro `#8FB0DE` para las marcas y el travesaño. Se ve como icono de la pestaña (`public/favicon.svg`, en una cuadrícula de 512 con esquinas redondeadas) y en la pantalla de inicio de iOS (`public/apple-touch-icon.png`, 180 × 180 y cuadrado, porque iOS redondea los iconos), y encabeza el README. La cabecera sigue sin logotipo gráfico: el nombre en mayúsculas inclinadas hace de marca (ADR 0015).
 
 ### Tipografía
 
@@ -440,6 +444,7 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 - `store.test.ts`: historial (deshacer, rehacer, rama nueva, límite de 100, ediciones sin cambios), cambio de tamaño como un paso, rechazos con su mensaje, ids de mensaje, borrar y duplicar la selección, conexión pendiente y apertura de diagramas como paso del historial.
 - `flow.test.ts`: padres antes que hijos, posiciones relativas, tamaños, profundidad, producto y distintivo de proveedor, conectores por dirección, orden de construcción, aristas asíncronas y categoría de origen, nombres accesibles, grupos fijos hasta seleccionarlos, tamaño medido en cada nodo, figuras genéricas, nodos sin disposición y diagrama vacío.
 - `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, profundidad de anidamiento, escala de dibujo con su mínimo y su máximo, límites vacíos, vista inicial que encaja o que empieza arriba y punta de flecha en los cuatro lados.
+- `brand.test.ts`: el logo tiene sus tres colores y título, y la página enlaza el icono de la pestaña y el de iOS (un PNG de 180 × 180).
 - `icons.test.ts`: cada icono de `KIND_ICONS` es el que nombra el catálogo de core. Detectó que Lucide renombró `waves` a `waves-horizontal`.
 
 Revisión visual: build servido con `vite preview` y capturado con Playwright en Chromium a 1440 × 900 en claro y oscuro, con la paleta abierta y cerrada, con un nodo resaltado y con varias plantillas, y a 390 × 844; además, un vídeo de 15 s del recorrido para revisar el movimiento. Sin errores en la consola. La skill `design-critique` (`.claude/skills`) guía la revisión de las capturas.
