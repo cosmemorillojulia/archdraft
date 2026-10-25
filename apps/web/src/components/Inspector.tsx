@@ -16,13 +16,14 @@ import {
 import { ArrowRight, Cable, Copy, Spline, Trash2, X } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { type ReactNode, useId } from 'react';
-import type { EdgePatch, NodePatch } from '../editor/operations.ts';
+import type { EdgePatch, NodePatch, Selection } from '../editor/operations.ts';
 import { editorStore, useEditor } from '../editor/store.ts';
 import { KIND_ICONS } from '../icons.ts';
-import { EASE_OUT, SPRING_SLIDE } from '../motion.ts';
+import { EASE_OUT } from '../motion.ts';
 import { strings } from '../strings.ts';
 import { Button } from './Button.tsx';
 import { ChoiceField, NumberField, SelectField, TextField } from './fields.tsx';
+import { FloatingPanel, type PanelPlacement } from './FloatingPanel.tsx';
 
 type Flag = Exclude<keyof NodeAttributes, 'replicas'>;
 const FLAGS = Object.keys(strings.inspector.attributes) as Flag[];
@@ -46,75 +47,71 @@ function cleanAttributes(attributes: NodeAttributes): NodeAttributes | undefined
 }
 
 interface InspectorProps {
-  /** Beside the diagram on wide screens; across the bottom on narrow ones. */
-  placement: 'side' | 'bottom';
+  placement: PanelPlacement;
+  selection: Selection;
+  graph: ArchitectureGraph;
+}
+
+/** Whether the inspector has something to show. */
+export function useInspecting(placement: PanelPlacement): boolean {
+  return useEditor((state) => {
+    const { selection, current, connectingFrom } = state;
+    if (!selection || !current) return false;
+    // On narrow screens the panel steps aside while a connection waits for its target.
+    if (connectingFrom !== null && placement === 'bottom') return false;
+    const { nodes, edges } = current.document.graph;
+    const list: readonly { id: string }[] = selection.type === 'node' ? nodes : edges;
+    return list.some((item) => item.id === selection.id);
+  });
 }
 
 /**
  * Floating panel with the properties of the selected component, group or
  * connection (ADR 0014). It appears when something is selected and closes
- * with its button, Escape or a click on the empty canvas.
+ * with its button, Escape or a click on the empty canvas. It draws only from
+ * its props, so that it can play its exit with the last selection
+ * (PanelSlot.tsx).
  */
-export function Inspector({ placement }: InspectorProps) {
-  const selection = useEditor((state) => state.selection);
-  const graph = useEditor((state) => state.current?.document.graph);
-  // On narrow screens the panel steps aside while a connection waits for its target.
-  const connecting = useEditor((state) => state.connectingFrom !== null);
+export function Inspector({ placement, selection, graph }: InspectorProps) {
   const headingId = useId();
-
   const node =
-    selection?.type === 'node' ? graph?.nodes.find((item) => item.id === selection.id) : undefined;
+    selection.type === 'node' ? graph.nodes.find((item) => item.id === selection.id) : undefined;
   const edge =
-    selection?.type === 'edge' ? graph?.edges.find((item) => item.id === selection.id) : undefined;
-  const open =
-    graph !== undefined &&
-    (node !== undefined || edge !== undefined) &&
-    !(connecting && placement === 'bottom');
-  const offset = placement === 'side' ? { x: 24, y: 0 } : { x: 0, y: 24 };
+    selection.type === 'edge' ? graph.edges.find((item) => item.id === selection.id) : undefined;
 
   return (
-    <AnimatePresence>
-      {open && (
-        <m.section
-          key="inspector"
-          aria-labelledby={headingId}
-          initial={{ opacity: 0, ...offset }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          exit={{ opacity: 0, ...offset, transition: { duration: 0.16, ease: EASE_OUT } }}
-          transition={SPRING_SLIDE}
-          className={`floating pointer-events-auto flex min-h-0 flex-col overflow-hidden rounded-panel ${
-            placement === 'side' ? 'max-h-full w-full' : 'max-h-[min(52dvh,480px)] w-full'
-          }`}
+    <FloatingPanel placement={placement} labelledBy={headingId}>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <m.div
+          key={selection.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15, ease: EASE_OUT }}
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <AnimatePresence mode="popLayout" initial={false}>
-            <m.div
-              key={selection?.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15, ease: EASE_OUT }}
-              className="flex min-h-0 flex-1 flex-col"
-            >
-              {node && <NodeForm node={node} graph={graph} headingId={headingId} />}
-              {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} />}
-            </m.div>
-          </AnimatePresence>
-        </m.section>
-      )}
-    </AnimatePresence>
+          {node && <NodeForm node={node} graph={graph} headingId={headingId} />}
+          {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} />}
+        </m.div>
+      </AnimatePresence>
+    </FloatingPanel>
   );
 }
 
-function PanelHeader({
+export function PanelHeader({
   headingId,
   title,
   subtitle,
   icon,
+  closeLabel,
+  onClose,
 }: {
   headingId: string;
   title: string;
   subtitle?: string;
   icon: ReactNode;
+  closeLabel: string;
+  onClose: () => void;
 }) {
   return (
     <div className="flex items-center gap-3 border-b border-line py-2.5 pr-2 pl-3.5">
@@ -128,9 +125,9 @@ function PanelHeader({
       <Button
         variant="ghost"
         size="icon"
-        aria-label={strings.inspector.close}
-        title={strings.inspector.close}
-        onClick={() => editorStore.getState().select(null)}
+        aria-label={closeLabel}
+        title={closeLabel}
+        onClick={onClose}
       >
         <X size={17} aria-hidden="true" />
       </Button>
@@ -175,6 +172,8 @@ function NodeForm({
     <>
       <PanelHeader
         headingId={headingId}
+        closeLabel={strings.inspector.close}
+        onClose={() => editorStore.getState().select(null)}
         title={node.label}
         subtitle={definition.label}
         icon={
@@ -302,6 +301,8 @@ function EdgeForm({
     <>
       <PanelHeader
         headingId={headingId}
+        closeLabel={strings.inspector.close}
+        onClose={() => editorStore.getState().select(null)}
         title={strings.inspector.connection}
         icon={
           <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-surface-muted text-muted">

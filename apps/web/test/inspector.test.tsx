@@ -2,7 +2,7 @@ import { type DiagramDocument, DEFAULT_NODE_SIZE } from '@archdraft/core';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Inspector } from '../src/components/Inspector.tsx';
+import { PanelSlot } from '../src/components/PanelSlot.tsx';
 import { editorStore } from '../src/editor/store.ts';
 import { strings } from '../src/strings.ts';
 
@@ -39,12 +39,12 @@ describe('Inspector', () => {
   });
 
   it('shows nothing while nothing is selected', () => {
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     expect(screen.queryByRole('region')).not.toBeInTheDocument();
   });
 
   it('shows the fields of a component, with the product the diagram would use', () => {
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('node', 'db');
     const panel = screen.getByRole('region', { name: 'Database' });
     expect(within(panel).getByText('Relational database')).toBeInTheDocument();
@@ -59,7 +59,7 @@ describe('Inspector', () => {
 
   it('commits a new name when the field loses focus, as one step', async () => {
     const user = userEvent.setup();
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('node', 'api');
     const name = screen.getByLabelText(strings.inspector.name);
     await user.clear(name);
@@ -72,7 +72,7 @@ describe('Inspector', () => {
 
   it('asks for a name instead of saving an empty one, and restores it', async () => {
     const user = userEvent.setup();
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('node', 'api');
     const name = screen.getByLabelText(strings.inspector.name);
     await user.clear(name);
@@ -85,7 +85,7 @@ describe('Inspector', () => {
 
   it('cancels a change with Escape', async () => {
     const user = userEvent.setup();
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('node', 'api');
     const name = screen.getByLabelText(strings.inspector.name);
     await user.type(name, ' v2{Escape}');
@@ -95,7 +95,7 @@ describe('Inspector', () => {
 
   it('sets the product and the provider, and goes back to the defaults', async () => {
     const user = userEvent.setup();
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('node', 'db');
     await user.type(screen.getByLabelText(strings.inspector.product), 'Aurora{Enter}');
     await user.selectOptions(screen.getByLabelText(strings.inspector.provider), 'gcp');
@@ -110,7 +110,7 @@ describe('Inspector', () => {
 
   it('records operational facts as yes, no or not set', async () => {
     const user = userEvent.setup();
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('node', 'db');
     const multiAz = screen.getByRole('radiogroup', { name: strings.inspector.attributes.multiAz });
     await user.click(within(multiAz).getByLabelText(strings.inspector.yes));
@@ -121,7 +121,7 @@ describe('Inspector', () => {
 
   it('accepts whole numbers of instances in range', async () => {
     const user = userEvent.setup();
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('node', 'api');
     const replicas = screen.getByLabelText(strings.inspector.replicas);
     await user.type(replicas, '0');
@@ -132,7 +132,7 @@ describe('Inspector', () => {
   });
 
   it('shows only the name and description of a group', () => {
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('node', 'vpc');
     const panel = screen.getByRole('region', { name: 'VPC' });
     expect(within(panel).getByLabelText(strings.inspector.name)).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe('Inspector', () => {
 
   it('edits a connection: label, protocol and mode', async () => {
     const user = userEvent.setup();
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('edge', 'api-db');
     const panel = screen.getByRole('region', { name: strings.inspector.connection });
     expect(within(panel).getByText(strings.inspector.modeHint('sync'))).toBeInTheDocument();
@@ -165,7 +165,7 @@ describe('Inspector', () => {
 
   it('deletes the selection and closes', async () => {
     const user = userEvent.setup();
-    render(<Inspector placement="side" />);
+    render(<PanelSlot placement="side" />);
     inspect('node', 'db');
     await user.click(screen.getByRole('button', { name: strings.inspector.delete }));
     expect(nodeOf('db')).toBeUndefined();
@@ -175,7 +175,7 @@ describe('Inspector', () => {
 
   it('starts a connection from a component', async () => {
     const user = userEvent.setup();
-    render(<Inspector placement="bottom" />);
+    render(<PanelSlot placement="bottom" />);
     inspect('node', 'api');
     await user.click(screen.getByRole('button', { name: strings.inspector.connect }));
     expect(editorStore.getState().connectingFrom).toBe('api');

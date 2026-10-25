@@ -2,6 +2,7 @@ import {
   type CloudProvider,
   type EdgeProtocol,
   LIMITS,
+  type LintSeverity,
   type NodeAttributes,
   type NodeCategory,
   type TemplateId,
@@ -49,6 +50,30 @@ export const strings = {
   review: {
     clean: 'No design issues',
     issues: (count: number) => (count === 1 ? '1 design issue' : `${count} design issues`),
+    title: 'Design review',
+    close: 'Close design review',
+    summary: (count: number) =>
+      count === 0 ? 'Nothing to review' : count === 1 ? '1 finding' : `${count} findings`,
+    filters: 'Show findings by severity',
+    groups: { error: 'Errors', warning: 'Warnings', info: 'Notes' } satisfies Record<
+      LintSeverity,
+      string
+    >,
+    severities: { error: 'Error', warning: 'Warning', info: 'Note' } satisfies Record<
+      LintSeverity,
+      string
+    >,
+    empty: 'The design follows every active rule: availability, exposure, encryption and coupling.',
+    filteredOut: 'No findings match the filters.',
+    why: 'Why it matters',
+    edit: 'Edit',
+    editLabel: (label: string) => `Edit ${label}`,
+    turnOff: 'Turn off rule',
+    turnOffLabel: (title: string) => `Turn off the rule ${title}`,
+    turnOn: 'Turn on',
+    turnOnLabel: (title: string) => `Turn on the rule ${title}`,
+    disabled: (count: number) => `Rules turned off (${count})`,
+    disabledNote: 'Turned off rules stay off in this browser.',
   },
   components: {
     title: 'Components',

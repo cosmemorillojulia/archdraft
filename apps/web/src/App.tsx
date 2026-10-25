@@ -13,12 +13,13 @@ import {
 import { DiagramCard } from './components/DiagramCard.tsx';
 import { EditorNotice } from './components/EditorNotice.tsx';
 import { Header } from './components/Header.tsx';
-import { Inspector } from './components/Inspector.tsx';
+import { PanelSlot } from './components/PanelSlot.tsx';
 import { PromptDock } from './components/PromptDock.tsx';
 import { openTemplate } from './editor/open-template.ts';
 import { useEditorShortcuts } from './editor/shortcuts.ts';
 import { editorStore, useEditor } from './editor/store.ts';
 import { EXTRA_WIDE_SCREEN, useMediaQuery, WIDE_SCREEN } from './media.ts';
+import { useReview } from './review/review-store.ts';
 import { EASE_OUT } from './motion.ts';
 import { strings } from './strings.ts';
 
@@ -67,8 +68,9 @@ export function App() {
 /**
  * The palette sits beside the diagram on wide screens and opens as a bottom
  * sheet on narrow ones; while the sheet is open the rest of the page is
- * inert. Selecting something opens the inspector: beside the diagram card on
- * wide screens, and in place of the prompt on narrow ones.
+ * inert. Selecting something opens the inspector, and the review status of
+ * the diagram card opens the design review, in the same place: beside the
+ * diagram card on wide screens, and in place of the prompt on narrow ones.
  */
 function Editor() {
   // The diagram is the first thing to see; the palette opens on demand.
@@ -81,6 +83,9 @@ function Editor() {
   const graph = useEditor((state) => state.current?.document.graph);
   const templateId = useEditor((state) => state.opening ?? state.current?.templateId ?? null);
   const selecting = useEditor((state) => state.selection !== null);
+  const reviewing = useReview((state) => state.open);
+  // On narrow screens a panel takes the place of the prompt.
+  const panelOpen = selecting || reviewing;
   const flow = useReactFlow();
   const insets = useMemo(() => canvasInsets(wide, paletteOpen), [wide, paletteOpen]);
 
@@ -135,7 +140,7 @@ function Editor() {
 
           <div className="pointer-events-none absolute inset-x-3 top-3 bottom-36 z-10 flex flex-col items-end gap-3 md:left-auto md:w-80">
             {graph && <DiagramCard graph={graph} />}
-            {wide && <Inspector placement="side" />}
+            {wide && <PanelSlot placement="side" />}
           </div>
 
           <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex justify-center md:top-4">
@@ -143,7 +148,7 @@ function Editor() {
           </div>
 
           <AnimatePresence initial={false}>
-            {!(selecting && !wide) && (
+            {!(panelOpen && !wide) && (
               <m.div
                 key="compose"
                 initial={{ opacity: 0, y: 16 }}
@@ -173,7 +178,7 @@ function Editor() {
 
           {!wide && (
             <div className="pointer-events-none absolute inset-x-3 bottom-3 z-30 flex justify-center">
-              <Inspector placement="bottom" />
+              <PanelSlot placement="bottom" />
             </div>
           )}
         </div>

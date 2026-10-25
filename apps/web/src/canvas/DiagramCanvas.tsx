@@ -1,3 +1,4 @@
+import type { LintSeverity } from '@archdraft/core';
 import {
   Background,
   BackgroundVariant,
@@ -22,6 +23,8 @@ import {
 } from 'react';
 import { containerAt, subtreeOf } from '../editor/operations.ts';
 import { editorStore, type Snapshot, useEditor } from '../editor/store.ts';
+import { findingKey, severityByNode, useFindings } from '../review/findings.ts';
+import { reviewStore, useReview } from '../review/review-store.ts';
 import { EASE_OUT } from '../motion.ts';
 import { strings } from '../strings.ts';
 import { ArchitectureEdge } from './ArchitectureEdge.tsx';
@@ -58,10 +61,13 @@ const SIDE_INSPECTOR_COVER = 356;
 const bottomInspectorCover = () => Math.min(window.innerHeight * 0.52, 480) + 12;
 const REVEAL_MARGIN = 16;
 const REVEAL_MS = 300;
+/** Length of the glide to a finding chosen in the design review. */
+const FOCUS_MS = 450;
 /** Stacking order of the node being dragged: above every group, below the edge labels. */
 const DRAGGED_Z = 1000;
 
 const CONNECTION_LINE_STYLE = { stroke: 'var(--accent)', strokeWidth: 1.5 };
+const NO_ISSUES: ReadonlyMap<string, LintSeverity> = new Map();
 
 export interface DiagramCanvasProps {
   /** Space covered by the floating interface, kept clear when the diagram is fitted. */
@@ -114,6 +120,10 @@ function Flow({
 }: FlowProps) {
   const { document: diagram, direction } = snapshot;
   const selection = useEditor((state) => state.selection);
+  const findings = useFindings();
+  const reviewOpen = useReview((state) => state.open);
+  const activeKey = useReview((state) => state.activeKey);
+  const focusCount = useReview((state) => state.focusCount);
   const flow = useReactFlow<ArchitectureFlowNode, ArchitectureFlowEdge>();
   const containerRef = useRef<HTMLDivElement>(null);
   const pointerType = useRef('mouse');
@@ -156,23 +166,51 @@ function Flow({
   }, [elements.nodes, dragging, selectedNodeId]);
 
   const markerBase = `arrow-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  // While the review is open, components show their most severe finding, and the chosen
+  // finding stands out with everything else faded.
+  const issues = useMemo(
+    () => (reviewOpen ? severityByNode(findings) : NO_ISSUES),
+    [findings, reviewOpen],
+  );
+  const activeFinding = useMemo(
+    () =>
+      reviewOpen && activeKey !== null
+        ? findings.find((finding) => findingKey(finding) === activeKey)
+        : undefined,
+    [activeKey, findings, reviewOpen],
+  );
+
   const canvas = useMemo(() => {
-    const focusId = dragging ? null : (hoverId ?? selectedNodeId);
+    const hovered = dragging ? null : hoverId;
+    const markers = { idle: markerBase, active: `${markerBase}-active` };
+    const shared = { selection, dropTargetId, building, markers, issues };
+    if (hovered === null && activeFinding) {
+      const nodes = new Set(activeFinding.nodeIds);
+      return {
+        ...shared,
+        focusId: null,
+        nodes,
+        edges: new Set(activeFinding.edgeIds),
+        dimOthers: true,
+        finding: { nodes, severity: activeFinding.severity },
+      };
+    }
+    const focusId = dragging ? null : (hovered ?? selectedNodeId);
     return {
+      ...shared,
       focusId,
       ...relatedTo(focusId, diagram.graph.edges),
-      dimOthers: hoverId !== null && !dragging,
-      selection,
-      dropTargetId,
-      building,
-      markers: { idle: markerBase, active: `${markerBase}-active` },
+      dimOthers: hovered !== null,
+      finding: null,
     };
   }, [
+    activeFinding,
     building,
     diagram.graph.edges,
     dragging,
     dropTargetId,
     hoverId,
+    issues,
     markerBase,
     selectedNodeId,
     selection,
@@ -213,41 +251,76 @@ function Flow({
     void flow.setViewport({ ...viewport, x: viewport.x + delta / 2 }, { duration: INSET_SHIFT_MS });
   }, [flow, insets.left]);
 
-  // A newly selected node hidden behind the inspector or another panel glides into view.
-  const revealedId = useRef<string | null>(null);
-  useEffect(() => {
-    if (selectedNodeId === revealedId.current) return;
-    revealedId.current = selectedNodeId;
-    const box = selectedNodeId === null ? undefined : boxes.get(selectedNodeId);
+  /** Part of the canvas left free by the floating interface, with a panel open. */
+  const freeArea = useCallback(() => {
     const element = containerRef.current;
-    if (!box || !element) return;
+    if (!element) return null;
     const width = element.clientWidth;
     const height = element.clientHeight;
     const cover =
       inspectorPlacement === 'side'
         ? { ...insets, right: Math.max(insets.right, SIDE_INSPECTOR_COVER) }
         : { ...insets, bottom: Math.max(insets.bottom, bottomInspectorCover()) };
+    return {
+      left: cover.left + REVEAL_MARGIN,
+      top: cover.top + REVEAL_MARGIN,
+      right: width - cover.right - REVEAL_MARGIN,
+      bottom: height - cover.bottom - REVEAL_MARGIN,
+    };
+  }, [insets, inspectorPlacement]);
+
+  const revealedId = useRef<string | null>(null);
+
+  // A finding chosen in the review glides to the middle of the free area, zooming out if it does not fit.
+  const focusedCount = useRef(focusCount);
+  useEffect(() => {
+    if (focusCount === focusedCount.current) return;
+    focusedCount.current = focusCount;
+    const area = freeArea();
+    const bounds = boundsOf(
+      (activeFinding?.nodeIds ?? []).flatMap((id) => {
+        const box = boxes.get(id);
+        return box ? [box] : [];
+      }),
+    );
+    if (!area || !bounds) return;
+    // The finding selects its first component, which this glide already brings into view.
+    revealedId.current = activeFinding?.nodeIds[0] ?? null;
+    const current = flow.getViewport();
+    const width = area.right - area.left;
+    const height = area.bottom - area.top;
+    const zoom = Math.max(
+      Math.min(current.zoom, width / bounds.width, height / bounds.height),
+      MIN_ZOOM,
+    );
+    void flow.setViewport(
+      {
+        x: area.left + width / 2 - (bounds.x + bounds.width / 2) * zoom,
+        y: area.top + height / 2 - (bounds.y + bounds.height / 2) * zoom,
+        zoom,
+      },
+      { duration: FOCUS_MS },
+    );
+  }, [activeFinding, boxes, flow, focusCount, freeArea]);
+
+  // A newly selected node hidden behind the inspector or another panel glides into view.
+  useEffect(() => {
+    if (selectedNodeId === revealedId.current) return;
+    revealedId.current = selectedNodeId;
+    const box = selectedNodeId === null ? undefined : boxes.get(selectedNodeId);
+    const area = freeArea();
+    if (!box || !area) return;
     const { x, y, zoom } = flow.getViewport();
     const left = box.x * zoom + x;
     const top = box.y * zoom + y;
     const shift = (start: number, end: number, min: number, max: number) =>
       start < min ? min - start : end > max ? Math.max(max - end, min - start) : 0;
-    const dx = shift(
-      left,
-      left + box.width * zoom,
-      cover.left + REVEAL_MARGIN,
-      width - cover.right - REVEAL_MARGIN,
-    );
-    const dy = shift(
-      top,
-      top + box.height * zoom,
-      cover.top + REVEAL_MARGIN,
-      height - cover.bottom - REVEAL_MARGIN,
-    );
+    const dx = shift(left, left + box.width * zoom, area.left, area.right);
+    const dy = shift(top, top + box.height * zoom, area.top, area.bottom);
     if (dx !== 0 || dy !== 0) {
       void flow.setViewport({ x: x + dx, y: y + dy, zoom }, { duration: REVEAL_MS });
     }
-  }, [boxes, flow, insets, inspectorPlacement, selectedNodeId]);
+  }, [boxes, flow, freeArea, selectedNodeId]);
 
   /** Container the node would move into if dropped now, if it is not its current one. */
   const dropTargetFor = (node: ArchitectureFlowNode): string | null => {
@@ -379,14 +452,20 @@ function Flow({
           onNodeMouseLeave={() => setHoverId(null)}
           onNodeClick={(_event, node) => {
             const editor = editorStore.getState();
+            // Choosing a component on the canvas means editing it: the inspector takes over.
+            reviewStore.getState().setOpen(false);
             if (editor.connectingFrom === null) editor.select({ type: 'node', id: node.id });
             else if (editor.connectingFrom === node.id) editor.cancelConnection();
             else editor.connect(editor.connectingFrom, node.id);
           }}
-          onEdgeClick={(_event, edge) =>
-            editorStore.getState().select({ type: 'edge', id: edge.id })
-          }
-          onPaneClick={() => editorStore.getState().select(null)}
+          onEdgeClick={(_event, edge) => {
+            reviewStore.getState().setOpen(false);
+            editorStore.getState().select({ type: 'edge', id: edge.id });
+          }}
+          onPaneClick={() => {
+            editorStore.getState().select(null);
+            reviewStore.getState().clearFocus();
+          }}
           className="archdraft-flow"
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="var(--dots)" />

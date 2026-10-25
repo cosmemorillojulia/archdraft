@@ -1,4 +1,4 @@
-import type { ArchEdge } from '@archdraft/core';
+import type { ArchEdge, LintSeverity } from '@archdraft/core';
 import { createContext, useContext } from 'react';
 import type { Selection } from '../editor/operations.ts';
 
@@ -21,6 +21,10 @@ export interface CanvasState {
   building: boolean;
   /** Ids of the arrowhead markers, shared by every edge of the canvas. */
   markers: { idle: string; active: string };
+  /** While the design review is open: the most severe finding of each component. */
+  issues: ReadonlyMap<string, LintSeverity>;
+  /** The finding chosen in the review: its components are outlined in its colour. */
+  finding: { nodes: ReadonlySet<string>; severity: LintSeverity } | null;
 }
 
 export const CanvasContext = createContext<CanvasState>({
@@ -32,6 +36,8 @@ export const CanvasContext = createContext<CanvasState>({
   dropTargetId: null,
   building: false,
   markers: { idle: '', active: '' },
+  issues: new Map(),
+  finding: null,
 });
 
 export function useCanvas(): CanvasState {
