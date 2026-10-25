@@ -111,7 +111,7 @@ La utilidad `floating` da a cada capa una superficie al 88 % de opacidad con des
 
 ### Tipografía
 
-Instrument Sans variable (peso 400 a 700, anchura 75 % a 100 %), autoalojada con `@fontsource-variable/instrument-sans`: unos 57 KB para el alfabeto latino básico. Escala: 14 px para la interfaz, 18 px bold para el nombre en la cabecera, 13 px semibold para la etiqueta de un nodo y 11 a 12 px para textos secundarios. Sin mayúsculas sostenidas.
+Instrument Sans variable (peso 400 a 700, anchura 75 % a 100 %), autoalojada con `@fontsource-variable/instrument-sans`: unos 57 KB para el alfabeto latino básico. Escala: 14 px para la interfaz, 18 px bold para el nombre en la cabecera, 13 px semibold para la etiqueta de un nodo y 11 a 12 px para textos secundarios. Sin mayúsculas sostenidas, salvo el nombre de la cabecera, que hace de logotipo: en mayúsculas con `text-transform` (el texto sigue siendo Archdraft para los lectores de pantalla), con un espaciado de 0,06 em y una inclinación de 8° (`skewX`) en lugar de la cursiva de Instrument Sans, que sería otro archivo de fuente solo para esta palabra; en mayúsculas, la cursiva apenas cambia la forma de las letras.
 
 ### Movimiento
 
@@ -145,7 +145,7 @@ Animaciones del recorrido:
 
 | Pieza             | Contenido                                                                                                                                                                                                                                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Header`          | Barra fija: nombre del producto (sin logotipo), descripción, deshacer y rehacer (`HistoryControls`), enlace al código y cambio de tema                                                                                                                                             |
+| `Header`          | Barra fija: nombre del producto en mayúsculas inclinadas, sin logotipo gráfico, descripción, deshacer y rehacer (`HistoryControls`), enlace al código y cambio de tema                                                                                                             |
 | `DiagramCard`     | Tarjeta flotante: título, proveedor, descripción recortada a dos líneas, número de componentes y conexiones, y estado de la revisión de diseño (`lintGraph` memoizado por grafo, con `role="status"`)                                                                              |
 | `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón. Cada mosaico es un botón «Add …» (ver Edición)                                                                                 |
 | `PromptDock`      | Campo que crece con el texto (`field-sizing: content`) con ejemplos rotatorios decorativos (`aria-hidden`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, y las seis plantillas con icono en una cápsula con indicador deslizante (`aria-pressed`) |

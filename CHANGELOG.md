@@ -31,4 +31,5 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - `DEFAULT_NODE_SIZE` and `DEFAULT_CONTAINER_SIZE` moved from `@archdraft/layout` to `@archdraft/core`.
+- `@archdraft/web`: the header shows the product name in slanted capitals, as a wordmark.
 - `CONTAINER_PADDING` moved from `@archdraft/layout` to `@archdraft/core`, so the editor can place components inside groups without loading ELK.

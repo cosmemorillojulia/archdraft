@@ -18,7 +18,10 @@ export function Header() {
   return (
     <header className="relative z-30 flex h-13 shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4">
       <div className="flex min-w-0 items-baseline gap-4">
-        <h1 className="text-lg font-bold tracking-[-0.02em]">{strings.appName}</h1>
+        {/* Wordmark: capitals by CSS, so assistive technology still reads the word. */}
+        <h1 className="inline-block -skew-x-[8deg] text-lg font-bold tracking-[0.06em] uppercase">
+          {strings.appName}
+        </h1>
         <p className="hidden truncate text-sm text-muted md:block">{strings.tagline}</p>
       </div>
       <div className="flex items-center gap-1">
