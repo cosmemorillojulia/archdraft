@@ -154,3 +154,18 @@ describe('connections', () => {
     expect(diagram.querySelector('.react-flow__edge path')).toBe(before);
   });
 });
+
+describe('resizing', () => {
+  it('offers handles on the selected node only, whatever it is', async () => {
+    const diagram = await openFlowchart();
+    const handlesOf = (id: string) =>
+      diagram.querySelectorAll(`.react-flow__node[data-id="${id}"] .react-flow__resize-control`);
+    expect(handlesOf('mail')).toHaveLength(0);
+    act(() => editorStore.getState().select({ type: 'node', id: 'mail' }));
+    await waitFor(() => expect(handlesOf('mail').length).toBeGreaterThan(0));
+    expect(handlesOf('approved')).toHaveLength(0);
+    act(() => editorStore.getState().select({ type: 'node', id: 'approved' }));
+    await waitFor(() => expect(handlesOf('approved').length).toBeGreaterThan(0));
+    expect(handlesOf('mail')).toHaveLength(0);
+  });
+});

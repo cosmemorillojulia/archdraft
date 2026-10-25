@@ -1,5 +1,6 @@
 import { useReactFlow, useViewport } from '@xyflow/react';
 import { Activity, Maximize, Minus, Plus } from 'lucide-react';
+import { memo } from 'react';
 import { Button } from '../components/Button.tsx';
 import { preferencesStore, usePreferences } from '../preferences.ts';
 import { useStrings } from '../i18n/locale.ts';
@@ -20,7 +21,11 @@ interface ZoomControlsProps {
  * travel along connections. Pinching (fingers or trackpad) and the mouse wheel
  * zoom too; these buttons are the visible, keyboard-friendly way to do it.
  */
-export function ZoomControls({ onFit, minZoom, maxZoom }: ZoomControlsProps) {
+export const ZoomControls = memo(function ZoomControls({
+  onFit,
+  minZoom,
+  maxZoom,
+}: ZoomControlsProps) {
   const strings = useStrings();
   const { zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
@@ -82,4 +87,4 @@ export function ZoomControls({ onFit, minZoom, maxZoom }: ZoomControlsProps) {
       </Button>
     </div>
   );
-}
+});

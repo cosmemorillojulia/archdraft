@@ -11,6 +11,7 @@ import {
   type DiagramLayout,
   getNodeDefinition,
   isContainerKind,
+  isShapeKind,
   layoutEntry,
   LIMITS,
   type NodeKind,
@@ -352,30 +353,95 @@ export function moveNode(document: DiagramDocument, id: string, position: Point)
   return { ok: true, document: { graph: nextGraph, layout: nextLayout } };
 }
 
+/** Smallest size a node can be resized to, by what it is, in diagram pixels. */
+export const MIN_SIZES = {
+  component: { width: 132, height: 52 },
+  shape: { width: 40, height: 40 },
+  container: { width: 120, height: 72 },
+} as const satisfies Record<string, Size>;
+
+export function minSizeOf(kind: NodeKind): Size {
+  return isContainerKind(kind)
+    ? MIN_SIZES.container
+    : isShapeKind(kind)
+      ? MIN_SIZES.shape
+      : MIN_SIZES.component;
+}
+
+/** A resized box, and how far the contents of a group move inside it to stay where they are. */
+export interface FittedResize {
+  readonly box: Box;
+  /** Subtracted from the positions of the children, which are relative to the box. */
+  readonly shift: Point;
+}
+
 /**
- * Gives a node a new size and, when it was resized from its left or top
- * side, a new position, relative to its container. The containers around it
- * grow if it no longer fits.
+ * The box a node can take when resized towards `box` (relative to its parent,
+ * like its position): whole pixels, at least its minimum size, clear of the
+ * border of its parent and, for a group, still around everything inside it.
+ * Each edge is limited on its own, so the edges the person did not move stay put.
+ * A group whose top or left edge moves keeps its contents in place.
  */
-export function resizeNode(
-  document: DiagramDocument,
-  id: string,
-  box: { x: number; y: number; width: number; height: number },
-): Edit {
+export function fitResize(document: DiagramDocument, id: string, box: Box): FittedResize {
+  const { graph, layout } = document;
+  const node = graph.nodes.find((candidate) => candidate.id === id);
+  const min = node ? minSizeOf(node.kind) : MIN_SIZES.shape;
+  let left = Math.round(box.x);
+  let top = Math.round(box.y);
+  let right = Math.round(box.x + box.width);
+  let bottom = Math.round(box.y + box.height);
+  if (node?.parentId !== undefined) {
+    left = Math.max(left, CONTAINER_PADDING.left);
+    top = Math.max(top, CONTAINER_PADDING.top);
+  }
+
+  const current = layoutEntry(layout.positions, id);
+  const children = graph.nodes.filter((child) => child.parentId === id);
+  if (node && current && isContainerKind(node.kind) && children.length > 0) {
+    for (const child of children) {
+      const position = layoutEntry(layout.positions, child.id) ?? ORIGIN;
+      const size = layoutEntry(layout.sizes, child.id) ?? sizeOfKind(child.kind);
+      left = Math.min(left, current.x + position.x - CONTAINER_PADDING.left);
+      top = Math.min(top, current.y + position.y - CONTAINER_PADDING.top);
+      right = Math.max(right, current.x + position.x + size.width + CONTAINER_PADDING.right);
+      bottom = Math.max(bottom, current.y + position.y + size.height + CONTAINER_PADDING.bottom);
+    }
+  }
+  right = Math.max(right, left + min.width);
+  bottom = Math.max(bottom, top + min.height);
+
+  const shift = current ? { x: left - current.x, y: top - current.y } : ORIGIN;
+  return { box: { x: left, y: top, width: right - left, height: bottom - top }, shift };
+}
+
+/**
+ * Resizes a node to the box `fitResize` allows, moving the contents of a
+ * group so they stay where they are, and grows the groups around it.
+ */
+export function resizeNode(document: DiagramDocument, id: string, box: Box): Edit {
   const { graph, layout } = document;
   const node = graph.nodes.find((candidate) => candidate.id === id);
   if (!node) return unchanged(document);
-  const position = insideParent(round(box), node.parentId);
-  const size = { width: Math.round(box.width), height: Math.round(box.height) };
+  const { box: fitted, shift } = fitResize(document, id, box);
   const currentPosition = layoutEntry(layout.positions, id);
   const currentSize = layoutEntry(layout.sizes, id);
   if (
-    currentPosition?.x === position.x &&
-    currentPosition.y === position.y &&
-    currentSize?.width === size.width &&
-    currentSize.height === size.height
+    currentPosition?.x === fitted.x &&
+    currentPosition.y === fitted.y &&
+    currentSize?.width === fitted.width &&
+    currentSize.height === fitted.height
   ) {
     return unchanged(document);
+  }
+  const positions: Record<string, Point> = {
+    ...layout.positions,
+    [id]: { x: fitted.x, y: fitted.y },
+  };
+  if (shift.x !== 0 || shift.y !== 0) {
+    for (const child of graph.nodes) {
+      const position = child.parentId === id ? layoutEntry(layout.positions, child.id) : undefined;
+      if (position) positions[child.id] = { x: position.x - shift.x, y: position.y - shift.y };
+    }
   }
   return {
     ok: true,
@@ -384,8 +450,8 @@ export function resizeNode(
       layout: growAncestors(
         graph,
         {
-          positions: { ...layout.positions, [id]: position },
-          sizes: { ...layout.sizes, [id]: size },
+          positions,
+          sizes: { ...layout.sizes, [id]: { width: fitted.width, height: fitted.height } },
         },
         id,
       ),

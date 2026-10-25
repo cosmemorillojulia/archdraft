@@ -11,30 +11,23 @@ import {
   type XYPosition,
 } from '@xyflow/react';
 import { AnimatePresence, m } from 'motion/react';
-import {
-  type DragEvent,
-  type KeyboardEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { containerAt, subtreeOf } from '../editor/operations.ts';
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { containerAt, fitResize, subtreeOf } from '../editor/operations.ts';
 import { editorStore, type Snapshot, useEditor } from '../editor/store.ts';
 import { findingKey, severityByNode, useFindings } from '../review/findings.ts';
 import { reviewStore, useReview } from '../review/review-store.ts';
 import { EASE_OUT } from '../motion.ts';
+import { usePaletteDrag } from '../palette/palette-drag.ts';
 import { usePreferences } from '../preferences.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { ArchitectureEdge } from './ArchitectureEdge.tsx';
-import { CanvasContext, relatedTo, type ShapeBox } from './canvas-context.ts';
+import { CanvasContext, type NodeBox, relatedTo } from './canvas-context.ts';
 import { ComponentNode } from './ComponentNode.tsx';
 import { ContainerNode } from './ContainerNode.tsx';
 import { ShapeNode } from './ShapeNode.tsx';
 import { type ArchitectureFlowEdge, type ArchitectureFlowNode, toFlow } from './flow.ts';
+import { useStableHandler } from './use-stable-handler.ts';
 import { type Insets, absoluteBoxes, boundsOf, initialViewport } from './geometry.ts';
-import { isNodeKind, KIND_MIME } from './palette-drop.ts';
 import { ZoomControls } from './ZoomControls.tsx';
 
 const NODE_TYPES = { component: ComponentNode, container: ContainerNode, shape: ShapeNode };
@@ -143,10 +136,17 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
 
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; position: XYPosition } | null>(null);
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [nodeDropTargetId, setDropTargetId] = useState<string | null>(null);
+  // A tile dragged from the palette lights up the group it would be added to, like a dragged node.
+  const paletteDropTargetId = usePaletteDrag(({ drag }) =>
+    drag?.overCanvas === true
+      ? (containerAt(diagram, flow.screenToFlowPosition(drag.point), drag.kind) ?? null)
+      : null,
+  );
+  const dropTargetId = nodeDropTargetId ?? paletteDropTargetId;
   // Like a drag, a resize in progress lives here and reaches the store when it ends.
-  const [resizing, setResizing] = useState<{ id: string; box: ShapeBox } | null>(null);
-  const resizeShape = useCallback((id: string, box: ShapeBox, done: boolean) => {
+  const [resizing, setResizing] = useState<{ id: string; box: NodeBox } | null>(null);
+  const resize = useCallback((id: string, box: NodeBox, done: boolean) => {
     if (done) {
       editorStore.getState().resizeNode(id, box);
       setResizing(null);
@@ -162,12 +162,26 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
 
   // The store holds where nodes rest; while one is dragged, its position lives here.
   const selectedNodeId = selection?.type === 'node' ? selection.id : null;
+  // A resize in progress shows the box the editor will accept, with the contents of a group in place.
+  const fitted = useMemo(
+    () => (resizing ? fitResize(diagram, resizing.id, resizing.box) : null),
+    [diagram, resizing],
+  );
   const nodes = useMemo(() => {
     if (!dragging && !resizing && selectedNodeId === null) return elements.nodes;
     return elements.nodes.map((node) => {
-      if (node.id === resizing?.id) {
-        const { x, y, width, height } = resizing.box;
+      if (resizing && fitted && node.id === resizing.id) {
+        const { x, y, width, height } = fitted.box;
         return { ...node, position: { x, y }, width, height, measured: { width, height } };
+      }
+      if (resizing && fitted && node.parentId === resizing.id) {
+        const { shift } = fitted;
+        if (shift.x !== 0 || shift.y !== 0) {
+          return {
+            ...node,
+            position: { x: node.position.x - shift.x, y: node.position.y - shift.y },
+          };
+        }
       }
       // Lifted above everything while dragged, so opaque groups do not hide it.
       if (node.id === dragging?.id) {
@@ -176,7 +190,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       if (node.id === selectedNodeId) return { ...node, draggable: true };
       return node;
     });
-  }, [elements.nodes, dragging, resizing, selectedNodeId]);
+  }, [elements.nodes, dragging, fitted, resizing, selectedNodeId]);
 
   // While the review is open, components show their most severe finding, and the chosen
   // finding stands out with everything else faded.
@@ -192,9 +206,13 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     [activeKey, findings, reviewOpen],
   );
 
+  // While a node is dragged or resized, nothing else highlights. The canvas context changes
+  // when that starts and ends, not at every step: each change re-renders every node and edge.
+  const draggingId = dragging?.id ?? null;
+  const busyId = draggingId ?? resizing?.id ?? null;
   const canvas = useMemo(() => {
-    const hovered = dragging ? null : hoverId;
-    const shared = { selection, dropTargetId, building, particles, issues, resizeShape };
+    const hovered = busyId === null ? hoverId : null;
+    const shared = { selection, dropTargetId, building, particles, issues, resize };
     if (hovered === null && activeFinding) {
       const nodes = new Set(activeFinding.nodeIds);
       return {
@@ -206,7 +224,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
         finding: { nodes, severity: activeFinding.severity },
       };
     }
-    const focusId = dragging ? null : (hovered ?? selectedNodeId);
+    const focusId = draggingId === null ? (hovered ?? selectedNodeId) : null;
     return {
       ...shared,
       focusId,
@@ -217,13 +235,14 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   }, [
     activeFinding,
     building,
+    busyId,
     diagram.graph.edges,
-    dragging,
+    draggingId,
     dropTargetId,
     hoverId,
     issues,
     particles,
-    resizeShape,
+    resize,
     selectedNodeId,
     selection,
   ]);
@@ -366,32 +385,52 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     if (source !== target) editorStore.getState().connect(source, target);
   };
 
+  // Handlers given to React Flow keep their identity (see useStableHandler).
+  // Moving a node is not editing it: the selection, and so the inspector, stay as they were.
+  const onNodeDragStart = useStableHandler(() => setHoverId(null));
+  const onNodeDrag = useStableHandler((_event: unknown, node: ArchitectureFlowNode) =>
+    setDropTargetId(dropTargetFor(node)),
+  );
+  const onNodeDragStop = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
+    editorStore.getState().moveNode(node.id, node.position);
+    setDragging(null);
+    setDropTargetId(null);
+  });
+  const onConnect = useStableHandler(({ source, target }: Connection) => connectTo(source, target));
+  const onNodeMouseEnter = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
+    if (pointerType.current !== 'touch' && node.type !== 'container') setHoverId(node.id);
+  });
+  const onNodeMouseLeave = useStableHandler(() => setHoverId(null));
+  const onNodeClick = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
+    const editor = editorStore.getState();
+    // Choosing a component on the canvas means editing it: the inspector takes over.
+    reviewStore.getState().setOpen(false);
+    if (editor.connectingFrom === null) editor.select({ type: 'node', id: node.id });
+    else if (editor.connectingFrom === node.id) editor.cancelConnection();
+    else editor.connect(editor.connectingFrom, node.id);
+  });
+  const onEdgeClick = useStableHandler((_event: unknown, edge: ArchitectureFlowEdge) => {
+    reviewStore.getState().setOpen(false);
+    editorStore.getState().select({ type: 'edge', id: edge.id });
+  });
+  const onPaneClick = useStableHandler(() => {
+    editorStore.getState().select(null);
+    reviewStore.getState().clearFocus();
+  });
+
   // Dropping a connection anywhere on a component connects to it, not only on its connection point.
-  const onConnectEnd = (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
-    if (state.isValid || !state.fromNode) return;
-    const point = 'changedTouches' in event ? event.changedTouches[0] : event;
-    if (!point) return;
-    const element = globalThis.document
-      .elementFromPoint(point.clientX, point.clientY)
-      ?.closest('.react-flow__node');
-    const target = element?.getAttribute('data-id');
-    if (target) connectTo(state.fromNode.id, target);
-  };
-
-  const onDragOver = (event: DragEvent) => {
-    if (!event.dataTransfer.types.includes(KIND_MIME)) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'copy';
-  };
-
-  const onDrop = (event: DragEvent) => {
-    const kind = event.dataTransfer.getData(KIND_MIME);
-    if (!isNodeKind(kind)) return;
-    event.preventDefault();
-    editorStore
-      .getState()
-      .addNode(kind, flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
-  };
+  const onConnectEnd = useStableHandler(
+    (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
+      if (state.isValid || !state.fromNode) return;
+      const point = 'changedTouches' in event ? event.changedTouches[0] : event;
+      if (!point) return;
+      const element = globalThis.document
+        .elementFromPoint(point.clientX, point.clientY)
+        ?.closest('.react-flow__node');
+      const target = element?.getAttribute('data-id');
+      if (target) connectTo(state.fromNode.id, target);
+    },
+  );
 
   // Enter or Space on a focused node or edge selects it, which opens the inspector.
   const onKeyDown = (event: KeyboardEvent) => {
@@ -417,8 +456,6 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
           pointerType.current = event.pointerType;
         }}
         onKeyDown={onKeyDown}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
       >
         <ReactFlow<ArchitectureFlowNode, ArchitectureFlowEdge>
           nodes={nodes}
@@ -439,40 +476,16 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
           nodeDragThreshold={DRAG_THRESHOLD}
           connectionLineStyle={CONNECTION_LINE_STYLE}
           onNodesChange={onNodesChange}
-          onNodeDragStart={(_event, node) => {
-            setHoverId(null);
-            // A node picked up to be dragged is already where the pointer is.
-            revealedId.current = node.id;
-            editorStore.getState().select({ type: 'node', id: node.id });
-          }}
-          onNodeDrag={(_event, node) => setDropTargetId(dropTargetFor(node))}
-          onNodeDragStop={(_event, node) => {
-            editorStore.getState().moveNode(node.id, node.position);
-            setDragging(null);
-            setDropTargetId(null);
-          }}
-          onConnect={({ source, target }: Connection) => connectTo(source, target)}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStop={onNodeDragStop}
+          onConnect={onConnect}
           onConnectEnd={onConnectEnd}
-          onNodeMouseEnter={(_event, node) => {
-            if (pointerType.current !== 'touch' && node.type !== 'container') setHoverId(node.id);
-          }}
-          onNodeMouseLeave={() => setHoverId(null)}
-          onNodeClick={(_event, node) => {
-            const editor = editorStore.getState();
-            // Choosing a component on the canvas means editing it: the inspector takes over.
-            reviewStore.getState().setOpen(false);
-            if (editor.connectingFrom === null) editor.select({ type: 'node', id: node.id });
-            else if (editor.connectingFrom === node.id) editor.cancelConnection();
-            else editor.connect(editor.connectingFrom, node.id);
-          }}
-          onEdgeClick={(_event, edge) => {
-            reviewStore.getState().setOpen(false);
-            editorStore.getState().select({ type: 'edge', id: edge.id });
-          }}
-          onPaneClick={() => {
-            editorStore.getState().select(null);
-            reviewStore.getState().clearFocus();
-          }}
+          onNodeMouseEnter={onNodeMouseEnter}
+          onNodeMouseLeave={onNodeMouseLeave}
+          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
+          onPaneClick={onPaneClick}
           className="archdraft-flow"
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="var(--dots)" />

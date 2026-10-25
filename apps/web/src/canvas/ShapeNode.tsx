@@ -1,12 +1,10 @@
-import { Handle, NodeResizer, type NodeProps } from '@xyflow/react';
+import { Handle, type NodeProps } from '@xyflow/react';
 import { m } from 'motion/react';
 import { memo } from 'react';
 import { SPRING_POP } from '../motion.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import type { ShapeFlowNode } from './flow.ts';
-
-/** Smallest size a shape can be resized to, in diagram pixels. */
-const MIN_SIZE = 40;
+import { ResizeHandles } from './ResizeHandles.tsx';
 
 /**
  * Outline of the diamond and the note, drawn in a 100 × 100 box stretched to
@@ -88,16 +86,7 @@ export const ShapeNode = memo(function ShapeNode({
         </div>
       </m.div>
       {/* After the figure, so its corner handles are above it. */}
-      <NodeResizer
-        isVisible={selected}
-        minWidth={MIN_SIZE}
-        minHeight={MIN_SIZE}
-        keepAspectRatio={kind === 'circle'}
-        handleClassName="shape-resize-handle"
-        lineClassName="shape-resize-line"
-        onResize={(_event, box) => canvas.resizeShape(id, box, false)}
-        onResizeEnd={(_event, box) => canvas.resizeShape(id, box, true)}
-      />
+      <ResizeHandles id={id} kind={kind} visible={selected} />
       <Handle
         type="target"
         position={targetPosition}

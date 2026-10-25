@@ -1,9 +1,9 @@
 import { ARCHITECTURE_TEMPLATES } from '@archdraft/core';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App.tsx';
-import { KIND_MIME } from '../src/canvas/palette-drop.ts';
+import { HOLD_MS } from '../src/palette/palette-drag.ts';
 import { editorStore } from '../src/editor/store.ts';
 import { WIDE_SCREEN } from '../src/media.ts';
 import { en as strings } from '../src/i18n/en.ts';
@@ -22,6 +22,21 @@ function flowNode(container: HTMLElement, label: string): HTMLElement {
 
 const nodeIds = () => editorStore.getState().current?.document.graph.nodes.map((node) => node.id);
 
+/** The tile that follows the pointer while dragged from the palette. */
+const ghost = () => document.querySelector('[data-palette-ghost]');
+
+/** jsdom has no layout, so the element under the pointer is the one given. */
+function pointAt(element: Element | null) {
+  Object.defineProperty(document, 'elementFromPoint', {
+    configurable: true,
+    value: () => element,
+  });
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(document, 'elementFromPoint');
+});
+
 describe('editing on narrow screens', () => {
   it('adds a tapped component at the centre of the view, selects it and closes the sheet', async () => {
     const user = userEvent.setup();
@@ -39,6 +54,84 @@ describe('editing on narrow screens', () => {
     await waitFor(() =>
       expect(screen.queryByRole('textbox', { name: strings.prompt.label })).not.toBeInTheDocument(),
     );
+  });
+});
+
+describe('dragging from the palette with a finger', () => {
+  const hold = () => new Promise((resolve) => setTimeout(resolve, HOLD_MS + 30));
+
+  it('picks a tile up after holding it, moves the sheet away and adds it where it is let go', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const canvas = await diagram();
+    pointAt(canvas.querySelector('.react-flow__pane'));
+    await user.click(screen.getByRole('button', { name: strings.components.open }));
+    const sheet = await screen.findByRole('dialog', { name: strings.components.title });
+    const tile = within(sheet).getByRole('button', { name: strings.components.add('Queue') });
+
+    fireEvent.pointerDown(tile, {
+      pointerId: 5,
+      pointerType: 'touch',
+      button: 0,
+      clientX: 100,
+      clientY: 700,
+    });
+    await hold();
+    // The sheet stays mounted, so the finger keeps the drag, but out of the way of the diagram.
+    await waitFor(() => expect(sheet).toHaveStyle({ pointerEvents: 'none' }));
+    expect(document.querySelector('[inert]')).toBeNull();
+    fireEvent.pointerMove(window, { pointerId: 5, clientX: 180, clientY: 300 });
+    expect(ghost()).toHaveTextContent('Queue');
+    fireEvent.pointerUp(window, { pointerId: 5, clientX: 180, clientY: 300 });
+    expect(nodeIds()).toContain('queue');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('brings the sheet back when the tile is let go off the diagram', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await diagram();
+    pointAt(null);
+    await user.click(screen.getByRole('button', { name: strings.components.open }));
+    const sheet = await screen.findByRole('dialog', { name: strings.components.title });
+    const tile = within(sheet).getByRole('button', { name: strings.components.add('Queue') });
+
+    fireEvent.pointerDown(tile, {
+      pointerId: 7,
+      pointerType: 'touch',
+      button: 0,
+      clientX: 100,
+      clientY: 700,
+    });
+    await hold();
+    fireEvent.pointerMove(window, { pointerId: 7, clientX: 120, clientY: 20 });
+    fireEvent.pointerUp(window, { pointerId: 7, clientX: 120, clientY: 20 });
+    await waitFor(() => expect(sheet).toHaveStyle({ pointerEvents: 'auto' }));
+    expect(nodeIds()).not.toContain('queue');
+  });
+
+  it('lets a swipe scroll the palette instead of picking the tile up', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const canvas = await diagram();
+    pointAt(canvas.querySelector('.react-flow__pane'));
+    await user.click(screen.getByRole('button', { name: strings.components.open }));
+    const sheet = await screen.findByRole('dialog', { name: strings.components.title });
+    const tile = within(sheet).getByRole('button', { name: strings.components.add('Queue') });
+
+    fireEvent.pointerDown(tile, {
+      pointerId: 6,
+      pointerType: 'touch',
+      button: 0,
+      clientX: 100,
+      clientY: 700,
+    });
+    fireEvent.pointerMove(window, { pointerId: 6, clientX: 100, clientY: 640 });
+    await hold();
+    expect(ghost()).toBeNull();
+    expect(screen.getByRole('dialog', { name: strings.components.title })).toBeInTheDocument();
+    fireEvent.pointerUp(window, { pointerId: 6, clientX: 100, clientY: 600 });
+    expect(nodeIds()).not.toContain('queue');
   });
 });
 
@@ -118,32 +211,66 @@ describe('editing on wide screens', () => {
     expect(await screen.findByRole('region', { name: 'Database 2' })).toBeInTheDocument();
   });
 
-  it('adds a component where a palette tile is dropped', async () => {
+  it('adds a component where a palette tile is dragged to with the mouse', async () => {
     const user = userEvent.setup();
     render(<App />);
     const canvas = await diagram();
+    const pane = canvas.querySelector('.react-flow__pane');
+    pointAt(pane);
     await user.click(screen.getByRole('button', { name: strings.components.open }));
     const tile = await screen.findByRole('button', { name: strings.components.add('Cache') });
-    expect(tile).toHaveAttribute('draggable', 'true');
 
-    const data = new Map<string, string>();
-    const dataTransfer = {
-      types: [KIND_MIME],
-      setData: (type: string, value: string) => data.set(type, value),
-      getData: (type: string) => data.get(type) ?? '',
-      effectAllowed: '',
-      dropEffect: '',
-    };
-    fireEvent.dragStart(tile, { dataTransfer });
-    const pane = canvas.querySelector('.react-flow__pane');
-    if (!pane) throw new Error('No pane');
-    fireEvent.dragOver(pane, { dataTransfer });
-    fireEvent.drop(pane, { dataTransfer, clientX: 40, clientY: 600 });
+    fireEvent.pointerDown(tile, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: 20,
+      clientY: 90,
+    });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 22, clientY: 92 });
+    // A few pixels are still a click.
+    expect(ghost()).toBeNull();
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 40, clientY: 400 });
+    expect(await waitFor(() => ghost())).toHaveTextContent('Cache');
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 40, clientY: 600 });
+    // The click that ends the drag does not add a second one at the centre.
+    fireEvent.click(tile);
 
     expect(await within(canvas).findByText('Cache')).toBeInTheDocument();
-    expect(nodeIds()).toContain('cache-2');
+    expect(nodeIds()?.filter((id) => id.startsWith('cache'))).toEqual(['cache', 'cache-2']);
+    await waitFor(() => expect(ghost()).toBeNull());
   });
 
+  it('adds nothing when a dragged tile is let go over a panel or with Escape', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await diagram();
+    await user.click(screen.getByRole('button', { name: strings.components.open }));
+    const tile = await screen.findByRole('button', { name: strings.components.add('Cache') });
+    pointAt(tile);
+    const before = nodeIds();
+
+    fireEvent.pointerDown(tile, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: 20,
+      clientY: 90,
+    });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 60, clientY: 120 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 60, clientY: 120 });
+    fireEvent.pointerDown(tile, {
+      pointerId: 2,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: 20,
+      clientY: 90,
+    });
+    fireEvent.pointerMove(window, { pointerId: 2, clientX: 60, clientY: 120 });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.pointerUp(window, { pointerId: 2, clientX: 60, clientY: 120 });
+    expect(nodeIds()).toEqual(before);
+  });
   it('explains why an edit was not made', async () => {
     const user = userEvent.setup();
     render(<App />);

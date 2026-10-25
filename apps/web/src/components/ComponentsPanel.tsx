@@ -1,5 +1,6 @@
 import {
   NODE_CATALOG,
+  type Point,
   NODE_CATEGORIES,
   type NodeCategory,
   type NodeDefinition,
@@ -8,9 +9,9 @@ import {
 import { PanelLeftClose, Search, Shapes, X } from 'lucide-react';
 import { AnimatePresence, m, useDragControls } from 'motion/react';
 import { type KeyboardEvent, type RefObject, useEffect, useId, useRef, useState } from 'react';
-import { KIND_MIME } from '../canvas/palette-drop.ts';
 import { KIND_ICONS } from '../icons.ts';
 import { EASE_OUT, SPRING_POP, SPRING_SLIDE } from '../motion.ts';
+import { pressTile, takeDragClick, usePaletteDrag } from '../palette/palette-drag.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
@@ -41,6 +42,10 @@ interface PaletteToggleProps {
 interface PaletteActions {
   /** Adds a component or group of this kind at the centre of the view. */
   onAdd: (kind: NodeKind) => void;
+  /** Adds one where a tile dragged onto the diagram is let go, in window coordinates. */
+  onDrop: (kind: NodeKind, point: Point) => void;
+  /** Whether a point of the window is on the diagram, not on a panel above it. */
+  isOverCanvas: (point: Point) => boolean;
 }
 
 /**
@@ -53,6 +58,8 @@ export function ComponentsPanel({
   open,
   onOpenChange,
   onAdd,
+  onDrop,
+  isOverCanvas,
 }: PaletteToggleProps & PaletteActions) {
   const strings = useStrings();
   const headingId = useId();
@@ -74,7 +81,8 @@ export function ComponentsPanel({
             onClose={() => onOpenChange(false)}
             closeIcon="panel"
             onAdd={onAdd}
-            draggable
+            onDrop={onDrop}
+            isOverCanvas={isOverCanvas}
             hint={strings.components.hintWide}
           />
         </m.section>
@@ -128,13 +136,18 @@ export function ComponentsSheetToggle({ open, onOpenChange, toggleRef }: Compone
 /**
  * Bottom sheet with the palette. It slides up with a spring, and closes with
  * its button, Escape, a tap on the backdrop, or by dragging its handle down.
- * Tapping a tile adds its component at the centre of the view.
+ * Tapping a tile adds its component at the centre of the view. While a tile
+ * is carried to the diagram the sheet slides out of the way, still mounted so
+ * that the finger keeps the drag; it comes back if the tile is let go
+ * anywhere but the diagram.
  */
 export function ComponentsSheet({
   open,
   onOpenChange,
   toggleRef,
   onAdd,
+  onDrop,
+  isOverCanvas,
 }: ComponentsSheetProps & PaletteActions) {
   const strings = useStrings();
   const headingId = useId();
@@ -149,6 +162,7 @@ export function ComponentsSheet({
   }, [open, toggleRef]);
 
   const close = () => onOpenChange(false);
+  const carrying = usePaletteDrag((state) => state.drag !== null);
 
   return (
     <AnimatePresence>
@@ -158,7 +172,8 @@ export function ComponentsSheet({
           aria-hidden="true"
           onClick={close}
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: carrying ? 0 : 1 }}
+          style={{ pointerEvents: carrying ? 'none' : 'auto' }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25, ease: EASE_OUT }}
           className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
@@ -177,7 +192,8 @@ export function ComponentsSheet({
             if (event.key === 'Escape') close();
           }}
           initial={{ y: '100%' }}
-          animate={{ y: 0 }}
+          animate={{ y: carrying ? '100%' : 0 }}
+          style={{ pointerEvents: carrying ? 'none' : 'auto' }}
           exit={{ y: '100%', transition: { duration: 0.22, ease: EASE_OUT } }}
           transition={SPRING_SLIDE}
           drag="y"
@@ -202,7 +218,8 @@ export function ComponentsSheet({
             onClose={close}
             closeIcon="x"
             onAdd={onAdd}
-            draggable={false}
+            onDrop={onDrop}
+            isOverCanvas={isOverCanvas}
             hint={strings.components.hintNarrow}
           />
         </m.div>
@@ -216,12 +233,22 @@ interface PaletteProps extends PaletteActions {
   columns: 3 | 4;
   onClose: () => void;
   closeIcon: 'panel' | 'x';
-  /** Whether tiles can be dragged onto the diagram. */
-  draggable: boolean;
+  /** Called when a tile starts being dragged. */
+  onDragStart?: () => void;
   hint: string;
 }
 
-function Palette({ headingId, columns, onClose, closeIcon, onAdd, draggable, hint }: PaletteProps) {
+function Palette({
+  headingId,
+  columns,
+  onClose,
+  closeIcon,
+  onAdd,
+  onDrop,
+  isOverCanvas,
+  onDragStart,
+  hint,
+}: PaletteProps) {
   const strings = useStrings();
   const [query, setQuery] = useState('');
   const needle = folded(query.trim());
@@ -310,7 +337,9 @@ function Palette({ headingId, columns, onClose, closeIcon, onAdd, draggable, hin
                       definition={definition}
                       delay={Math.min(order++ * 0.012, 0.3)}
                       onAdd={onAdd}
-                      draggable={draggable}
+                      onDrop={onDrop}
+                      isOverCanvas={isOverCanvas}
+                      {...(onDragStart ? { onDragStart } : {})}
                     />
                   ))}
                 </AnimatePresence>
@@ -326,10 +355,22 @@ function Palette({ headingId, columns, onClose, closeIcon, onAdd, draggable, hin
 interface PaletteTileProps extends PaletteActions {
   definition: NodeDefinition;
   delay: number;
-  draggable: boolean;
+  onDragStart?: () => void;
 }
 
-function PaletteTile({ definition, delay, onAdd, draggable }: PaletteTileProps) {
+/**
+ * A kind of node. Clicking or tapping adds it at the centre of the view;
+ * dragging it (with a finger, after holding it a moment) places it on the
+ * diagram where it is let go (palette-drag.ts).
+ */
+function PaletteTile({
+  definition,
+  delay,
+  onAdd,
+  onDrop,
+  isOverCanvas,
+  onDragStart,
+}: PaletteTileProps) {
   const strings = useStrings();
   const Icon = KIND_ICONS[definition.kind];
   const text = strings.kinds[definition.kind];
@@ -346,15 +387,20 @@ function PaletteTile({ definition, delay, onAdd, draggable }: PaletteTileProps) 
         type="button"
         title={text.description}
         aria-label={strings.components.add(text.label)}
-        draggable={draggable}
-        onDragStart={(event) => {
-          event.dataTransfer.setData(KIND_MIME, definition.kind);
-          event.dataTransfer.effectAllowed = 'copy';
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          pressTile(definition.kind, event, {
+            onDrop,
+            isOverCanvas,
+            ...(onDragStart ? { onStart: onDragStart } : {}),
+          });
         }}
-        onClick={() => onAdd(definition.kind)}
-        className={`group flex w-full flex-col items-center gap-1.5 rounded-control px-1 py-2.5 text-center transition-colors hover:bg-surface-muted ${
-          draggable ? 'cursor-grab active:cursor-grabbing' : ''
-        }`}
+        onClick={() => {
+          if (!takeDragClick()) onAdd(definition.kind);
+        }}
+        // A long press picks the tile up; it must not open the menu or select text.
+        onContextMenu={(event) => event.preventDefault()}
+        className="group flex w-full cursor-grab touch-manipulation flex-col items-center gap-1.5 rounded-control px-1 py-2.5 text-center transition-colors select-none [-webkit-touch-callout:none] hover:bg-surface-muted active:cursor-grabbing"
       >
         <span
           className="flex size-9 items-center justify-center rounded-[10px] transition-transform duration-200 group-hover:scale-110"

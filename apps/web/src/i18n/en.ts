@@ -123,7 +123,7 @@ export const en = {
     noMatches: (query: string) => `No components match “${query}”.`,
     add: (label: string) => `Add ${label}`,
     hintWide: 'Click to add at the centre, or drag onto the diagram.',
-    hintNarrow: 'Tap to add to the diagram.',
+    hintNarrow: 'Tap to add to the diagram, or hold and drag to place it.',
     categories: {
       actor: 'People and clients',
       edge: 'Entry and traffic',

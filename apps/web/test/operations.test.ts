@@ -7,6 +7,7 @@ import {
   validateGraph,
 } from '@archdraft/core';
 import { describe, expect, it } from 'vitest';
+import { absoluteBoxes } from '../src/canvas/geometry.ts';
 import {
   addNode,
   canContain,
@@ -15,6 +16,9 @@ import {
   duplicate,
   type Edit,
   moveNode,
+  fitResize,
+  MIN_SIZES,
+  minSizeOf,
   NUDGE,
   remove,
   resizeNode,
@@ -273,12 +277,13 @@ describe('moveNode', () => {
 });
 
 describe('resizeNode', () => {
-  it('sets the new box in whole pixels', () => {
+  it('rounds the edges to whole pixels', () => {
     const next = edited(
       resizeNode(document, 'db', { x: 990.4, y: 80.6, width: 240.2, height: 99.7 }),
     );
     expect(next.layout.positions.db).toEqual({ x: 990, y: 81 });
-    expect(next.layout.sizes.db).toEqual({ width: 240, height: 100 });
+    // Right edge 1230.6 and bottom edge 180.3, rounded.
+    expect(next.layout.sizes.db).toEqual({ width: 241, height: 99 });
   });
 
   it('changes nothing when the box is the same', () => {
@@ -292,17 +297,49 @@ describe('resizeNode', () => {
     });
   });
 
-  it('keeps the node clear of the border of its container and grows the containers around it', () => {
+  it('keeps a component above its minimum size', () => {
+    const next = edited(resizeNode(document, 'db', { x: 1000, y: 100, width: 20, height: 10 }));
+    expect(next.layout.sizes.db).toEqual(MIN_SIZES.component);
+    expect(minSizeOf('circle')).toEqual(MIN_SIZES.shape);
+    expect(minSizeOf('subnet')).toEqual(MIN_SIZES.container);
+  });
+
+  it('keeps the node clear of the border of its container, with the other edges in place', () => {
     const next = edited(resizeNode(document, 'api', { x: 0, y: 48, width: 400, height: 300 }));
     expect(next.layout.positions.api).toEqual({ x: CONTAINER_PADDING.left, y: 48 });
+    expect(next.layout.sizes.api).toEqual({ width: 400 - CONTAINER_PADDING.left, height: 300 });
     // The subnet grows to hold it, and the network to hold the subnet.
     expect(next.layout.sizes.subnet).toEqual({
-      width: CONTAINER_PADDING.left + 400 + CONTAINER_PADDING.right,
+      width: 400 + CONTAINER_PADDING.right,
       height: 48 + 300 + CONTAINER_PADDING.bottom,
     });
     expect(next.layout.sizes.vpc?.width).toBeGreaterThanOrEqual(
       24 + (next.layout.sizes.subnet?.width ?? 0) + CONTAINER_PADDING.right,
     );
+  });
+
+  it('never makes a group smaller than what it holds', () => {
+    // The subnet (300 × 200) holds the API at (24, 48), 180 × 64.
+    const { box } = fitResize(document, 'subnet', { x: 24, y: 48, width: 50, height: 50 });
+    expect(box).toEqual({
+      x: 24,
+      y: 48,
+      width: 24 + DEFAULT_NODE_SIZE.width + CONTAINER_PADDING.right,
+      height: 48 + DEFAULT_NODE_SIZE.height + CONTAINER_PADDING.bottom,
+    });
+  });
+
+  it('keeps the contents of a group where they are when its top or left edge moves', () => {
+    const grown = edited(
+      resizeNode(document, 'region', { x: 260, y: -20, width: 640, height: 420 }),
+    );
+    // The region's origin moved by (-40, -20); its children move by (40, 20) inside it.
+    expect(grown.layout.positions.region).toEqual({ x: 260, y: -20 });
+    expect(grown.layout.positions.vpc).toEqual({ x: 64, y: 68 });
+    // Their place on the canvas has not changed.
+    const before = absoluteBoxes(document.graph, document.layout).get('api');
+    const after = absoluteBoxes(grown.graph, grown.layout).get('api');
+    expect(after).toEqual(before);
   });
 });
 

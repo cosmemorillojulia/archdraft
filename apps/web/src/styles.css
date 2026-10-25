@@ -166,6 +166,18 @@
 }
 
 /*
+ * On touch screens the panels are almost opaque instead of blurred: a blurred
+ * panel is painted again whenever the canvas under it changes, at every step
+ * of a drag, which phones feel most.
+ */
+@media (pointer: coarse) {
+  .floating {
+    background-color: color-mix(in srgb, var(--surface) 96%, transparent);
+    backdrop-filter: none;
+  }
+}
+
+/*
  * Theme change (ADR 0018): the browser cross-fades a snapshot of the page in
  * the old theme into the page in the new one. The curve starts and ends
  * gently, so neither theme appears or disappears with a jump.
@@ -264,7 +276,7 @@
 }
 
 /* Resizing a selected shape: corner handles and edges in the accent colour. */
-.archdraft-flow .react-flow__resize-control.shape-resize-handle {
+.archdraft-flow .react-flow__resize-control.node-resize-handle {
   width: 9px;
   height: 9px;
   border: 1.5px solid var(--accent);
@@ -272,6 +284,39 @@
   background-color: var(--surface);
 }
 
-.archdraft-flow .react-flow__resize-control.shape-resize-line {
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+/* A target much larger than the handle, so a finger or a quick pointer finds it. */
+.archdraft-flow .react-flow__resize-control.node-resize-handle::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+
+@media (pointer: coarse) {
+  .archdraft-flow .react-flow__resize-control.node-resize-handle {
+    width: 12px;
+    height: 12px;
+  }
+
+  .archdraft-flow .react-flow__resize-control.node-resize-handle::after {
+    inset: -14px;
+  }
+}
+
+/*
+ * The edges resize too, from a strip centred on them; it is invisible because
+ * the selected node already shows its outline.
+ */
+.archdraft-flow .react-flow__resize-control.line.node-resize-line {
+  border-color: transparent;
+}
+
+.archdraft-flow .react-flow__resize-control.line.node-resize-line.left,
+.archdraft-flow .react-flow__resize-control.line.node-resize-line.right {
+  width: 12px;
+}
+
+.archdraft-flow .react-flow__resize-control.line.node-resize-line.top,
+.archdraft-flow .react-flow__resize-control.line.node-resize-line.bottom {
+  height: 12px;
+  transform: translate(0, -50%);
 }
