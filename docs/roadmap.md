@@ -24,7 +24,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T07 | Editor: estructura, sistema visual y despliegue en Pages         | T01           | hecha (2026-10-24) |
 | T08 | Editor: lienzo que representa el grafo                           | T04, T06, T07 | hecha (2026-10-25) |
 | T09 | Editor: edición, inspector, deshacer y rehacer                   | T08           | hecha (2026-10-25) |
-| T10 | Editor: panel de revisión de diseño                              | T02, T09      | pendiente          |
+| T10 | Editor: panel de revisión de diseño                              | T02, T09      | hecha (2026-10-25) |
 | T11 | Editor: persistencia local, importación y enlaces para compartir | T03, T09      | pendiente          |
 | T12 | Editor: exportación desde la interfaz                            | T03, T05, T09 | pendiente          |
 | T13 | API: esqueleto del Worker                                        | T01           | pendiente          |
@@ -201,6 +201,8 @@ Criterios de aceptación: tests de las acciones del store; test de componentes d
 Documentación: ADR sobre la gestión de estado; ampliar `docs/modulos/web.md`.
 
 ### T10. Panel de revisión de diseño
+
+Estado: hecha (2026-10-25). Documentado en `docs/modulos/web.md`. El panel se abre desde el estado de la revisión de la tarjeta del diagrama, que sustituyó a la barra superior flotante (ADR 0015), y comparte lugar con el inspector.
 
 Objetivo: mostrar los hallazgos del motor de reglas mientras se edita.
 

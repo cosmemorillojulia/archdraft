@@ -22,7 +22,11 @@ apps/web/
     icons.ts              # icono de Lucide de cada tipo de nodo
     styles.css            # tokens, tema oscuro, utilidad floating, estilos de React Flow
     components/           # Button, Header, HistoryControls, DiagramCard, ComponentsPanel, PromptDock,
-                          # Inspector, fields (campos del inspector), EditorNotice
+                          # FloatingPanel, PanelSlot, Inspector, fields (campos del inspector),
+                          # ReviewPanel, EditorNotice
+    review/
+      findings.ts         # hallazgos memoizados por versión del documento, severidades por nodo
+      review-store.ts     # estado del panel de revisión y reglas desactivadas (localStorage)
     editor/
       store.ts            # store de Zustand: documento, historial, selección, mensajes (ADR 0017)
       operations.ts       # ediciones puras del documento: añadir, conectar, mover, borrar, duplicar
@@ -146,11 +150,13 @@ Animaciones del recorrido:
 | Pieza             | Contenido                                                                                                                                                                                                                                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Header`          | Barra fija: nombre del producto en mayúsculas inclinadas, sin logotipo gráfico, descripción, deshacer y rehacer (`HistoryControls`), enlace al código y cambio de tema                                                                                                             |
-| `DiagramCard`     | Tarjeta flotante: título, proveedor, descripción recortada a dos líneas, número de componentes y conexiones, y estado de la revisión de diseño (`lintGraph` memoizado por grafo, con `role="status"`)                                                                              |
+| `DiagramCard`     | Tarjeta flotante: título, proveedor, descripción recortada a dos líneas, número de componentes y conexiones, y estado de la revisión de diseño en el color del hallazgo más grave; es el botón que abre la revisión, y una región `role="status"` oculta anuncia sus cambios       |
 | `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón. Cada mosaico es un botón «Add …» (ver Edición)                                                                                 |
 | `PromptDock`      | Campo que crece con el texto (`field-sizing: content`) con ejemplos rotatorios decorativos (`aria-hidden`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, y las seis plantillas con icono en una cápsula con indicador deslizante (`aria-pressed`) |
 | `DiagramCanvas`   | Lienzo React Flow con el diagrama, zoom, minimapa, resaltado y edición directa (ver Lienzo y Edición)                                                                                                                                                                              |
+| `PanelSlot`       | Lugar bajo la tarjeta, o abajo en móvil, para un panel a la vez: la revisión de diseño si está abierta y, si no, el inspector. Uno sale mientras el otro entra (`FloatingPanel` es la carcasa común)                                                                               |
 | `Inspector`       | Panel flotante con las propiedades de lo seleccionado (ver Edición)                                                                                                                                                                                                                |
+| `ReviewPanel`     | Panel de revisión de diseño (ver Revisión de diseño)                                                                                                                                                                                                                               |
 | `EditorNotice`    | Avisos arriba en el centro: por qué no se hizo una edición (`role="alert"`) y la conexión pendiente desde el inspector, con su botón para cancelar                                                                                                                                 |
 | `Button`          | Variantes `primary`, `secondary`, `ghost` y `danger`; tamaños `default` e `icon`. Los tamaños son variantes con nombre porque dos utilidades de Tailwind sobre la misma propiedad no se anulan por su orden en `class`                                                             |
 
@@ -294,6 +300,29 @@ Capturas a 1440 × 900 en claro y oscuro (selección, arrastre a un grupo, arist
 
 Pendiente: las aristas siguen saliendo por el lado fijo de la dirección de la disposición, así que una conexión hacia atrás da un rodeo (T30).
 
+## Revisión de diseño
+
+El panel de revisión (T10) muestra los hallazgos del motor de reglas ([lint.md](lint.md)) mientras se edita. Se abre y se cierra con el estado de la revisión de la tarjeta del diagrama, y se cierra también con su botón, con Escape o al elegir un elemento en el lienzo, porque eso indica que se quiere editar. Ocupa el mismo lugar que el inspector: en la columna derecha en escritorio y abajo en móvil, en lugar de la barra de descripción.
+
+### Cálculo
+
+`findingsOf(graph, disabledRules)` ejecuta `lintGraph` y guarda el resultado en un `WeakMap` por grafo. Como el store nunca modifica un grafo, cada objeto grafo es una versión del documento: las reglas se ejecutan una vez por versión y por conjunto de reglas desactivadas, aunque lo pidan la tarjeta, el panel y el lienzo a la vez (`useFindings`). Deshacer devuelve un grafo ya revisado, que sigue en caché mientras el historial lo conserve.
+
+### Contenido
+
+- Cabecera con el número de hallazgos y tres filtros por severidad (Errors, Warnings, Notes) con su recuento, botones con `aria-pressed`.
+- Hallazgos agrupados por severidad, de más a menos grave, con el mensaje y la sugerencia de la regla.
+- Elegir un hallazgo selecciona su primer componente, lo marca como actual (`aria-current`) y desliza la vista para centrar todos sus componentes en la zona libre, alejando el zoom si no caben. En el lienzo, sus componentes se rodean del color de la severidad, sus aristas se resaltan y el resto se atenúa. El panel sigue abierto.
+- «Why it matters» despliega el título y la explicación de la regla; «Edit» selecciona el componente y deja paso al inspector; «Turn off rule» desactiva la regla.
+- Las reglas desactivadas se guardan en `localStorage` (`archdraft:disabled-rules`, con los ids en el orden de `LINT_RULE_IDS`; los desconocidos se ignoran) y aparecen al final del panel en «Rules turned off», donde se pueden volver a activar. No cuentan en la tarjeta.
+- Mientras el panel está abierto, cada componente con hallazgos muestra un punto del color del más grave en su esquina superior izquierda.
+
+Colores de severidad: error con `--danger`, aviso con `--warning` y nota con `--accent`. El estado de la tarjeta usa el del hallazgo más grave, o `--success` si no hay ninguno.
+
+### Revisión de diseño de T10
+
+Capturas a 1440 × 900 en claro y oscuro y en un móvil táctil de 390 × 844, con hallazgos de las tres severidades, el panel abierto, un hallazgo elegido y su explicación desplegada, revisadas con la skill `design-critique`. Se corrigió que los filtros no cabían en una fila del panel lateral. Queda como limitación que «Edit» selecciona el primer componente del hallazgo, que en `unprotected-entry` es el cliente y no el componente expuesto.
+
 ## Tema
 
 `useTheme` parte del tema que ya aplicó el script de `index.html` (preferencia guardada o tema del sistema) y lo guarda en `localStorage` solo cuando el usuario lo cambia. Si el almacenamiento está bloqueado, el tema se aplica igualmente durante la visita y se registra un aviso en la consola. El script inline evita el destello del tema equivocado antes de que cargue React; si el almacenamiento está bloqueado, usa el tema del sistema. El tema se decide al cargar: un cambio del tema del sistema con la página abierta se aplica al recargar. El estado del tema vive en `Header`, de modo que un cambio solo vuelve a pintar el botón.
@@ -309,6 +338,7 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 - Nodos y aristas reciben el foco con Tab, con un nombre accesible (nombre y producto, o nombre y tipo de grupo); Enter o Espacio los seleccionan. Todo lo que se hace arrastrando tiene otro camino: los mosaicos añaden con un clic, «Connect» conecta tocando el destino y el inspector edita y borra.
 - Atajos anunciados con `aria-keyshortcuts`; deshacer y rehacer se deshabilitan cuando no hay pasos.
 - Los rechazos se anuncian con `role="alert"`; los campos inválidos, con `aria-invalid` y `aria-describedby`.
+- El estado de la revisión es un botón con `aria-expanded`; los cambios de la revisión se anuncian con una región `role="status"`. Los filtros usan `aria-pressed`, el hallazgo elegido `aria-current` y las explicaciones `aria-expanded`. Los puntos de severidad del lienzo son decorativos: la misma información está en el panel.
 - Foco visible con contorno de 2 px; el buscador muestra un anillo al enfocarse.
 - Botones de solo icono con `aria-label`; estado de la revisión anunciado con `role="status"`.
 - Contrastes AA medidos (ver tokens); `prefers-reduced-motion` respetado.
@@ -317,6 +347,7 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 
 - `app.test.tsx`: hoja modal en pantallas estrechas (foco, `inert`, cierre con Escape, botón y fondo) y panel lateral en anchas (sin bloquear la página, cierre con Escape), cabecera solo con el nombre, tarjeta del diagrama con cifras y revisión, diagrama dibujado con sus componentes en React Flow, resaltado y etiquetas de las conexiones al pasar el ratón, distintivo de proveedor, controles de zoom (acercar, alejar, porcentaje y ajustar), cambio de plantilla, campo con descripción accesible, ejemplos rotatorios y botón deshabilitado, paleta con todo el catálogo, búsqueda con y sin resultados, abrir y cerrar la paleta, tema. `MotionGlobalConfig.skipAnimations` lleva cada animación a su estado final y los tests esperan a que terminen las salidas.
 - `editing.test.tsx`: en móvil, tocar un mosaico añade en el centro, selecciona, cierra la hoja y el inspector sustituye a la barra de descripción; en escritorio, clic para inspeccionar y renombrar, Enter sobre un nodo enfocado, Supr, Ctrl+Z y el botón de rehacer, Ctrl+D, soltar un mosaico en el lienzo, rechazo explicado al conectar con un grupo y cierre con Escape.
+- `review.test.tsx`: memoización por versión y por reglas desactivadas, severidad más grave y por componente, clave de un hallazgo, reglas desactivadas guardadas y leídas (con entradas desconocidas o rotas), apertura desde la tarjeta, grupos por severidad, filtros, elegir un hallazgo (selección y foco), paso al inspector, explicación, desactivar y activar reglas, revisión sin hallazgos, puntos en el lienzo y cierre con Escape.
 - `inspector.test.tsx`: campos de componente, grupo y conexión; nombre confirmado al salir como un paso, nombre vacío rechazado y restaurado, Escape, producto y proveedor con vuelta a los valores por defecto, hechos operativos de tres valores, instancias en rango, modo inferido del protocolo, borrar e iniciar una conexión.
 - `operations.test.ts`: ids y nombres numerados, reglas de contención, grupo bajo un punto, añadir (nivel superior, dentro de un grupo, hueco libre, crecimiento de grupos, límite de nodos), conectar (repetida, con un grupo), mover (dentro del grupo, sin cambios, fuera de todos, a otro grupo, relleno, nunca dentro de sí), borrar con contenido, duplicar con contenido y aristas internas, y actualizaciones de campos.
 - `store.test.ts`: historial (deshacer, rehacer, rama nueva, límite de 100, ediciones sin cambios), rechazos con su mensaje, ids de mensaje, borrar y duplicar la selección, conexión pendiente y apertura de diagramas como paso del historial.
