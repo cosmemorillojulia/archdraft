@@ -1,42 +1,65 @@
-import { type DiagramDocument, documentToJson } from '@archdraft/core';
-import { Check, Copy, Download, FolderOpen, Link2, Share2, TriangleAlert, X } from 'lucide-react';
+import { type DiagramDocument, documentToJson, toDrawio, toMermaid } from '@archdraft/core';
+import {
+  Check,
+  Copy,
+  Download,
+  FileDown,
+  FolderOpen,
+  Link2,
+  Share2,
+  TriangleAlert,
+  X,
+} from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { openDocumentText } from '../editor/open-document.ts';
-import { useEditor } from '../editor/store.ts';
+import { type Snapshot, useEditor } from '../editor/store.ts';
+import { drawingToPng, drawSnapshot } from '../export/browser.ts';
+import { type ExportFormat, fileNameFor, saveFile } from '../export/files.ts';
 import { useMediaQuery, WIDE_SCREEN } from '../media.ts';
 import { EASE_OUT } from '../motion.ts';
 import { LONG_LINK_CHARS, shareLink } from '../persist/share-link.ts';
+import type { Strings } from '../i18n/en.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
-/** File name for a diagram: its title in lower case with dashes. */
-export function fileNameFor(title: string): string {
-  const slug = title
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
-  return `${slug || 'diagram'}.archdraft.json`;
+/**
+ * Saves the diagram in one of the formats of the editor. Images are drawn
+ * from the document (export/diagram-svg.ts), not captured from the screen,
+ * so they show the whole diagram at rest, without selection or particles.
+ */
+async function exportAs(format: ExportFormat, snapshot: Snapshot, strings: Strings): Promise<void> {
+  const { document, direction } = snapshot;
+  const name = fileNameFor(document.graph.title, format);
+  switch (format) {
+    case 'json':
+      saveFile(documentToJson(document), name, 'application/json');
+      return;
+    case 'mermaid':
+      saveFile(toMermaid(document.graph, { direction }), name);
+      return;
+    case 'drawio':
+      saveFile(toDrawio(document.graph, document.layout), name, 'application/xml');
+      return;
+    case 'svg':
+      saveFile((await drawSnapshot(snapshot, strings)).svg, name, 'image/svg+xml');
+      return;
+    case 'png':
+      saveFile(
+        await drawingToPng(await drawSnapshot(snapshot, strings, { embedFont: true })),
+        name,
+      );
+      return;
+  }
 }
 
-function download(document: DiagramDocument): void {
-  const blob = new Blob([documentToJson(document)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = window.document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileNameFor(document.graph.title);
-  anchor.click();
-  // Revoked later: some browsers start the download after the click returns.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+/** Formats offered as downloads in the export section, in order. */
+const DOWNLOADS = ['mermaid', 'drawio', 'svg', 'png'] as const satisfies readonly ExportFormat[];
 
 /**
- * Header button and popover to share the diagram as a link and to download
- * or open it as a JSON file (T11). The link holds the whole diagram,
- * compressed, in its fragment.
+ * Header button and popover to share the diagram as a link (T11), export it
+ * as Mermaid, draw.io, SVG or PNG (T12), and save or open it as a JSON file.
+ * The link holds the whole diagram, compressed, in its fragment.
  */
 export function ShareMenu() {
   const strings = useStrings();
@@ -118,8 +141,12 @@ export function ShareMenu() {
 
 function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: () => void }) {
   const strings = useStrings();
-  const document = useEditor((state) => state.current?.document);
+  const snapshot = useEditor((state) => state.current);
+  const document = snapshot?.document;
   const wide = useMediaQuery(WIDE_SCREEN);
+  const [mermaidCopied, setMermaidCopied] = useState<DiagramDocument | null>(null);
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  const [exportFailed, setExportFailed] = useState(false);
   const [created, setCreated] = useState<{ for: DiagramDocument; link: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [copyFailed, setCopyFailed] = useState(false);
@@ -154,6 +181,34 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
       console.warn('Could not copy the link', error);
       setCopyFailed(true);
       inputRef.current?.select();
+    }
+  };
+
+  const copyMermaid = async () => {
+    if (!snapshot) return;
+    try {
+      await navigator.clipboard.writeText(
+        toMermaid(snapshot.document.graph, { direction: snapshot.direction }),
+      );
+      setMermaidCopied(snapshot.document);
+      setExportFailed(false);
+    } catch (error) {
+      console.warn('Could not copy the Mermaid text', error);
+      setCopyFailed(true);
+    }
+  };
+
+  const save = async (format: ExportFormat) => {
+    if (!snapshot) return;
+    setExporting(format);
+    setExportFailed(false);
+    try {
+      await exportAs(format, snapshot, strings);
+    } catch (error) {
+      console.error(`Could not export the diagram as ${format}`, error);
+      setExportFailed(true);
+    } finally {
+      setExporting(null);
     }
   };
 
@@ -226,10 +281,46 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
         </div>
       </section>
 
+      <section className="flex flex-col gap-2 border-t border-line px-4 pt-3 pb-3">
+        <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted">
+          <FileDown size={13} aria-hidden="true" />
+          {strings.share.export}
+        </h3>
+        <Button disabled={!snapshot} onClick={() => void copyMermaid()} className="self-start">
+          {mermaidCopied !== null && mermaidCopied === document ? (
+            <Check size={15} aria-hidden="true" />
+          ) : (
+            <Copy size={15} aria-hidden="true" />
+          )}
+          {mermaidCopied !== null && mermaidCopied === document
+            ? strings.share.mermaidCopied
+            : strings.share.copyMermaid}
+        </Button>
+        {/* Compact, so that the four formats fit in one row. */}
+        <div className="flex flex-wrap gap-1 [&>button]:h-8 [&>button]:gap-1.5 [&>button]:px-2 [&>button]:text-[13px]">
+          {DOWNLOADS.map((format) => (
+            <Button
+              key={format}
+              disabled={!snapshot || exporting !== null}
+              aria-label={strings.share.downloadAs(strings.share.formats[format])}
+              title={strings.share.downloadAs(strings.share.formats[format])}
+              onClick={() => void save(format)}
+            >
+              <Download size={13} aria-hidden="true" className="shrink-0" />
+              {strings.share.formats[format]}
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-col gap-1 text-xs text-muted" aria-live="polite">
+          <p>{strings.share.exportHint}</p>
+          {exportFailed && <p className="text-danger">{strings.share.exportFailed}</p>}
+        </div>
+      </section>
+
       <section className="flex flex-col gap-2 border-t border-line px-4 pt-3 pb-4">
         <h3 className="text-xs font-medium text-muted">{strings.share.file}</h3>
         <div className="flex flex-wrap gap-1.5">
-          <Button disabled={!document} onClick={() => document && download(document)}>
+          <Button disabled={!snapshot} onClick={() => void save('json')}>
             <Download size={15} aria-hidden="true" />
             {strings.share.download}
           </Button>

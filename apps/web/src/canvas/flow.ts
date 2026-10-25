@@ -13,9 +13,10 @@ import {
   resolveEdgeMode,
 } from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
-import { type Edge, type Node, Position } from '@xyflow/react';
+import type { Edge, Node, Position } from '@xyflow/react';
 import { en, type KindText } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
+import { FLOW_HANDLES } from './appearance.ts';
 import { absoluteBoxes, boundsOf, nestingDepths } from './geometry.ts';
 
 /** Seconds the diagram takes to build from its first layer to its last. */
@@ -66,12 +67,7 @@ export interface FlowElements {
   edges: ArchitectureFlowEdge[];
 }
 
-const HANDLES: Record<LayoutDirection, { source: Position; target: Position }> = {
-  LR: { source: Position.Right, target: Position.Left },
-  RL: { source: Position.Left, target: Position.Right },
-  TB: { source: Position.Bottom, target: Position.Top },
-  BT: { source: Position.Top, target: Position.Bottom },
-};
+const HANDLES = FLOW_HANDLES;
 
 /**
  * Pure adapter from the domain document to React Flow elements.

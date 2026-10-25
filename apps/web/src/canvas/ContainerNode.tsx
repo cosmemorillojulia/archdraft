@@ -4,12 +4,10 @@ import { memo } from 'react';
 import { KIND_ICONS } from '../icons.ts';
 import { EASE_OUT } from '../motion.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
+import { groupTint } from './appearance.ts';
 import type { ContainerFlowNode } from './flow.ts';
 import { ResizeHandles } from './ResizeHandles.tsx';
 
-/** Percentage of accent mixed into a group's fill, and how much more each nesting level adds. */
-const TINT_BASE = 3;
-const TINT_STEP = 2.5;
 /** Extra tint of the group a dragged node would move into. */
 const DROP_TINT = 6;
 
@@ -28,7 +26,7 @@ export const ContainerNode = memo(function ContainerNode({
   const canvas = useCanvas();
   const selected = isSelected(canvas.selection, 'node', id);
   const dropTarget = canvas.dropTargetId === id;
-  const tint = TINT_BASE + depth * TINT_STEP + (dropTarget ? DROP_TINT : 0);
+  const tint = groupTint(depth) + (dropTarget ? DROP_TINT : 0);
 
   return (
     <>

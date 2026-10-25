@@ -374,7 +374,7 @@ export const es: Strings = {
   },
   share: {
     open: 'Compartir',
-    title: 'Compartir y ficheros',
+    title: 'Compartir y exportar',
     close: 'Cerrar',
     link: 'Enlace a este diagrama',
     creating: 'Creando el enlace…',
@@ -384,6 +384,14 @@ export const es: Strings = {
     linkNote: 'El diagrama va dentro del enlace; no se guarda nada en ningún servidor.',
     longLink: (length: number) =>
       `Este enlace tiene ${length.toLocaleString('es')} caracteres y algunas aplicaciones cortan los enlaces largos. Para compartir un diagrama grande, descarga el fichero JSON.`,
+    export: 'Exportar',
+    copyMermaid: 'Copiar Mermaid',
+    mermaidCopied: 'Mermaid copiado',
+    formats: { json: 'JSON', mermaid: 'Mermaid', drawio: 'draw.io', svg: 'SVG', png: 'PNG' },
+    downloadAs: (format: string) => `Descargar ${format}`,
+    exportHint:
+      'Mermaid para READMEs y documentos, draw.io para seguir editando allí, SVG y PNG como imagen.',
+    exportFailed: 'No se ha podido crear la imagen. Vuelve a intentarlo o exporta SVG.',
     file: 'Fichero',
     download: 'Descargar JSON',
     openFile: 'Abrir fichero JSON',

@@ -14,6 +14,7 @@ import {
   type NodeKind,
   type TemplateId,
 } from '@archdraft/core';
+import type { ExportFormat } from '../export/files.ts';
 
 /** "a subnet", "an availability zone". */
 function withArticle(noun: string): string {
@@ -200,7 +201,7 @@ export const en = {
   } satisfies Record<EdgeProtocol, string>,
   share: {
     open: 'Share',
-    title: 'Share and files',
+    title: 'Share and export',
     close: 'Close',
     link: 'Link to this diagram',
     creating: 'Creating the link…',
@@ -210,6 +211,20 @@ export const en = {
     linkNote: 'The diagram travels inside the link; nothing is stored on a server.',
     longLink: (length: number) =>
       `This link is ${length.toLocaleString('en')} characters long and some apps cut long links. To share a large diagram, download the JSON file.`,
+    export: 'Export',
+    copyMermaid: 'Copy Mermaid',
+    mermaidCopied: 'Mermaid copied',
+    formats: {
+      json: 'JSON',
+      mermaid: 'Mermaid',
+      drawio: 'draw.io',
+      svg: 'SVG',
+      png: 'PNG',
+    } satisfies Record<ExportFormat, string>,
+    downloadAs: (format: string) => `Download ${format}`,
+    exportHint:
+      'Mermaid for READMEs and documents, draw.io to keep editing there, SVG and PNG as images.',
+    exportFailed: 'The image could not be created. Try again, or export SVG.',
     file: 'File',
     download: 'Download JSON',
     openFile: 'Open JSON file',

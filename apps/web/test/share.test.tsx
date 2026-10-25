@@ -3,6 +3,8 @@ import {
   DEFAULT_NODE_SIZE,
   type DiagramDocument,
   documentToJson,
+  toDrawio,
+  toMermaid,
 } from '@archdraft/core';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -116,6 +118,59 @@ describe('share menu', () => {
     expect(anchor.download).toBe('shared-diagram.archdraft.json');
     const blob = createObjectURL.mock.calls[0]?.[0];
     expect(await blob?.text()).toBe(documentToJson(document));
+  });
+
+  it('copies the diagram as Mermaid, in the direction it is drawn', async () => {
+    const { user, dialog } = await openMenu();
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    await user.click(within(dialog).getByRole('button', { name: strings.share.copyMermaid }));
+    expect(writeText).toHaveBeenCalledWith(toMermaid(document.graph, { direction: 'LR' }));
+    expect(
+      within(dialog).getByRole('button', { name: strings.share.mermaidCopied }),
+    ).toBeInTheDocument();
+  });
+
+  it('downloads Mermaid, draw.io and SVG files named after the diagram', async () => {
+    const { user, dialog } = await openMenu();
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:export');
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const downloaded = async (format: 'mermaid' | 'drawio' | 'svg') => {
+      const name = strings.share.downloadAs(strings.share.formats[format]);
+      await user.click(within(dialog).getByRole('button', { name }));
+      await waitFor(() => expect(click).toHaveBeenCalledTimes(createObjectURL.mock.calls.length));
+      const anchor = click.mock.contexts.at(-1) as HTMLAnchorElement;
+      const blob = createObjectURL.mock.calls.at(-1)?.[0];
+      return { name: anchor.download, text: (await blob?.text()) ?? '' };
+    };
+
+    const mermaid = await downloaded('mermaid');
+    expect(mermaid.name).toBe('shared-diagram.mmd');
+    expect(mermaid.text).toBe(toMermaid(document.graph, { direction: 'LR' }));
+
+    const drawio = await downloaded('drawio');
+    expect(drawio.name).toBe('shared-diagram.drawio');
+    expect(drawio.text).toBe(toDrawio(document.graph, document.layout));
+
+    const svg = await downloaded('svg');
+    expect(svg.name).toBe('shared-diagram.svg');
+    expect(svg.text.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
+    expect(svg.text).toContain('>Orders API<');
+  });
+
+  it('says so when an image cannot be created', async () => {
+    const { user, dialog } = await openMenu();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    // jsdom cannot decode images, as a browser that fails would not.
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: strings.share.downloadAs(strings.share.formats.png),
+      }),
+    );
+    expect(await within(dialog).findByText(strings.share.exportFailed)).toBeInTheDocument();
   });
 
   it('opens a JSON file in place of the diagram', async () => {
