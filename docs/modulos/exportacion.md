@@ -1,6 +1,6 @@
 # Módulo: exportación e importación
 
-Vive en `packages/core/src/export/` y en `packages/core/src/migrations.ts`. Convierte un grafo a formatos de texto (Mermaid, draw.io y JSON) y lee de vuelta los ficheros JSON de forma segura. Todo son funciones puras sin E/S: el editor (T11, T12) se encarga de copiar, descargar o leer ficheros.
+Vive en `packages/core/src/export/` y en `packages/core/src/migrations.ts`. Convierte un grafo a formatos de texto (Mermaid, draw.io y JSON) y lee de vuelta los ficheros JSON de forma segura. Todo son funciones puras sin E/S: el editor (T11, T12) se encarga de copiar, descargar o leer ficheros. Las imágenes SVG y PNG se dibujan en `apps/web` (ver [web.md](web.md#exportar)), porque necesitan medir texto con la fuente, los iconos y los colores del tema, que no son del dominio.
 
 ## Estructura
 

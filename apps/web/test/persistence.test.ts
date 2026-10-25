@@ -6,7 +6,7 @@ import {
 } from '@archdraft/core';
 import { computeLayout } from '@archdraft/layout';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fileNameFor } from '../src/components/ShareMenu.tsx';
+import { fileNameFor } from '../src/export/files.ts';
 import { inferDirection, openDocumentText, openLink } from '../src/editor/open-document.ts';
 import { createEditorStore } from '../src/editor/store.ts';
 import { readSavedDocument, SAVED_DOCUMENT_KEY, startAutosave } from '../src/persist/autosave.ts';
