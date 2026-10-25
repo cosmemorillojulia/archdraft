@@ -15,7 +15,14 @@ import { EditorNotice } from './components/EditorNotice.tsx';
 import { Header } from './components/Header.tsx';
 import { PanelSlot } from './components/PanelSlot.tsx';
 import { PromptDock } from './components/PromptDock.tsx';
-import { openTemplate } from './editor/open-template.ts';
+import {
+  clearLinkFromAddress,
+  openDocumentText,
+  openLink,
+  openTemplate,
+} from './editor/open-document.ts';
+import { readSavedDocument, startAutosave } from './persist/autosave.ts';
+import { linkPayload } from './persist/share-link.ts';
 import { useEditorShortcuts } from './editor/shortcuts.ts';
 import { editorStore, useEditor } from './editor/store.ts';
 import { EXTRA_WIDE_SCREEN, useMediaQuery, WIDE_SCREEN } from './media.ts';
@@ -27,6 +34,24 @@ import { strings } from './strings.ts';
 const PALETTE_WIDTH = 304;
 
 const DEFAULT_TEMPLATE: TemplateId = 'three-tier-web';
+
+/**
+ * The diagram of a shared link if the address has one; otherwise the work
+ * saved in this browser; otherwise the default template. When one cannot be
+ * opened the editor says why and tries the next.
+ */
+async function openFirstDiagram(direction: LayoutDirection): Promise<void> {
+  const payload = linkPayload(window.location.hash);
+  if (payload !== null) {
+    const opened = await openLink(payload, direction);
+    // Edits are saved in this browser; reloading should not go back to the link.
+    clearLinkFromAddress();
+    if (opened) return;
+  }
+  const saved = readSavedDocument();
+  if (saved !== null && (await openDocumentText(saved, 'saved', direction))) return;
+  await openTemplate(DEFAULT_TEMPLATE, direction);
+}
 
 /** Space taken by the floating interface around the canvas, in pixels. */
 function canvasInsets(wide: boolean, paletteOpen: boolean): Insets {
@@ -88,7 +113,19 @@ function Editor() {
   const direction: LayoutDirection = wide ? 'LR' : 'TB';
   const firstDirection = useRef(direction);
   useEffect(() => {
-    void openTemplate(DEFAULT_TEMPLATE, firstDirection.current);
+    const stopAutosave = startAutosave();
+    void openFirstDiagram(firstDirection.current);
+    // A link pasted into the address bar of an open editor opens too.
+    const onHashChange = () => {
+      const payload = linkPayload(window.location.hash);
+      if (payload === null) return;
+      void openLink(payload, firstDirection.current).then(clearLinkFromAddress);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => {
+      stopAutosave();
+      window.removeEventListener('hashchange', onHashChange);
+    };
   }, []);
 
   const addAtCentre = useCallback(

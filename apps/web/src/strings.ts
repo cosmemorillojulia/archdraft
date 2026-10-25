@@ -152,6 +152,35 @@ export const strings = {
     event: 'Event',
     other: 'Other',
   } satisfies Record<EdgeProtocol, string>,
+  share: {
+    open: 'Share',
+    title: 'Share and files',
+    close: 'Close',
+    link: 'Link to this diagram',
+    creating: 'Creating the link…',
+    copy: 'Copy link',
+    copied: 'Copied',
+    copyFailed: 'Copying is blocked here: select the link and copy it.',
+    linkNote: 'The diagram travels inside the link; nothing is stored on a server.',
+    longLink: (length: number) =>
+      `This link is ${length.toLocaleString('en')} characters long and some apps cut long links. To share a large diagram, download the JSON file.`,
+    file: 'File',
+    download: 'Download JSON',
+    openFile: 'Open JSON file',
+    fileHint: 'Opening a file replaces the diagram; undo brings it back.',
+  },
+  persist: {
+    openFailed: {
+      file: (reason: string) => `This file could not be opened. ${reason}`,
+      link: (reason: string) => `This link could not be opened. ${reason}`,
+      saved: (reason: string) =>
+        `The diagram saved in this browser could not be restored. ${reason}`,
+    },
+    linkDamaged: 'It is incomplete or damaged.',
+    linkTooLarge: 'It is too large.',
+    saveFailed:
+      'Changes cannot be saved in this browser and will be lost when the page closes. Download the JSON file to keep them.',
+  },
   /** Why an edit was not made. */
   edit: {
     tooManyNodes: `A diagram can have up to ${LIMITS.maxNodes} components and groups.`,

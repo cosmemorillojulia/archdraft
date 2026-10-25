@@ -20,8 +20,8 @@ const scope = self as unknown as LayoutWorkerScope;
  * blocks the interface. One request in, one response out, matched by id.
  */
 scope.onmessage = (event) => {
-  const { id, graph, direction } = event.data;
-  computeLayout(graph, { direction })
+  const { id, graph, direction, pinned } = event.data;
+  computeLayout(graph, pinned ? { direction, pinned } : { direction })
     .then((layout) => scope.postMessage({ id, layout }))
     .catch((error: unknown) => scope.postMessage({ id, error: String(error) }));
 };
