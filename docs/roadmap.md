@@ -47,6 +47,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T30 | Editor: aristas que esquivan los nodos                           | T08           | pendiente          |
 | T31 | Editor: figuras genéricas, flechas y animación del flujo         | T09           | hecha (2026-10-25) |
 | T32 | Editor: interfaz en inglés y español                             | T10, T11      | hecha (2026-10-25) |
+| T33 | Editor: fluidez al mover, cambiar el tamaño y añadir             | T31           | hecha (2026-10-25) |
 
 ## Fase 0: fundamentos
 
@@ -297,6 +298,16 @@ Objetivo: a petición del propietario, cambiar entre inglés y español con un �
 Entregables: diccionarios inglés y español con las mismas claves, idioma en un store con preferencia guardada y detección del navegador, tipos de nodo, reglas, hallazgos y plantillas en español, plantilla sin editar que sigue al idioma, botón con el código del idioma, nombres de componentes en hasta dos líneas, búsqueda sin tildes y crédito a React Flow en el README.
 
 Criterios de aceptación: tests de los diccionarios, de los hallazgos en los dos idiomas, de las plantillas traducidas, de la detección y del cambio de idioma en la aplicación; capturas en español en escritorio, oscuro y móvil, y comprobación de que ningún nombre de las plantillas se corta.
+
+### T33. Fluidez al mover, cambiar el tamaño y añadir
+
+Estado: hecha (2026-10-25). Documentado en `docs/modulos/web.md`.
+
+Objetivo: a petición del propietario, que mover, cambiar el tamaño y añadir figuras y componentes sea fluido en escritorio y en móvil.
+
+Entregables: cambio de tamaño de cualquier nodo seleccionado, con mínimos por tipo, bordes que no se mueven si no se tocan y grupos que nunca encogen por debajo de su contenido ni lo mueven; arrastrar desde la paleta con ratón y con el dedo (mantener pulsado), con el nodo siguiendo al puntero y el grupo de destino iluminado; mover un nodo sin seleccionarlo; tiradores grandes para el dedo; paneles sin desenfoque en pantallas táctiles; contexto del lienzo y manejadores de React Flow estables durante los gestos.
+
+Criterios de aceptación: tests del cambio de tamaño, de los tiradores y del arrastre desde la paleta con ratón y con el dedo; comprobación en Chromium (escritorio y Pixel 7 emulado) de mover, cambiar el tamaño y añadir con el dedo; medida del coste de un arrastre con la CPU ralentizada antes y después.
 
 ## Fase 3: inteligencia artificial
 

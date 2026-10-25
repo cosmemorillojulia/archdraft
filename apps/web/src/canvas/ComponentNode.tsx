@@ -7,12 +7,14 @@ import { SEVERITY_COLOR } from '../review/findings.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import type { ComponentFlowNode } from './flow.ts';
+import { ResizeHandles } from './ResizeHandles.tsx';
 
 /**
  * A component on the canvas: the icon of its kind on the colour of its
  * category, its name, the product it resolves to and, when it runs outside
  * the provider of the diagram, a badge saying so. Dragging from the dot on
- * its outgoing side, shown on hover or when selected, connects it.
+ * its outgoing side, shown on hover or when selected, connects it; selected,
+ * it can be resized.
  */
 export const ComponentNode = memo(function ComponentNode({
   id,
@@ -86,6 +88,8 @@ export const ComponentNode = memo(function ComponentNode({
           )}
         </div>
       </m.div>
+      {/* After the card, so its handles are above it. */}
+      <ResizeHandles id={id} kind={node.kind} visible={selected} />
       <Handle
         type="target"
         position={targetPosition}

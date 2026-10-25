@@ -1,4 +1,4 @@
-import type { NodeKind, TemplateId } from '@archdraft/core';
+import type { NodeKind, Point, TemplateId } from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import { AnimatePresence, LazyMotion, m, MotionConfig } from 'motion/react';
@@ -22,6 +22,8 @@ import {
   openTemplate,
 } from './editor/open-document.ts';
 import { readSavedDocument, startAutosave } from './persist/autosave.ts';
+import { usePaletteDrag } from './palette/palette-drag.ts';
+import { PaletteDragGhost } from './palette/PaletteDragGhost.tsx';
 import { linkPayload } from './persist/share-link.ts';
 import { useEditorShortcuts } from './editor/shortcuts.ts';
 import { editorStore, useEditor } from './editor/store.ts';
@@ -143,9 +145,24 @@ function Editor() {
     [flow, insets, wide],
   );
 
+  // A tile dragged from the palette lands where it is let go, if that is on the diagram.
+  const isOverCanvas = useCallback((point: Point) => {
+    const element = globalThis.document.elementFromPoint(point.x, point.y);
+    return element !== null && canvasRef.current?.contains(element) === true;
+  }, []);
+  const addAt = useCallback(
+    (kind: NodeKind, point: Point) => {
+      editorStore.getState().addNode(kind, flow.screenToFlowPosition(point));
+      if (!wide) setPaletteOpen(false);
+    },
+    [flow, wide],
+  );
+  // While a tile is carried out of the sheet, the diagram under it must be reachable.
+  const carrying = usePaletteDrag((state) => state.drag !== null);
+
   return (
     <>
-      <div inert={sheetOpen} className="flex h-full flex-col">
+      <div inert={sheetOpen && !carrying} className="flex h-full flex-col">
         <Header />
 
         <div className="relative min-h-0 flex-1 overflow-hidden bg-canvas">
@@ -164,6 +181,8 @@ function Editor() {
                 open={paletteOpen}
                 onOpenChange={setPaletteOpen}
                 onAdd={addAtCentre}
+                onDrop={addAt}
+                isOverCanvas={isOverCanvas}
               />
             </aside>
           )}
@@ -220,8 +239,11 @@ function Editor() {
           onOpenChange={setPaletteOpen}
           toggleRef={sheetToggleRef}
           onAdd={addAtCentre}
+          onDrop={addAt}
+          isOverCanvas={isOverCanvas}
         />
       )}
+      <PaletteDragGhost />
     </>
   );
 }

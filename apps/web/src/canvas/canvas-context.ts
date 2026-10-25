@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react';
 import type { Selection } from '../editor/operations.ts';
 
 /** Position, relative to the parent, and size of a node. */
-export interface ShapeBox {
+export interface NodeBox {
   x: number;
   y: number;
   width: number;
@@ -29,8 +29,8 @@ export interface CanvasState {
   building: boolean;
   /** Whether particles travel along the connections (a preference of this browser). */
   particles: boolean;
-  /** Reports the box of a shape being resized; `done` when the resize ends. */
-  resizeShape: (id: string, box: ShapeBox, done: boolean) => void;
+  /** Reports the box of a node being resized; `done` when the resize ends. */
+  resize: (id: string, box: NodeBox, done: boolean) => void;
   /** While the design review is open: the most severe finding of each component. */
   issues: ReadonlyMap<string, LintSeverity>;
   /** The finding chosen in the review: its components are outlined in its colour. */
@@ -46,7 +46,7 @@ export const CanvasContext = createContext<CanvasState>({
   dropTargetId: null,
   building: false,
   particles: true,
-  resizeShape: () => undefined,
+  resize: () => undefined,
   issues: new Map(),
   finding: null,
 });

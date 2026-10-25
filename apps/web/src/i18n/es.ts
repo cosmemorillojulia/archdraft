@@ -298,7 +298,7 @@ export const es: Strings = {
     noMatches: (query: string) => `Ningún componente coincide con «${query}».`,
     add: (label: string) => `Añadir ${label}`,
     hintWide: 'Haz clic para añadir en el centro, o arrastra al diagrama.',
-    hintNarrow: 'Toca para añadir al diagrama.',
+    hintNarrow: 'Toca para añadir al diagrama, o mantén pulsado y arrastra para colocarlo.',
     categories: {
       actor: 'Personas y clientes',
       edge: 'Entrada y tráfico',
