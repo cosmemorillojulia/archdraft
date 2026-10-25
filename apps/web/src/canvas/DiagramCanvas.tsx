@@ -13,7 +13,7 @@ import {
 import { AnimatePresence, m } from 'motion/react';
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { containerAt, fitResize, subtreeOf } from '../editor/operations.ts';
-import { editorStore, type Snapshot, useEditor } from '../editor/store.ts';
+import { editorStore, isInspectorExpanded, type Snapshot, useEditor } from '../editor/store.ts';
 import { findingKey, severityByNode, useFindings } from '../review/findings.ts';
 import { reviewStore, useReview } from '../review/review-store.ts';
 import { EASE_OUT } from '../motion.ts';
@@ -48,8 +48,9 @@ const BUILD_MS = 1200;
 const DRAG_THRESHOLD = 4;
 /**
  * Room the inspector can take (Inspector.tsx): a 320 px column on the right
- * with its margins, or at most 52 % of the screen height and 480 px at the
- * bottom, 12 px above the edge.
+ * with its margins, or, expanded, at most 52 % of the screen height and
+ * 480 px at the bottom, 12 px above the edge. Collapsed, the strip at the
+ * bottom is lower than the room the insets already keep for the prompt.
  */
 const SIDE_INSPECTOR_COVER = 356;
 const bottomInspectorCover = () => Math.min(window.innerHeight * 0.52, 480) + 12;
@@ -108,6 +109,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const strings = useStrings();
   const { document: diagram, direction } = snapshot;
   const selection = useEditor((state) => state.selection);
+  const inspectorExpanded = useEditor(isInspectorExpanded);
   const particles = usePreferences((state) => state.flowAnimation);
   const findings = useFindings();
   const reviewOpen = useReview((state) => state.open);
@@ -290,16 +292,19 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     const cover =
       inspectorPlacement === 'side'
         ? { ...insets, right: Math.max(insets.right, SIDE_INSPECTOR_COVER) }
-        : { ...insets, bottom: Math.max(insets.bottom, bottomInspectorCover()) };
+        : inspectorExpanded
+          ? { ...insets, bottom: Math.max(insets.bottom, bottomInspectorCover()) }
+          : insets;
     return {
       left: cover.left + REVEAL_MARGIN,
       top: cover.top + REVEAL_MARGIN,
       right: width - cover.right - REVEAL_MARGIN,
       bottom: height - cover.bottom - REVEAL_MARGIN,
     };
-  }, [insets, inspectorPlacement]);
+  }, [insets, inspectorExpanded, inspectorPlacement]);
 
-  const revealedId = useRef<string | null>(null);
+  /** What the view was last moved to show: a node, under the inspector expanded or not. */
+  const revealed = useRef<{ id: string | null; expanded: boolean }>({ id: null, expanded: false });
 
   // A finding chosen in the review glides to the middle of the free area, zooming out if it does not fit.
   const focusedCount = useRef(focusCount);
@@ -315,7 +320,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     );
     if (!area || !bounds) return;
     // The finding selects its first component, which this glide already brings into view.
-    revealedId.current = activeFinding?.nodeIds[0] ?? null;
+    revealed.current = { id: activeFinding?.nodeIds[0] ?? null, expanded: inspectorExpanded };
     const current = flow.getViewport();
     const width = area.right - area.left;
     const height = area.bottom - area.top;
@@ -331,12 +336,14 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       },
       { duration: FOCUS_MS },
     );
-  }, [activeFinding, boxes, flow, focusCount, freeArea]);
+  }, [activeFinding, boxes, flow, focusCount, freeArea, inspectorExpanded]);
 
-  // A newly selected node hidden behind the inspector or another panel glides into view.
+  // A newly selected node hidden behind the inspector or another panel glides into view,
+  // and again when the inspector expands over it.
   useEffect(() => {
-    if (selectedNodeId === revealedId.current) return;
-    revealedId.current = selectedNodeId;
+    const last = revealed.current;
+    if (selectedNodeId === last.id && inspectorExpanded === last.expanded) return;
+    revealed.current = { id: selectedNodeId, expanded: inspectorExpanded };
     const box = selectedNodeId === null ? undefined : boxes.get(selectedNodeId);
     const area = freeArea();
     if (!box || !area) return;
@@ -350,7 +357,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     if (dx !== 0 || dy !== 0) {
       void flow.setViewport({ x: x + dx, y: y + dy, zoom }, { duration: REVEAL_MS });
     }
-  }, [boxes, flow, freeArea, selectedNodeId]);
+  }, [boxes, flow, freeArea, inspectorExpanded, selectedNodeId]);
 
   /** Container the node would move into if dropped now, if it is not its current one. */
   const dropTargetFor = (node: ArchitectureFlowNode): string | null => {
