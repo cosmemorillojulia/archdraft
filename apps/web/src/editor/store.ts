@@ -7,6 +7,7 @@ import {
   isContainerKind,
   type NodeKind,
   type Point,
+  type Size,
   type TemplateId,
   type ValidationIssue,
   validateGraph,
@@ -24,6 +25,7 @@ import {
   exists,
   moveNode,
   type NodePatch,
+  resizeNode,
   remove,
   type Selection,
   updateEdge,
@@ -74,6 +76,7 @@ export interface EditorActions {
   addNode: (kind: NodeKind, centre: Point) => void;
   connect: (source: string, target: string) => void;
   moveNode: (id: string, position: Point) => void;
+  resizeNode: (id: string, box: Point & Size) => void;
   updateNode: (id: string, patch: NodePatch) => void;
   updateEdge: (id: string, patch: EdgePatch) => void;
   removeSelection: () => void;
@@ -200,6 +203,7 @@ export function createEditorStore() {
       addNode: (kind, centre) => apply((document) => addNode(document, kind, centre)),
       connect: (source, target) => apply((document) => connect(document, source, target)),
       moveNode: (id, position) => apply((document) => moveNode(document, id, position)),
+      resizeNode: (id, box) => apply((document) => resizeNode(document, id, box)),
       updateNode: (id, patch) => apply((document) => updateNode(document, id, patch)),
       updateEdge: (id, patch) => apply((document) => updateEdge(document, id, patch)),
       removeSelection: () => {

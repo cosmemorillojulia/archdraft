@@ -1,12 +1,7 @@
 import { getNodeDefinition } from '../catalog.ts';
-import {
-  DEFAULT_CONTAINER_SIZE,
-  DEFAULT_NODE_SIZE,
-  type DiagramLayout,
-  layoutEntry,
-} from '../document.ts';
+import { defaultSizeOf, type DiagramLayout, layoutEntry } from '../document.ts';
 import { indexGraph, resolveEdgeMode } from '../graph.ts';
-import { isContainerKind, type NodeCategory } from '../kinds.ts';
+import { isContainerKind, type NodeCategory, type NodeKind } from '../kinds.ts';
 import type { ArchEdge, ArchitectureGraph, ArchNode } from '../schema.ts';
 import { edgeText, nodeSubtitle } from './labels.ts';
 
@@ -34,11 +29,19 @@ const CATEGORY_STYLES: Readonly<Record<NodeCategory, string>> = {
   observability: 'rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;',
   ai: 'rounded=1;fillColor=#d0cee2;strokeColor=#56517e;',
   external: 'rounded=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;',
+  shape: 'rounded=0;fillColor=#ffffff;strokeColor=#333333;',
   // Title in the top left corner, inside the padding the layout leaves for it.
   container:
     'container=1;collapsible=0;rounded=1;arcSize=4;absoluteArcSize=1;dashed=1;' +
     'fillColor=none;strokeColor=#666666;verticalAlign=top;align=left;' +
     'spacingLeft=8;spacingTop=4;fontStyle=1;',
+};
+
+/** Shapes draw as themselves; `shape` above is the box. */
+const SHAPE_STYLES: Readonly<Partial<Record<NodeKind, string>>> = {
+  circle: 'ellipse;fillColor=#ffffff;strokeColor=#333333;',
+  diamond: 'rhombus;fillColor=#ffffff;strokeColor=#333333;',
+  note: 'shape=note;size=14;fillColor=#fff9db;strokeColor=#b8a046;',
 };
 
 const EDGE_STYLE = 'edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;';
@@ -97,15 +100,13 @@ function vertexCell(
 ): string[] {
   const { category } = getNodeDefinition(node.kind);
   const position = layoutEntry(layout.positions, node.id) ?? { x: 0, y: 0 };
-  const size =
-    layoutEntry(layout.sizes, node.id) ??
-    (isContainerKind(node.kind) ? DEFAULT_CONTAINER_SIZE : DEFAULT_NODE_SIZE);
+  const size = layoutEntry(layout.sizes, node.id) ?? defaultSizeOf(node.kind);
   const subtitle = isContainerKind(node.kind) ? undefined : nodeSubtitle(node, graph);
   const value =
     subtitle === undefined
       ? htmlText(node.label)
       : `${htmlText(node.label)}<br>${htmlText(subtitle)}`;
-  const style = COMPONENT_STYLE + CATEGORY_STYLES[category];
+  const style = COMPONENT_STYLE + (SHAPE_STYLES[node.kind] ?? CATEGORY_STYLES[category]);
   return [
     `        <mxCell id="${escapeXml(nodeCellId(node.id))}" value="${escapeXml(value)}" ` +
       `style="${style}" vertex="1" parent="${escapeXml(parent)}">`,

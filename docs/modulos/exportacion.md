@@ -58,6 +58,10 @@ flowchart LR
 | Componente de datos  | Cilindro `id[("etiqueta")]`                                                  |
 | Actor                | Estadio `id(["etiqueta"])`                                                   |
 | Resto de componentes | Rectángulo `id["etiqueta"]`                                                  |
+| Caja                 | Rectángulo `id["etiqueta"]`                                                  |
+| Círculo              | Círculo `id(("etiqueta"))`                                                   |
+| Rombo                | Rombo `id{"etiqueta"}`                                                       |
+| Nota                 | Bandera `id>"etiqueta"]`, la figura de Mermaid más parecida a una nota       |
 | Producto             | Segunda línea de la etiqueta, solo si aporta algo (ver abajo)                |
 | Arista síncrona      | Línea continua `-->`                                                         |
 | Arista asíncrona     | Línea discontinua `-.->`                                                     |
@@ -129,6 +133,7 @@ Ejemplo abreviado:
 | Hijo               | Celda con `parent` igual a la celda de su contenedor; moverlo en draw.io mueve también su contenido                                                   |
 | Posición y tamaño  | `mxGeometry` con los valores del `DiagramLayout`; ambos usan coordenadas relativas al padre                                                           |
 | Componente         | Rectángulo redondeado con el color de su categoría; cilindro (`cylinder3`) para datos, estadio para actores, borde discontinuo para sistemas externos |
+| Figura genérica    | Gris neutro: rectángulo redondeado, `ellipse`, `rhombus` o `shape=note`, sin segunda línea de producto                                                |
 | Etiqueta           | Nombre y, en una segunda línea, el producto con la misma regla que Mermaid (`nodeSubtitle`)                                                           |
 | Arista             | Celda `edge="1"` con estilo ortogonal; discontinua si el modo efectivo es asíncrono                                                                   |
 | Texto de arista    | El mismo que en Mermaid (`edgeText`): `"Reads · grpc"`                                                                                                |
@@ -138,7 +143,7 @@ Decisiones:
 - Identificadores de celda: `n-<id>` para nodos y `e-<id>` para aristas. En draw.io nodos y aristas comparten espacio de nombres y las celdas `0` y `1` están reservadas para la raíz y la capa, mientras que en el dominio un nodo y una arista pueden llamarse igual (`e1`) y un slug puede ser `1`.
 - Los contenedores se escriben antes que sus hijos. draw.io pinta en el orden del documento, así que el contenido queda encima del marco.
 - Las aristas cuelgan de la capa (`parent="1"`) aunque sus extremos estén en contenedores distintos: draw.io calcula la posición absoluta de cada extremo.
-- Si a un nodo le falta la posición en la disposición se coloca en el origen de su padre, y si le falta el tamaño recibe `DEFAULT_NODE_SIZE` o `DEFAULT_CONTAINER_SIZE`. Una disposición desfasada respecto al grafo sigue exportándose en lugar de fallar.
+- Si a un nodo le falta la posición en la disposición se coloca en el origen de su padre, y si le falta el tamaño recibe el tamaño por defecto de su tipo (`defaultSizeOf`). Una disposición desfasada respecto al grafo sigue exportándose en lugar de fallar.
 - Colores de la paleta estándar de draw.io, uno por categoría, para que el diagrama encaje con lo que el usuario ya dibuja allí. No se usan iconos de proveedor (ADR 0008).
 
 Uso desde Node.js, por ejemplo para generar un fichero de prueba:

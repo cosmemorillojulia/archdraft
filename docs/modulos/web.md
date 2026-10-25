@@ -19,6 +19,7 @@ apps/web/
     motion.ts             # tokens de movimiento: curva y muelles compartidos
     motion-features.ts    # funciones de Motion que se cargan aparte
     media.ts              # useMediaQuery y el punto de corte WIDE_SCREEN
+    preferences.ts        # preferencias de la vista: animación del flujo (localStorage)
     icons.ts              # icono de Lucide de cada tipo de nodo
     styles.css            # tokens, tema oscuro, utilidad floating, estilos de React Flow
     components/           # Button, Header, HistoryControls, DiagramCard, ComponentsPanel, PromptDock,
@@ -40,11 +41,12 @@ apps/web/
       flow.ts             # toFlow: adaptador puro del documento a nodos y aristas
       ComponentNode.tsx   # nodo de componente
       ContainerNode.tsx   # nodo de contenedor
-      ArchitectureEdge.tsx# arista con trazado animado, partícula y etiqueta
-      ZoomControls.tsx    # acercar, alejar y ajustar
+      ShapeNode.tsx       # figura genérica: caja, círculo, rombo o nota, con cambio de tamaño
+      ArchitectureEdge.tsx# arista con trazado animado, punta de flecha, partícula y etiqueta
+      ZoomControls.tsx    # acercar, alejar, ajustar y animación del flujo
       canvas-context.ts   # contexto del lienzo: foco, selección, grupo de destino; relatedTo
       palette-drop.ts     # tipo de datos de un mosaico arrastrado al lienzo
-      geometry.ts         # cajas absolutas, profundidad, límites, escala y vista inicial
+      geometry.ts         # cajas absolutas, profundidad, límites, escala, vista inicial y punta de flecha
       layout-client.ts    # layoutDiagram: ELK en un Web Worker
       layout.worker.ts    # el worker
       elk-in-worker.ts    # prepara el ámbito del worker para elkjs
@@ -56,6 +58,7 @@ apps/web/
     operations.test.ts    # ediciones puras
     store.test.ts         # historial, validación y mensajes del store
     flow.test.ts          # adaptador toFlow
+    shapes.test.tsx       # figuras genéricas, animación del flujo y aristas
     geometry.test.ts
     icons.test.ts         # los iconos coinciden con los del catálogo de core
 ```
@@ -186,7 +189,8 @@ Pulsar un mosaico añade su componente en el centro de la vista; en escritorio t
 
 `toFlow(document, direction)` es un adaptador puro, con tests:
 
-- Un nodo `component` o `container` por nodo del grafo, con la posición relativa al contenedor padre (la convención de los subflujos de React Flow), el tamaño de la disposición y `parentId`. Los padres van antes que sus hijos, como exige React Flow.
+- Un nodo `component`, `shape` o `container` por nodo del grafo, con la posición relativa al contenedor padre (la convención de los subflujos de React Flow), el tamaño de la disposición y `parentId`. Los padres van antes que sus hijos, como exige React Flow.
+- Cada nodo lleva también ese tamaño como `measured`. React Flow, cuando recibe un objeto de nodo nuevo sin tamaño medido, descarta la posición de sus conectores y oculta sus aristas hasta volver a medirlo; como cada edición y cada paso de un arrastre crean objetos nuevos, las aristas se desmontaban y se volvían a trazar desde cero, y en mitad de un arrastre se veían cortadas. El tamaño ya lo fija la disposición, así que se pasa medido.
 - Los componentes llevan su categoría, el producto resuelto, las posiciones de sus conectores según la dirección (derecha e izquierda en `LR`, abajo y arriba en `TB`) y, si su proveedor no es el del diagrama, un distintivo (`External`, `AWS`, `GCP` o `Azure`).
 - Los contenedores llevan su profundidad de anidamiento, para el tinte.
 - Cada arista sabe si es asíncrona y la categoría de su origen, para el color de la partícula.
@@ -213,13 +217,16 @@ La versión empaquetada de elkjs, al ejecutarse en un contexto con `self` y sin 
 
 El zoom va del 20 % al 200 % y los botones muestran el porcentaje actual. Cada diagrama que se abre (una plantilla, o deshacer hasta otro diagrama) se muestra entero: `initialViewport` lo encaja y lo centra en la parte del lienzo que no tapan las capas flotantes (`canvasInsets` en `App.tsx`), sin pasar del 120 % para que uno pequeño no se agrande y sin bajar del 20 %; si ni así cabe, empieza arriba y centrado. El botón de ajustar hace el mismo cálculo con una animación. En móvil, las plantillas se ven enteras entre el 34 % y el 54 %, así que los textos de los nodos quedan pequeños hasta acercar con los dedos; antes, por T29, la vista inicial no bajaba del 90 % en móvil (60 % en escritorio) y empezaba arriba; se cambió a petición del propietario para ver siempre el diagrama completo al abrirlo. Al abrir o cerrar la paleta en escritorio, la vista se desliza la mitad del ancho del panel para seguir centrada en el espacio libre.
 
-Los botones de zoom están abajo a la izquierda; en pantallas estrechas suben por encima de la barra de descripción y miden 40 px para el dedo. A partir de 1280 px aparece un minimapa abajo a la derecha, con los nodos en el color de su categoría, que también sirve para desplazarse y hacer zoom. Se mantiene la atribución de React Flow.
+Los botones de zoom y el de la animación del flujo están abajo a la izquierda, en un grupo llamado «View»; en pantallas estrechas suben por encima de la barra de descripción y miden 40 px para el dedo. A partir de 1280 px aparece un minimapa abajo a la derecha, con los nodos en el color de su categoría, que también sirve para desplazarse y hacer zoom. Se mantiene la atribución de React Flow.
 
 ### Nodos y aristas
 
 - Componente: tarjeta con el icono sobre el color de su categoría, el nombre y el producto en una línea cada uno, recortados con puntos suspensivos y completos en el `title`; el distintivo de proveedor flota sobre el borde superior.
 - Contenedor: rectángulo opaco teñido con el acento, más intenso cuanto más anidado, para que los puntos del fondo no se vean dentro; `boundary` con borde discontinuo; cabecera con icono y nombre.
-- Arista: curva de Bézier entre los conectores, trazada al aparecer (las asíncronas, discontinuas, aparecen con un fundido porque el trazado también usa `stroke-dasharray`), con una partícula en bucle y una flecha. Las dos flechas, normal y resaltada, se definen una vez por lienzo.
+- Figura genérica: caja, círculo, rombo o nota con el nombre centrado (hasta tres líneas), en gris neutro; la nota, en amarillo papel. El rombo y la nota se dibujan con un SVG que se estira con la figura y un trazo que no se deforma. Seleccionada, muestra tiradores para cambiar su tamaño (`NodeResizer`; el círculo mantiene la proporción, mínimo 40 px). El tamaño en curso vive en el lienzo, como el arrastre, y llega al store al soltar como un solo paso (`resizeNode`, que redondea, respeta el relleno del grupo y hace crecer los grupos).
+- Arista: curva de Bézier entre los conectores, trazada al aparecer (las asíncronas, discontinuas, aparecen con un fundido porque el trazado también usa `stroke-dasharray`), con una partícula en bucle y una punta de flecha propia. La punta no es un `marker` de SVG: un marcador escala con el grosor del trazo, no puede fundir su color y se ve antes de que la línea termine de trazarse. `arrowhead` (`geometry.ts`) calcula un triángulo de 9 × 9 px con la punta en el borde del destino, y la curva termina en el centro de su base; la punta aparece cuando llega la línea y cambia de color con ella. Cuando termina de trazarse, la línea pasa a ser un `path` normal: el trazado usa un guion normalizado (`pathLength`) que Chromium no reescala cuando la curva cambia de longitud, y la línea se quedaba corta al mover un nodo.
+- Conectores: miden 0 × 0 y están fuera del elemento que se anima al entrar. Dentro, React Flow los medía a mitad de la animación de escala y las aristas acababan unos 10 px dentro de la tarjeta, con la flecha tapada. El punto visible (12 px, con un área de agarre de 28 px) es un pseudoelemento que aparece al pasar el ratón, al enfocar, al seleccionar o mientras se conecta.
+- Animación del flujo: el botón con el icono de actividad, bajo los de zoom, quita o devuelve las partículas de las conexiones (`aria-pressed`). La preferencia es de la vista, no del diagrama: vive en `preferences.ts` y se guarda en `localStorage` (`archdraft:flow-animation`). Con movimiento reducido en el sistema no hay partículas.
 - La cuadrícula de puntos es el `Background` de React Flow, así que se desplaza y escala con el diagrama.
 
 ### Resaltado
@@ -259,6 +266,8 @@ Estado en un store de Zustand (`editor/store.ts`, ADR 0017). Cada edición es un
 | Deshacer y rehacer | Botones de la cabecera; Ctrl/⌘ + Z, Ctrl/⌘ + Mayús + Z o Ctrl + Y                                                               | Hasta 100 pasos. Al deshacer se mantiene la selección si el elemento sigue existiendo                                                                                       |
 
 Los atajos (`editor/shortcuts.ts`) no actúan mientras se escribe en un campo ni con la hoja de la paleta abierta.
+
+La paleta empieza por las figuras genéricas (caja, círculo, rombo y nota), para dibujar flujos sencillos sin elegir un servicio. En el inspector, una figura solo tiene nombre y descripción: ni producto, ni proveedor, ni hechos operativos. Se puede conectar como un componente.
 
 Reglas al colocar: los hijos quedan dentro del relleno de su grupo (`CONTAINER_PADDING`, 48 px arriba para el título y 24 px a los lados) y los grupos crecen hacia la derecha y hacia abajo para contenerlos; un grupo nunca entra en sí mismo ni en sus hijos; un nodo que cambia de grupo pasa al final de la lista para dibujarse encima de sus nuevos vecinos. Los ids nuevos salen del tipo o de los extremos de la arista (`cache`, `api-db`), numerados si ya existen y dentro de 64 caracteres; los nombres repetidos se numeran (`Cache 2`).
 
@@ -382,10 +391,11 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 - `share.test.tsx`: arranque desde lo guardado, desde un enlace (que se quita de la dirección) y con un enlace manipulado (aviso y plantilla), guardado de las ediciones, enlace del menú que abre el mismo diagrama, copia al portapapeles, descarga, apertura de un fichero y cierre con Escape.
 - `review.test.tsx`: memoización por versión y por reglas desactivadas, severidad más grave y por componente, clave de un hallazgo, reglas desactivadas guardadas y leídas (con entradas desconocidas o rotas), apertura desde la tarjeta, grupos por severidad, filtros, elegir un hallazgo (selección y foco), paso al inspector, explicación, desactivar y activar reglas, revisión sin hallazgos, puntos en el lienzo y cierre con Escape.
 - `inspector.test.tsx`: campos de componente, grupo y conexión; nombre confirmado al salir como un paso, nombre vacío rechazado y restaurado, Escape, producto y proveedor con vuelta a los valores por defecto, hechos operativos de tres valores, instancias en rango, modo inferido del protocolo, borrar e iniciar una conexión.
-- `operations.test.ts`: ids y nombres numerados, reglas de contención, grupo bajo un punto, añadir (nivel superior, dentro de un grupo, hueco libre, crecimiento de grupos, límite de nodos), conectar (repetida, con un grupo), mover (dentro del grupo, sin cambios, fuera de todos, a otro grupo, relleno, nunca dentro de sí), borrar con contenido, duplicar con contenido y aristas internas, y actualizaciones de campos.
-- `store.test.ts`: historial (deshacer, rehacer, rama nueva, límite de 100, ediciones sin cambios), rechazos con su mensaje, ids de mensaje, borrar y duplicar la selección, conexión pendiente y apertura de diagramas como paso del historial.
-- `flow.test.ts`: padres antes que hijos, posiciones relativas, tamaños, profundidad, producto y distintivo de proveedor, conectores por dirección, orden de construcción, aristas asíncronas y categoría de origen, nombres accesibles, grupos fijos hasta seleccionarlos, nodos sin disposición y diagrama vacío.
-- `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, profundidad de anidamiento, escala de dibujo con su mínimo y su máximo, límites vacíos y vista inicial que encaja o que empieza arriba.
+- `shapes.test.tsx`: figuras primero en la paleta, dibujadas con su nombre y contadas aparte en la tarjeta, inspector sin producto ni proveedor y con «Connect», botón de la animación del flujo (partículas, `aria-pressed`, `title` y preferencia guardada), flechas cuya base es el final de la línea y aristas que no se vuelven a montar al seleccionar o editar un nodo.
+- `operations.test.ts`: ids y nombres numerados, reglas de contención, grupo bajo un punto, añadir (nivel superior, dentro de un grupo, hueco libre, crecimiento de grupos, límite de nodos), conectar (repetida, con un grupo), mover (dentro del grupo, sin cambios, fuera de todos, a otro grupo, relleno, nunca dentro de sí), cambiar el tamaño (redondeo, sin cambios, relleno y crecimiento de grupos), borrar con contenido, duplicar con contenido y aristas internas, y actualizaciones de campos.
+- `store.test.ts`: historial (deshacer, rehacer, rama nueva, límite de 100, ediciones sin cambios), cambio de tamaño como un paso, rechazos con su mensaje, ids de mensaje, borrar y duplicar la selección, conexión pendiente y apertura de diagramas como paso del historial.
+- `flow.test.ts`: padres antes que hijos, posiciones relativas, tamaños, profundidad, producto y distintivo de proveedor, conectores por dirección, orden de construcción, aristas asíncronas y categoría de origen, nombres accesibles, grupos fijos hasta seleccionarlos, tamaño medido en cada nodo, figuras genéricas, nodos sin disposición y diagrama vacío.
+- `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, profundidad de anidamiento, escala de dibujo con su mínimo y su máximo, límites vacíos, vista inicial que encaja o que empieza arriba y punta de flecha en los cuatro lados.
 - `icons.test.ts`: cada icono de `KIND_ICONS` es el que nombra el catálogo de core. Detectó que Lucide renombró `waves` a `waves-horizontal`.
 
 Revisión visual: build servido con `vite preview` y capturado con Playwright en Chromium a 1440 × 900 en claro y oscuro, con la paleta abierta y cerrada, con un nodo resaltado y con varias plantillas, y a 390 × 844; además, un vídeo de 15 s del recorrido para revisar el movimiento. Sin errores en la consola. La skill `design-critique` (`.claude/skills`) guía la revisión de las capturas.

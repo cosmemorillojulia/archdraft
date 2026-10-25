@@ -1,6 +1,7 @@
 import { useReactFlow, useViewport } from '@xyflow/react';
-import { Maximize, Minus, Plus } from 'lucide-react';
+import { Activity, Maximize, Minus, Plus } from 'lucide-react';
 import { Button } from '../components/Button.tsx';
+import { preferencesStore, usePreferences } from '../preferences.ts';
 import { strings } from '../strings.ts';
 
 /** Duration of the animated zoom steps, in milliseconds. */
@@ -15,12 +16,15 @@ interface ZoomControlsProps {
 }
 
 /**
- * Floating zoom controls. Pinching (fingers or trackpad) and the mouse wheel
+ * Floating view controls: zoom and fit, and the switch for the particles that
+ * travel along connections. Pinching (fingers or trackpad) and the mouse wheel
  * zoom too; these buttons are the visible, keyboard-friendly way to do it.
  */
 export function ZoomControls({ onFit, minZoom, maxZoom }: ZoomControlsProps) {
   const { zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
+  const flowAnimation = usePreferences((state) => state.flowAnimation);
+  const flowLabel = flowAnimation ? strings.canvas.flow.hide : strings.canvas.flow.show;
   return (
     <div
       role="group"
@@ -62,6 +66,18 @@ export function ZoomControls({ onFit, minZoom, maxZoom }: ZoomControlsProps) {
         onClick={onFit}
       >
         <Maximize size={15} aria-hidden="true" />
+      </Button>
+      <span aria-hidden="true" className="my-0.5 h-px w-5 bg-line" />
+      <Button
+        variant="ghost"
+        size="icon"
+        className={`${TOUCH_SIZE} aria-pressed:text-accent`}
+        aria-label={strings.canvas.flow.label}
+        aria-pressed={flowAnimation}
+        title={flowLabel}
+        onClick={() => preferencesStore.getState().setFlowAnimation(!flowAnimation)}
+      >
+        <Activity size={16} aria-hidden="true" />
       </Button>
     </div>
   );

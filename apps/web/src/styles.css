@@ -47,6 +47,11 @@
   --cat-external-bg: #f0f1f4;
   --cat-container: #5d6471;
   --cat-container-bg: #f0f1f4;
+  --cat-shape: #3f4652;
+  --cat-shape-bg: #eceef2;
+  /* Plain shapes: outline, and the paper of a note. */
+  --shape-line: #6b7280;
+  --note: #fff7d1;
   color-scheme: light;
 }
 
@@ -89,6 +94,10 @@
   --cat-external-bg: #2a2e36;
   --cat-container: #aab1bd;
   --cat-container-bg: #2a2e36;
+  --cat-shape: #d2d7df;
+  --cat-shape-bg: #2b2f37;
+  --shape-line: #8a92a0;
+  --note: #3a3523;
   color-scheme: dark;
 }
 
@@ -210,8 +219,26 @@
   background-color: var(--surface);
 }
 
-/* Connection point on the outgoing side of a component: shown on hover, focus or selection. */
-.archdraft-flow .connect-handle {
+/*
+ * Connection points. React Flow starts and ends edges at the outer edge of a
+ * handle, so handles have no size and sit on the border of the node: edges
+ * touch the card. The visible dot of the outgoing handle is drawn by ::before,
+ * shown on hover, focus or selection, and ::after widens the area to grab.
+ */
+.archdraft-flow .flow-handle {
+  width: 0;
+  height: 0;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  background: none;
+}
+
+.archdraft-flow .connect-handle::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -6px;
   width: 12px;
   height: 12px;
   border: 2px solid var(--surface);
@@ -221,21 +248,36 @@
   transition: opacity 150ms ease-out;
 }
 
-/* A wider invisible ring makes the small dot easy to grab. */
 .archdraft-flow .connect-handle::after {
   content: '';
   position: absolute;
-  inset: -8px;
+  top: -14px;
+  left: -14px;
+  width: 28px;
+  height: 28px;
   border-radius: 9999px;
 }
 
-.archdraft-flow .react-flow__node:hover .connect-handle,
-.archdraft-flow .react-flow__node:focus-visible .connect-handle,
-.archdraft-flow .connect-handle[data-selected],
-.archdraft-flow .connect-handle.connectingfrom {
+.archdraft-flow .react-flow__node:hover .connect-handle::before,
+.archdraft-flow .react-flow__node:focus-visible .connect-handle::before,
+.archdraft-flow .connect-handle[data-selected]::before,
+.archdraft-flow .connect-handle.connectingfrom::before {
   opacity: 1;
 }
 
 .archdraft-flow .react-flow__connectionline {
   z-index: 2001;
+}
+
+/* Resizing a selected shape: corner handles and edges in the accent colour. */
+.archdraft-flow .react-flow__resize-control.shape-resize-handle {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--accent);
+  border-radius: 3px;
+  background-color: var(--surface);
+}
+
+.archdraft-flow .react-flow__resize-control.shape-resize-line {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }

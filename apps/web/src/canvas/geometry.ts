@@ -122,3 +122,42 @@ export function initialViewport(
     zoom,
   };
 }
+
+/** Side of a node an edge connects to. Same values as React Flow's `Position`. */
+export type Side = 'left' | 'right' | 'top' | 'bottom';
+
+/** Arrowhead size in diagram pixels: from base to tip, and across the base. */
+export const ARROW_LENGTH = 9;
+export const ARROW_WIDTH = 9;
+
+/**
+ * Direction in which an edge arrives at the side of its target. A bezier edge
+ * leaves its last control point straight towards the target, so this is also
+ * the direction of its end.
+ */
+const ARRIVAL: Record<Side, { x: number; y: number }> = {
+  left: { x: 1, y: 0 },
+  right: { x: -1, y: 0 },
+  top: { x: 0, y: 1 },
+  bottom: { x: 0, y: -1 },
+};
+
+/**
+ * Arrowhead of an edge whose tip touches its target at (x, y) on this side:
+ * the point where the line should end, at the middle of the base, and the
+ * outline of the triangle as SVG path data.
+ */
+export function arrowhead(
+  x: number,
+  y: number,
+  side: Side,
+): { base: { x: number; y: number }; outline: string } {
+  const arrival = ARRIVAL[side];
+  const base = { x: x - arrival.x * ARROW_LENGTH, y: y - arrival.y * ARROW_LENGTH };
+  const half = ARROW_WIDTH / 2;
+  const outline =
+    `M ${base.x - arrival.y * half} ${base.y + arrival.x * half} ` +
+    `L ${x} ${y} ` +
+    `L ${base.x + arrival.y * half} ${base.y - arrival.x * half} Z`;
+  return { base, outline };
+}

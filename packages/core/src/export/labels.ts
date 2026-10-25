@@ -1,5 +1,6 @@
 import { getNodeDefinition } from '../catalog.ts';
 import { resolveServiceName } from '../graph.ts';
+import { isShapeKind } from '../kinds.ts';
 import type { ArchEdge, ArchitectureGraph, ArchNode } from '../schema.ts';
 
 /**
@@ -13,6 +14,8 @@ import type { ArchEdge, ArchitectureGraph, ArchNode } from '../schema.ts';
  * node does not repeat "Service" under its name.
  */
 export function nodeSubtitle(node: ArchNode, graph: ArchitectureGraph): string | undefined {
+  // A shape is only its text.
+  if (isShapeKind(node.kind)) return undefined;
   const service = resolveServiceName(node, graph);
   return service === getNodeDefinition(node.kind).label || service === node.label
     ? undefined

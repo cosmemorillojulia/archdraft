@@ -45,6 +45,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T28 | Editor: paleta de componentes en móvil                           | T27           | hecha (2026-10-25) |
 | T29 | Editor: diagrama legible en móvil y ajustes visuales             | T28           | hecha (2026-10-25) |
 | T30 | Editor: aristas que esquivan los nodos                           | T08           | pendiente          |
+| T31 | Editor: figuras genéricas, flechas y animación del flujo         | T09           | hecha (2026-10-25) |
 
 ## Fase 0: fundamentos
 
@@ -275,6 +276,16 @@ Objetivo: que ninguna arista pase por detrás de un nodo que no es su origen ni 
 Entregables: usar las rutas que ya calcula ELK (secciones con puntos de inflexión) en `@archdraft/layout`, exponerlas en `DiagramLayout` y dibujarlas en el lienzo como trazos suavizados, con la etiqueta en el punto medio de la ruta; mantener la animación de trazado y las partículas.
 
 Criterios de aceptación: tests de la ruta en la disposición y en el adaptador; capturas de las seis plantillas sin aristas que crucen nodos ajenos, revisadas con la skill `design-critique`.
+
+### T31. Figuras genéricas, flechas y animación del flujo
+
+Estado: hecha (2026-10-25). Documentado en `docs/modelo-de-dominio.md`, `docs/modulos/web.md`, `lint.md`, `exportacion.md`, `core.md` y `layout.md`.
+
+Objetivo: a petición del propietario, poder dibujar flujos sencillos sin elegir un servicio, quitar las partículas de las conexiones y corregir las puntas de flecha, que quedaban tapadas o se descolocaban.
+
+Entregables: tipos `box`, `circle`, `diamond` y `note` en la categoría `shape`, con tamaño por defecto, exportación a Mermaid y draw.io e ignorados por las reglas de diseño; figuras en el lienzo con cambio de tamaño, primeras en la paleta e inspector reducido; botón para ocultar las partículas, guardado en el navegador; punta de flecha propia con la línea terminando en su base, conectores medidos fuera de la animación de entrada y aristas que no se vuelven a montar ni se quedan cortas al editar o arrastrar.
+
+Criterios de aceptación: tests de las figuras en core, layout y editor, de la geometría de la flecha, del botón y de que las aristas no se vuelven a montar; comprobación en Chromium de que la línea sigue al nodo durante el arrastre y de que la punta toca el borde; capturas en claro, oscuro y móvil.
 
 ## Fase 3: inteligencia artificial
 

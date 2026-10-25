@@ -2,12 +2,11 @@ import {
   type ArchitectureGraph,
   type ArchNode,
   CONTAINER_PADDING,
-  DEFAULT_CONTAINER_SIZE,
   DEFAULT_NODE_SIZE,
+  defaultSizeOf,
   type DiagramLayout,
   type GraphIndex,
   indexGraph,
-  isContainer,
   layoutEntry,
   type Point,
   type Size,
@@ -85,9 +84,7 @@ async function runElk(
     included.add(node.id);
     const children = (index.childrenOf.get(node.id) ?? []).map(toElkNode);
     if (children.length > 0) return { id: node.id, children, layoutOptions: CONTAINER_OPTIONS };
-    const size =
-      layoutEntry(knownSizes, node.id) ??
-      (isContainer(node) ? DEFAULT_CONTAINER_SIZE : DEFAULT_NODE_SIZE);
+    const size = layoutEntry(knownSizes, node.id) ?? defaultSizeOf(node.kind);
     return { id: node.id, ...size };
   };
 

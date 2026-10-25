@@ -8,6 +8,7 @@ import {
   type EdgeProtocol,
   getNodeDefinition,
   isContainerKind,
+  isShapeKind,
   LIMITS,
   type NodeAttributes,
   resolveEdgeMode,
@@ -155,6 +156,8 @@ function NodeForm({
   const definition = getNodeDefinition(node.kind);
   const Icon = KIND_ICONS[node.kind];
   const container = isContainerKind(node.kind);
+  // Shapes, like groups, have no product, provider or operations; unlike groups, they connect.
+  const plain = container || isShapeKind(node.kind);
   const update = (patch: NodePatch) => editorStore.getState().updateNode(node.id, patch);
   const { service: _service, ...withoutService } = node;
   const defaultService = resolveServiceName(withoutService, graph);
@@ -196,7 +199,7 @@ function NodeForm({
           required
           onCommit={(label) => update({ label })}
         />
-        {!container && (
+        {!plain && (
           <>
             <TextField
               label={strings.inspector.product}
@@ -224,7 +227,7 @@ function NodeForm({
             update({ description: description === '' ? undefined : description })
           }
         />
-        {!container && (
+        {!plain && (
           <section className="flex flex-col gap-2.5 border-t border-line pt-3.5">
             <h3 className="text-xs font-semibold">{strings.inspector.operations}</h3>
             <NumberField

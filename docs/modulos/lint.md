@@ -62,6 +62,7 @@ Cada regla declara una severidad por defecto y puede emitir un hallazgo concreto
 - `sync-chain-too-long` informa como mucho un hallazgo por actor, con el primer camino encontrado de `MAX_SYNC_HOPS + 1` saltos. El mensaje dice "al menos" porque el camino real puede ser más largo. Los caminos son simples (sin repetir nodos), así que un ciclo no infla la longitud; los ciclos tienen su propia regla.
 - `sync-cycle` informa un hallazgo por componente fuertemente conexo del subgrafo síncrono, con todos sus nodos y aristas internas. Varios bucles que comparten nodos se informan una sola vez.
 - `orphan-component` excluye los servicios transversales porque se suelen dibujar sin aristas para no enmarañar el diagrama.
+- Ninguna regla tiene en cuenta las figuras genéricas (caja, círculo, rombo, nota): no son arquitectura. Una figura sin aristas no es un componente huérfano, y los caminos y ciclos síncronos no pasan por ellas.
 
 ## Valores desconocidos
 

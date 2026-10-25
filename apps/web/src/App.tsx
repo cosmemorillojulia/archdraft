@@ -158,7 +158,7 @@ function Editor() {
           </main>
 
           {wide && (
-            <aside className="pointer-events-none absolute top-3 bottom-36 left-3 z-10 flex items-start">
+            <aside className="pointer-events-none absolute top-3 bottom-52 left-3 z-10 flex items-start">
               <ComponentsPanel
                 open={paletteOpen}
                 onOpenChange={setPaletteOpen}

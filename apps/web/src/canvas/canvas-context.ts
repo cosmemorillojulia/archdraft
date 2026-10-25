@@ -2,6 +2,14 @@ import type { ArchEdge, LintSeverity } from '@archdraft/core';
 import { createContext, useContext } from 'react';
 import type { Selection } from '../editor/operations.ts';
 
+/** Position, relative to the parent, and size of a node. */
+export interface ShapeBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /**
  * What the nodes and edges of the canvas need to know beyond their own data.
  * It lives in a context, not in the data of each node, so that hovering or
@@ -19,8 +27,10 @@ export interface CanvasState {
   dropTargetId: string | null;
   /** True while the diagram builds in; elements added later appear without delay. */
   building: boolean;
-  /** Ids of the arrowhead markers, shared by every edge of the canvas. */
-  markers: { idle: string; active: string };
+  /** Whether particles travel along the connections (a preference of this browser). */
+  particles: boolean;
+  /** Reports the box of a shape being resized; `done` when the resize ends. */
+  resizeShape: (id: string, box: ShapeBox, done: boolean) => void;
   /** While the design review is open: the most severe finding of each component. */
   issues: ReadonlyMap<string, LintSeverity>;
   /** The finding chosen in the review: its components are outlined in its colour. */
@@ -35,7 +45,8 @@ export const CanvasContext = createContext<CanvasState>({
   selection: null,
   dropTargetId: null,
   building: false,
-  markers: { idle: '', active: '' },
+  particles: true,
+  resizeShape: () => undefined,
   issues: new Map(),
   finding: null,
 });

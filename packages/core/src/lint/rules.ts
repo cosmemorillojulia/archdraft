@@ -1,6 +1,6 @@
 import { getNodeDefinition } from '../catalog.ts';
 import { type GraphIndex, isContainer, resolveEdgeMode } from '../graph.ts';
-import type { ComponentKind, NodeCategory, NodeKind } from '../kinds.ts';
+import { type ComponentKind, isShapeKind, type NodeCategory, type NodeKind } from '../kinds.ts';
 import type { ArchEdge, ArchNode } from '../schema.ts';
 import { findLongSyncPaths, findSyncCycles } from './sync-paths.ts';
 import type { LintRule, RuleFinding } from './types.ts';
@@ -15,8 +15,11 @@ function categoryOf(node: ArchNode): NodeCategory {
   return getNodeDefinition(node.kind).category;
 }
 
+/** Components the rules reason about: neither groups nor shapes, which carry no architecture meaning. */
 function components(index: GraphIndex): ArchNode[] {
-  return [...index.nodesById.values()].filter((node) => !isContainer(node));
+  return [...index.nodesById.values()].filter(
+    (node) => !isContainer(node) && !isShapeKind(node.kind),
+  );
 }
 
 /** Edges arriving at `node` from components of `category`, with their source. */

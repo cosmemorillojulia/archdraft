@@ -11,7 +11,7 @@ Calcula posiciones y tamaños legibles para un `ArchitectureGraph` con ELK.js (A
 | `NODE_SPACING`                                  | Separación entre hermanos                                            |
 | `ComputeLayoutOptions`                          | Tipo de las opciones                                                 |
 
-Los tipos `DiagramLayout` y `DiagramDocument`, sus esquemas los tamaños por defecto (`DEFAULT_NODE_SIZE`, 180 × 64 para componentes; `DEFAULT_CONTAINER_SIZE`, 240 × 140 para contenedores vacíos) y el relleno de los contenedores (`CONTAINER_PADDING`: 48 arriba para el título y 24 en los demás lados) viven en `@archdraft/core` (`document.ts`), porque el editor los guarda, los comparte en la URL y los valida como cualquier entrada no confiable sin necesitar ELK, la exportación a draw.io usa los mismos tamaños cuando falta una entrada y el editor coloca con el mismo relleno los componentes que se sueltan en un grupo.
+Los tipos `DiagramLayout` y `DiagramDocument`, sus esquemas los tamaños por defecto (`DEFAULT_NODE_SIZE`, 180 × 64 para componentes; `DEFAULT_CONTAINER_SIZE`, 240 × 140 para contenedores vacíos; `SHAPE_SIZES` para las figuras genéricas, como 96 × 96 para el círculo; `defaultSizeOf(kind)` elige el que corresponde) y el relleno de los contenedores (`CONTAINER_PADDING`: 48 arriba para el título y 24 en los demás lados) viven en `@archdraft/core` (`document.ts`), porque el editor los guarda, los comparte en la URL y los valida como cualquier entrada no confiable sin necesitar ELK, la exportación a draw.io usa los mismos tamaños cuando falta una entrada y el editor coloca con el mismo relleno los componentes que se sueltan en un grupo.
 
 ## Formato del resultado
 

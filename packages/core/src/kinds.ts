@@ -20,6 +20,7 @@ export const NODE_CATEGORIES = [
   'observability',
   'ai',
   'external',
+  'shape',
   'container',
 ] as const;
 export type NodeCategory = (typeof NODE_CATEGORIES)[number];
@@ -67,6 +68,13 @@ export const COMPONENT_KINDS = [
 ] as const;
 export type ComponentKind = (typeof COMPONENT_KINDS)[number];
 
+/**
+ * Plain figures for simple flows, notes and anything the catalog does not
+ * model. They have no architecture meaning: design rules ignore them.
+ */
+export const SHAPE_KINDS = ['box', 'circle', 'diamond', 'note'] as const;
+export type ShapeKind = (typeof SHAPE_KINDS)[number];
+
 /** Nodes that group other nodes. They never take part in edges. */
 export const CONTAINER_KINDS = [
   'region',
@@ -77,7 +85,7 @@ export const CONTAINER_KINDS = [
 ] as const;
 export type ContainerKind = (typeof CONTAINER_KINDS)[number];
 
-export const NODE_KINDS = [...COMPONENT_KINDS, ...CONTAINER_KINDS] as const;
+export const NODE_KINDS = [...COMPONENT_KINDS, ...SHAPE_KINDS, ...CONTAINER_KINDS] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
 /** Transport or interaction style of an edge. */
@@ -103,4 +111,10 @@ const CONTAINER_KIND_SET: ReadonlySet<string> = new Set(CONTAINER_KINDS);
 
 export function isContainerKind(kind: NodeKind): kind is ContainerKind {
   return CONTAINER_KIND_SET.has(kind);
+}
+
+const SHAPE_KIND_SET: ReadonlySet<string> = new Set(SHAPE_KINDS);
+
+export function isShapeKind(kind: NodeKind): kind is ShapeKind {
+  return SHAPE_KIND_SET.has(kind);
 }

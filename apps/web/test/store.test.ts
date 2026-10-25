@@ -66,6 +66,17 @@ describe('editor store', () => {
     expect(store.getState().future).toHaveLength(0);
   });
 
+  it('resizes a node as one step', () => {
+    const store = loaded();
+    store.getState().resizeNode('user', { x: -10, y: 0, width: 200, height: 90 });
+    const layout = () => store.getState().current?.document.layout;
+    expect(layout()?.sizes.user).toEqual({ width: 200, height: 90 });
+    expect(layout()?.positions.user).toEqual({ x: -10, y: 0 });
+    expect(store.getState().past).toHaveLength(1);
+    store.getState().undo();
+    expect(layout()?.sizes.user).toEqual(DEFAULT_NODE_SIZE);
+  });
+
   it('starts a new branch of history after an undo', () => {
     const store = loaded();
     store.getState().addNode('cache', { x: 100, y: 400 });

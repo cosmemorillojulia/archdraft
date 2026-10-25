@@ -1,4 +1,4 @@
-import { type ArchitectureGraph, isContainerKind } from '@archdraft/core';
+import { type ArchitectureGraph, isContainerKind, isShapeKind } from '@archdraft/core';
 import {
   Boxes,
   Cable,
@@ -6,6 +6,7 @@ import {
   CircleCheck,
   Info,
   OctagonAlert,
+  Shapes,
   TriangleAlert,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
@@ -21,7 +22,10 @@ import { strings } from '../strings.ts';
  */
 export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
   const headingId = useId();
-  const components = graph.nodes.filter((node) => !isContainerKind(node.kind)).length;
+  const components = graph.nodes.filter(
+    (node) => !isContainerKind(node.kind) && !isShapeKind(node.kind),
+  ).length;
+  const shapes = graph.nodes.filter((node) => isShapeKind(node.kind)).length;
 
   return (
     <m.section
@@ -65,6 +69,13 @@ export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
           <Count value={graph.edges.length} />
           {strings.card.connections}
         </span>
+        {shapes > 0 && (
+          <span className="inline-flex items-center gap-1.5">
+            <Shapes size={14} aria-hidden="true" />
+            <Count value={shapes} />
+            {strings.card.shapes}
+          </span>
+        )}
         <ReviewStatus />
       </div>
     </m.section>
