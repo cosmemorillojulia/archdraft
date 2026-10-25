@@ -31,6 +31,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/web`: the open diagram is saved in the browser and restored on the next visit; a Share menu creates a link with the whole diagram compressed in its fragment, warns when it is long, and downloads or opens JSON files (ADR 0019). Damaged or manipulated links and files are explained and never break the editor.
 - `@archdraft/core`: generic shapes (`box`, `circle`, `diamond` and `note`, category `shape`) for simple flows, with `SHAPE_KINDS`, `isShapeKind`, `SHAPE_SIZES` and `defaultSizeOf`; Mermaid and draw.io draw them as their own shapes and the design rules ignore them.
 - `@archdraft/web`: generic shapes first in the palette, resizable on the canvas, with a reduced inspector and counted apart in the diagram card; a button under the zoom controls hides or shows the particles on connections and the choice is remembered in the browser.
+- `@archdraft/web`: the interface in English and Spanish (ADR 0020), switched with a flag button in the header that remembers the choice and starts in Spanish when the browser prefers it. Kind names, design findings and templates are translated, and an untouched template follows the language.
 - `@archdraft/core`: six architecture templates (`ARCHITECTURE_TEMPLATES`) for the gallery and the generation prompt: three-tier web application, serverless API, event-driven microservices, RAG chatbot, analytics pipeline and static site with a headless CMS. They cover every provider, are valid without warnings and have no design findings.
 
 ### Changed
@@ -40,6 +41,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/web`: every diagram opens fitted whole in the free part of the canvas, on phones too, instead of at a readable minimum zoom.
 - `@archdraft/web`: the theme change is a cross-fade made with View Transitions where the browser supports them (ADR 0018), smoother on large diagrams; elsewhere the colour blend remains, and it no longer jumps at the end.
 - `CONTAINER_PADDING` moved from `@archdraft/layout` to `@archdraft/core`, so the editor can place components inside groups without loading ELK.
+
+- `@archdraft/web`: the header no longer links to the source code, React Flow's corner link is hidden (it is credited in the README), component names take up to two lines instead of being cut, the palette search ignores accents, and the diagram card says 1 component instead of 1 components.
 
 ### Fixed
 
