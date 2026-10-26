@@ -18,6 +18,7 @@ export const VALIDATION_CODES = [
   'MIGRATION_FAILED',
   'SCHEMA',
   'EMPTY_LABEL',
+  'INVALID_ATTACHMENT',
   'DUPLICATE_NODE_ID',
   'DUPLICATE_EDGE_ID',
   'EDGE_UNKNOWN_SOURCE',
@@ -68,7 +69,36 @@ function warning(
 
 export function validateGraph(graph: ArchitectureGraph): ValidationIssue[] {
   const index = indexGraph(graph);
-  return [...checkNodeIds(graph), ...checkEdges(graph, index), ...checkPlacement(index)];
+  return [
+    ...checkNodeIds(graph),
+    ...checkAttachments(graph),
+    ...checkEdges(graph, index),
+    ...checkPlacement(index),
+  ];
+}
+
+/** Only text is fixed to something, and only to a box that is neither a group nor text. */
+function checkAttachments(graph: ArchitectureGraph): ValidationIssue[] {
+  const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+  const issues: ValidationIssue[] = [];
+  for (const node of graph.nodes) {
+    if (node.attachedTo === undefined) continue;
+    const host = byId.get(node.attachedTo);
+    const valid =
+      node.kind === 'text' &&
+      host !== undefined &&
+      host.id !== node.id &&
+      host.kind !== 'text' &&
+      !isContainerKind(host.kind);
+    if (!valid) {
+      issues.push(
+        error('INVALID_ATTACHMENT', `Node "${node.id}" cannot be fixed to "${node.attachedTo}"`, {
+          nodeIds: [node.id],
+        }),
+      );
+    }
+  }
+  return issues;
 }
 
 function checkNodeIds(graph: ArchitectureGraph): ValidationIssue[] {

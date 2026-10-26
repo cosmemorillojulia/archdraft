@@ -18,7 +18,7 @@ import {
   type Point,
   type Size,
 } from '@archdraft/core';
-import { absoluteBoxes, type Box, nestingDepths } from '../canvas/geometry.ts';
+import { absoluteBoxes, type Box, nestingDepths, stackingOrder } from '../canvas/geometry.ts';
 import { currentStrings } from '../i18n/locale.ts';
 
 /**
@@ -48,6 +48,8 @@ export interface NodePatch {
   readonly description?: string | undefined;
   readonly service?: string | undefined;
   readonly provider?: ArchNode['provider'];
+  /** Text only: the box it is fixed to; `undefined` sets it free. */
+  readonly attachedTo?: string | undefined;
   readonly attributes?: ArchNode['attributes'];
 }
 
@@ -105,7 +107,11 @@ export function subtreeOf(graph: ArchitectureGraph, id: string): Set<string> {
   while (grew) {
     grew = false;
     for (const node of graph.nodes) {
-      if (node.parentId !== undefined && ids.has(node.parentId) && !ids.has(node.id)) {
+      // What a node holds, and the text fixed to it, goes wherever it goes.
+      const carried =
+        (node.parentId !== undefined && ids.has(node.parentId)) ||
+        (node.attachedTo !== undefined && ids.has(node.attachedTo));
+      if (carried && !ids.has(node.id)) {
         ids.add(node.id);
         grew = true;
       }
@@ -230,6 +236,28 @@ function withParent(node: ArchNode, parentId: string | undefined): ArchNode {
   return parentId === undefined ? rest : { ...rest, parentId };
 }
 
+/** The box a text put at `point` is fixed to: the frontmost one there that is not a group or text. */
+function hostAt(
+  document: DiagramDocument,
+  point: Point,
+  excluded: ReadonlySet<string>,
+): ArchNode | undefined {
+  const boxes = absoluteBoxes(document.graph, document.layout);
+  let host: ArchNode | undefined;
+  for (const node of stackingOrder(document.graph)) {
+    if (isContainerKind(node.kind) || node.kind === 'text' || excluded.has(node.id)) continue;
+    const box = boxes.get(node.id);
+    if (box && contains(box, point)) host = node;
+  }
+  return host;
+}
+
+/** `node` fixed to `hostId`, or free when there is none. */
+function fixedTo(node: ArchNode, hostId: string | undefined): ArchNode {
+  const { attachedTo: _previous, ...rest } = node;
+  return hostId === undefined ? rest : { ...rest, attachedTo: hostId };
+}
+
 function withoutKeys<T>(record: Readonly<Record<string, T>>, ids: ReadonlySet<string>) {
   return Object.fromEntries(Object.entries(record).filter(([id]) => !ids.has(id)));
 }
@@ -285,12 +313,15 @@ export function addNode(
   const boxes = absoluteBoxes(graph, layout);
   const topLeft = { x: centre.x - size.width / 2, y: centre.y - size.height / 2 };
   const bottomRight = { x: topLeft.x + size.width, y: topLeft.y + size.height };
-  let parentId = containerAt(document, centre, kind);
+  // A text put by hand over a box is fixed to it, and lives in the same group as the box.
+  const host = kind === 'text' && exact ? hostAt(document, centre, new Set()) : undefined;
+  let parentId = host === undefined ? containerAt(document, centre, kind) : host.parentId;
   const parentBox = parentId === undefined ? undefined : boxes.get(parentId);
   // Put by hand, a node joins a container only if it is drawn wholly inside it; one that
   // sticks out stays on the diagram, where it was drawn, instead of being pulled in.
   if (
     exact &&
+    host === undefined &&
     parentBox !== undefined &&
     !(contains(parentBox, topLeft) && contains(parentBox, bottomRight))
   ) {
@@ -303,7 +334,7 @@ export function addNode(
     ? placed
     : roomFor(document, parentId, insideParent(placed, parentId), size);
 
-  const node: ArchNode = withParent({ id, kind, label }, parentId);
+  const node: ArchNode = fixedTo(withParent({ id, kind, label }, parentId), host?.id);
   const nextGraph = { ...graph, nodes: [...graph.nodes, node] };
   const nextLayout = growAncestors(
     nextGraph,
@@ -333,7 +364,10 @@ export function drawnSize(kind: NodeKind, dragged: Size): Size {
 /** Where a node goes among the nodes it is stacked with. */
 export type StackMove = 'front' | 'forward' | 'backward' | 'back';
 
-/** Nodes in the same container as `id`, from back to front, and where `id` is among them. */
+/**
+ * The nodes in the same container as `id`, from back to front, grouped so that a box and the
+ * text fixed to it stay together; and where `id` is among those groups (-1 for fixed text).
+ */
 function siblingsOf(graph: ArchitectureGraph, id: string) {
   const node = graph.nodes.find((candidate) => candidate.id === id);
   if (!node) return undefined;
@@ -341,7 +375,8 @@ function siblingsOf(graph: ArchitectureGraph, id: string) {
     other.parentId === node.parentId ? [index] : [],
   );
   const siblings = slots.map((index) => graph.nodes[index] as ArchNode);
-  return { slots, siblings, at: siblings.findIndex((sibling) => sibling.id === id) };
+  const units = siblings.filter((sibling) => sibling.attachedTo === undefined);
+  return { slots, siblings, units, at: units.findIndex((unit) => unit.id === id) };
 }
 
 /** Which ways `id` can still move in the stack: nothing is in front of the first, or behind the last. */
@@ -350,21 +385,22 @@ export function canStack(
   id: string,
 ): { forward: boolean; backward: boolean } {
   const found = siblingsOf(graph, id);
-  if (!found) return { forward: false, backward: false };
-  return { forward: found.at < found.siblings.length - 1, backward: found.at > 0 };
+  if (!found || found.at < 0) return { forward: false, backward: false };
+  return { forward: found.at < found.units.length - 1, backward: found.at > 0 };
 }
 
 /**
  * Moves a node in the stacking order, among the nodes of its own container: to
- * the very front or back, or one step. A container carries its contents. The
- * order is that of `graph.nodes`, so it is saved with the diagram.
+ * the very front or back, or one step. A container carries its contents and a
+ * box the text fixed to it. The order is that of `graph.nodes`, so it is saved
+ * with the diagram.
  */
 export function stackNode(document: DiagramDocument, id: string, move: StackMove): Edit {
   const { graph } = document;
   const found = siblingsOf(graph, id);
-  if (!found) return unchanged(document);
-  const { slots, siblings, at } = found;
-  const last = siblings.length - 1;
+  if (!found || found.at < 0) return unchanged(document);
+  const { slots, siblings, units, at } = found;
+  const last = units.length - 1;
   const to =
     move === 'front'
       ? last
@@ -372,11 +408,15 @@ export function stackNode(document: DiagramDocument, id: string, move: StackMove
         ? 0
         : Math.min(Math.max(at + (move === 'forward' ? 1 : -1), 0), last);
   if (to === at) return unchanged(document);
-  const reordered = siblings.filter((_, index) => index !== at);
-  reordered.splice(to, 0, siblings[at] as ArchNode);
+  const reordered = units.filter((_, index) => index !== at);
+  reordered.splice(to, 0, units[at] as ArchNode);
+  const stacked = reordered.flatMap((unit) => [
+    unit,
+    ...siblings.filter((text) => text.attachedTo === unit.id),
+  ]);
   const nodes = [...graph.nodes];
   slots.forEach((slot, index) => {
-    nodes[slot] = reordered[index] as ArchNode;
+    nodes[slot] = stacked[index] as ArchNode;
   });
   return { ok: true, document: { ...document, graph: { ...graph, nodes } } };
 }
@@ -417,29 +457,54 @@ export function moveNode(document: DiagramDocument, id: string, position: Point)
   const size = layoutEntry(layout.sizes, id) ?? sizeOfKind(node.kind);
   const absolute = { x: from.x + position.x, y: from.y + position.y };
   const centre = { x: absolute.x + size.width / 2, y: absolute.y + size.height / 2 };
-  const parentId = containerAt(document, centre, node.kind, subtreeOf(graph, id));
+  const carried = subtreeOf(graph, id);
+  // A text let go over a box is fixed to it, and goes with it from then on.
+  const host = node.kind === 'text' ? hostAt(document, centre, carried) : undefined;
+  const parentId =
+    host === undefined ? containerAt(document, centre, node.kind, carried) : host.parentId;
   const to = originOf(boxes, parentId);
   const next = insideParent(round({ x: absolute.x - to.x, y: absolute.y - to.y }), parentId);
 
   const current = layoutEntry(layout.positions, id);
-  if (parentId === node.parentId && current?.x === next.x && current.y === next.y) {
+  if (
+    parentId === node.parentId &&
+    current?.x === next.x &&
+    current.y === next.y &&
+    node.attachedTo === host?.id
+  ) {
     return unchanged(document);
   }
+
+  // What is fixed to this node moves the same distance, and into the same group.
+  const attached =
+    node.kind === 'text' ? [] : graph.nodes.filter((other) => other.attachedTo === id);
+  const before = boxes.get(id);
+  const shift = before ? { x: to.x + next.x - before.x, y: to.y + next.y - before.y } : ORIGIN;
+  const positions = { ...layout.positions, [id]: next };
+  for (const text of attached) {
+    const old = boxes.get(text.id);
+    if (old) positions[text.id] = round({ x: old.x + shift.x - to.x, y: old.y + shift.y - to.y });
+  }
+
+  const reparented = parentId !== node.parentId;
+  const moved = fixedTo(withParent(node, parentId), host?.id);
   const nextGraph =
-    parentId === node.parentId
-      ? graph
-      : {
+    reparented || host?.id !== node.attachedTo
+      ? {
           ...graph,
           nodes: [
-            ...graph.nodes.filter((candidate) => candidate.id !== id),
-            withParent(node, parentId),
+            ...graph.nodes.filter(
+              (candidate) => candidate.id !== id && !attached.includes(candidate),
+            ),
+            moved,
+            ...attached.map((text) => withParent(text, parentId)),
           ],
-        };
-  const nextLayout = growAncestors(
-    nextGraph,
-    { positions: { ...layout.positions, [id]: next }, sizes: layout.sizes },
-    id,
-  );
+        }
+      : graph;
+  let nextLayout: DiagramLayout = { positions, sizes: layout.sizes };
+  for (const moving of [id, ...attached.map((text) => text.id)]) {
+    nextLayout = growAncestors(nextGraph, nextLayout, moving);
+  }
   return { ok: true, document: { graph: nextGraph, layout: nextLayout } };
 }
 
@@ -449,7 +514,11 @@ export function moveNodes(
   moves: readonly { readonly id: string; readonly position: Point }[],
 ): Edit {
   let next = document;
+  const ids = new Set(moves.map((move) => move.id));
   for (const { id, position } of moves) {
+    // Text fixed to a box that moves too goes with the box, not by itself.
+    const host = document.graph.nodes.find((node) => node.id === id)?.attachedTo;
+    if (host !== undefined && ids.has(host)) continue;
     const edit = moveNode(next, id, position);
     if (edit.ok) next = edit.document;
   }
@@ -641,7 +710,9 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
     takenLabels.add(label);
     const position = layoutEntry(layout.positions, original.id) ?? ORIGIN;
     positions[copyOf(original.id)] =
-      original.id === id ? { x: position.x + NUDGE, y: position.y + NUDGE } : position;
+      original.id === id || original.attachedTo === id
+        ? { x: position.x + NUDGE, y: position.y + NUDGE }
+        : position;
     sizes[copyOf(original.id)] =
       layoutEntry(layout.sizes, original.id) ?? sizeOfKind(original.kind);
     // The copied root stays in the original's container; its contents follow it.
@@ -649,7 +720,10 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
       original.id === id || original.parentId === undefined
         ? original.parentId
         : copyOf(original.parentId);
-    return withParent({ ...original, id: copyOf(original.id), label }, parentId);
+    const copy = withParent({ ...original, id: copyOf(original.id), label }, parentId);
+    return original.attachedTo === undefined
+      ? copy
+      : { ...copy, attachedTo: copyOf(original.attachedTo) };
   });
 
   const takenEdgeIds = new Set(graph.edges.map((edge) => edge.id));

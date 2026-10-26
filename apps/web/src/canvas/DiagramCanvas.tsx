@@ -203,6 +203,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       }
       const moved = dragging?.others.find((other) => other.id === node.id);
       if (moved) return { ...node, position: moved.position, draggable: true, zIndex: DRAGGED_Z };
+      if (node.data.node.attachedTo !== undefined) return node;
       if (node.id === selectedNodeId || groupIds.has(node.id)) return { ...node, draggable: true };
       return node;
     });
@@ -441,15 +442,23 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   // Moving a node is not editing it: the selection, and so the inspector, stay as they were.
   const onNodeDragStart = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
     setHoverId(null);
-    // Dragging one of several chosen nodes drags them all; groups stay where they are.
+    // Dragging one of several chosen nodes drags them all; groups stay where they are. The text
+    // fixed to what moves follows it.
     const chosen = editorStore.getState().group;
-    dragStart.current = chosen.includes(node.id)
-      ? new Map(
-          elements.nodes
+    const moving = new Set(
+      chosen.includes(node.id)
+        ? elements.nodes
             .filter((other) => chosen.includes(other.id) && other.type !== 'container')
-            .map((other) => [other.id, other.position] as const),
-        )
-      : null;
+            .map((other) => other.id)
+        : [node.id],
+    );
+    const following = elements.nodes.filter((other) => {
+      const host = other.data.node.attachedTo;
+      return host !== undefined && moving.has(host);
+    });
+    const all = [...elements.nodes.filter((other) => moving.has(other.id)), ...following];
+    dragStart.current =
+      all.length > 1 ? new Map(all.map((other) => [other.id, other.position] as const)) : null;
   });
   const onNodeDrag = useStableHandler((_event: unknown, node: ArchitectureFlowNode) =>
     setDropTargetId(dropTargetFor(node)),

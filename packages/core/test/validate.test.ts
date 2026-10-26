@@ -30,6 +30,21 @@ describe('validateGraph', () => {
     expect(validateGraph(graph)).toMatchObject([{ code: 'EMPTY_LABEL', nodeIds: ['c'] }]);
   });
 
+  it('accepts text fixed to a box, and nothing else fixed to anything', () => {
+    const fixed = graphWith([
+      { id: 'a', kind: 'box', label: '' },
+      { id: 't', kind: 'text', label: 'Hi', attachedTo: 'a' },
+    ]);
+    expect(validateGraph(fixed)).toEqual([]);
+    const bad = graphWith([
+      { id: 'g', kind: 'boundary', label: 'G' },
+      { id: 'a', kind: 'box', label: '', attachedTo: 'g' },
+      { id: 't', kind: 'text', label: 'Hi', attachedTo: 'g' },
+      { id: 'u', kind: 'text', label: 'Hi', attachedTo: 'nobody' },
+    ]);
+    expect(codes(bad)).toEqual(['INVALID_ATTACHMENT', 'INVALID_ATTACHMENT', 'INVALID_ATTACHMENT']);
+  });
+
   it('reports duplicate node and edge ids', () => {
     const graph = graphWith(
       [

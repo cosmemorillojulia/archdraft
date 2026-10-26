@@ -445,6 +445,8 @@ export const es: Strings = {
     name: 'Nombre',
     chosen: (count: number) => `${count} seleccionados`,
     chosenHint: 'Arrastra uno para moverlos todos',
+    fixedTo: (host: string) => `Fijo en ${host}`,
+    detach: 'Soltar',
     order: 'Orden',
     bringToFront: 'Traer al frente',
     bringForward: 'Subir un nivel',

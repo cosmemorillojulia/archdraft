@@ -548,3 +548,64 @@ describe('updateDiagram', () => {
     });
   });
 });
+
+describe('text fixed to a box', () => {
+  /** Centre of a node's box. */
+  const centreOf = (doc: DiagramDocument, id: string) => {
+    const box = absoluteBoxes(doc.graph, doc.layout).get(id)!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+  const withText = () =>
+    edited(addNode(document, 'text', centreOf(document, 'db'), { exact: true, name: 'Note' }));
+
+  it('is fixed to the box it is put over, in its group, and not to what is in the open', () => {
+    const next = withText();
+    expect(nodeOf(next, 'text')).toMatchObject({ attachedTo: 'db', label: 'Note' });
+    const free = edited(addNode(document, 'text', { x: 700, y: 900 }, { exact: true }));
+    expect(nodeOf(free, 'text')?.attachedTo).toBeUndefined();
+    const inGroup = edited(addNode(document, 'text', centreOf(document, 'api'), { exact: true }));
+    expect(nodeOf(inGroup, 'text')).toMatchObject({ attachedTo: 'api', parentId: 'subnet' });
+  });
+
+  it('moves, is deleted and is copied with its box', () => {
+    const next = withText();
+    const before = absoluteBoxes(next.graph, next.layout).get('text')!;
+    const moved = edited(moveNode(next, 'db', { x: 1100, y: 160 }));
+    const after = absoluteBoxes(moved.graph, moved.layout).get('text')!;
+    expect({ x: after.x - before.x, y: after.y - before.y }).toEqual({ x: 100, y: 60 });
+    expect(
+      moveNodes(next, [
+        { id: 'db', position: { x: 1100, y: 160 } },
+        { id: 'text', position: { x: 0, y: 0 } },
+      ]),
+    ).toMatchObject({ ok: true });
+    const removed = edited(remove(next, { type: 'node', id: 'db' }));
+    expect(removed.graph.nodes.some((node) => node.id === 'text')).toBe(false);
+    const copied = edited(duplicate(next, 'db'));
+    const copy = copied.graph.nodes.find((node) => node.kind === 'text' && node.id !== 'text');
+    expect(copy?.attachedTo).toBe(
+      copied.graph.nodes.find((node) => node.id.startsWith('db') && node.id !== 'db')?.id,
+    );
+  });
+
+  it('is set free, and fixed again by putting it over a box', () => {
+    const next = withText();
+    const free = edited(updateNode(next, 'text', { attachedTo: undefined }));
+    expect(nodeOf(free, 'text')?.attachedTo).toBeUndefined();
+    const away = edited(moveNode(free, 'text', { x: 700, y: 900 }));
+    expect(nodeOf(away, 'text')?.attachedTo).toBeUndefined();
+    const back = absoluteBoxes(away.graph, away.layout).get('db')!;
+    const over = edited(moveNode(away, 'text', { x: back.x + 20, y: back.y + 10 }));
+    expect(nodeOf(over, 'text')?.attachedTo).toBe('db');
+  });
+
+  it('stays with its box in the stacking order', () => {
+    const next = withText();
+    const stacked = edited(stackNode(next, 'db', 'back'));
+    const ids = stacked.graph.nodes
+      .filter((node) => node.parentId === undefined)
+      .map((node) => node.id);
+    expect(ids.indexOf('text')).toBe(ids.indexOf('db') + 1);
+    expect(stackNode(next, 'text', 'front')).toMatchObject({ ok: true, document: next });
+  });
+});

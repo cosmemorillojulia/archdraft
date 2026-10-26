@@ -164,24 +164,25 @@ Hay dos capas, ambas en `validate.ts`, precedidas al importar un fichero por el 
 1. Esquema (Zod): tipos, enumerados, longitudes y objetos estrictos. Una propiedad desconocida es un error.
 2. Estructura (`validateGraph`): lo que el esquema no puede expresar.
 
-| Código                       | Severidad | Cuándo                                                                     |
-| ---------------------------- | --------- | -------------------------------------------------------------------------- |
-| `INVALID_JSON`               | error     | Al importar, el texto no es JSON (`importJson`)                            |
-| `UNSUPPORTED_SCHEMA_VERSION` | error     | Al importar, la versión es más nueva que la actual o no tiene migración    |
-| `MIGRATION_FAILED`           | error     | Al importar, una migración falla                                           |
-| `SCHEMA`                     | error     | La entrada no cumple el esquema. Incluye `path`                            |
-| `EMPTY_LABEL`                | error     | Un nodo que no es una figura ni texto tiene el nombre vacío                |
-| `DUPLICATE_NODE_ID`          | error     | Dos nodos con el mismo id                                                  |
-| `DUPLICATE_EDGE_ID`          | error     | Dos aristas con el mismo id                                                |
-| `EDGE_UNKNOWN_SOURCE`        | error     | El origen de una arista no existe                                          |
-| `EDGE_UNKNOWN_TARGET`        | error     | El destino de una arista no existe                                         |
-| `EDGE_SELF_LOOP`             | error     | Una arista une un nodo consigo mismo                                       |
-| `EDGE_ENDPOINT_IS_CONTAINER` | error     | Una arista toca un contenedor                                              |
-| `DUPLICATE_EDGE`             | aviso     | Misma conexión repetida (origen, destino y protocolo)                      |
-| `PARENT_NOT_FOUND`           | error     | `parentId` apunta a un nodo inexistente                                    |
-| `PARENT_NOT_CONTAINER`       | error     | `parentId` apunta a un componente                                          |
-| `PARENT_CYCLE`               | error     | Contenedores anidados en bucle; se informa una vez por ciclo               |
-| `INVALID_CONTAINMENT`        | error     | Anidamiento no permitido o contenedor que no puede ir en el nivel superior |
+| Código                       | Severidad | Cuándo                                                                               |
+| ---------------------------- | --------- | ------------------------------------------------------------------------------------ |
+| `INVALID_JSON`               | error     | Al importar, el texto no es JSON (`importJson`)                                      |
+| `UNSUPPORTED_SCHEMA_VERSION` | error     | Al importar, la versión es más nueva que la actual o no tiene migración              |
+| `MIGRATION_FAILED`           | error     | Al importar, una migración falla                                                     |
+| `SCHEMA`                     | error     | La entrada no cumple el esquema. Incluye `path`                                      |
+| `EMPTY_LABEL`                | error     | Un nodo que no es una figura ni texto tiene el nombre vacío                          |
+| `INVALID_ATTACHMENT`         | error     | `attachedTo` en algo que no es texto, o hacia un grupo, un texto o un id inexistente |
+| `DUPLICATE_NODE_ID`          | error     | Dos nodos con el mismo id                                                            |
+| `DUPLICATE_EDGE_ID`          | error     | Dos aristas con el mismo id                                                          |
+| `EDGE_UNKNOWN_SOURCE`        | error     | El origen de una arista no existe                                                    |
+| `EDGE_UNKNOWN_TARGET`        | error     | El destino de una arista no existe                                                   |
+| `EDGE_SELF_LOOP`             | error     | Una arista une un nodo consigo mismo                                                 |
+| `EDGE_ENDPOINT_IS_CONTAINER` | error     | Una arista toca un contenedor                                                        |
+| `DUPLICATE_EDGE`             | aviso     | Misma conexión repetida (origen, destino y protocolo)                                |
+| `PARENT_NOT_FOUND`           | error     | `parentId` apunta a un nodo inexistente                                              |
+| `PARENT_NOT_CONTAINER`       | error     | `parentId` apunta a un componente                                                    |
+| `PARENT_CYCLE`               | error     | Contenedores anidados en bucle; se informa una vez por ciclo                         |
+| `INVALID_CONTAINMENT`        | error     | Anidamiento no permitido o contenedor que no puede ir en el nivel superior           |
 
 `parseArchitectureGraph(input)` es el punto de entrada para datos no confiables ya convertidos en objeto, como las respuestas del modelo; los ficheros y enlaces pasan antes por `importJson`, que parsea el texto, aplica las migraciones y termina llamándola. La función aplica las dos capas, nunca lanza excepciones y devuelve el grafo con sus avisos o la lista completa de problemas. Devolver todos los problemas a la vez, y no solo el primero, es lo que permite reintentar la generación pasando al modelo una lista de errores concreta.
 

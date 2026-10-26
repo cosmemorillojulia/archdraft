@@ -276,6 +276,8 @@ export const en = {
     name: 'Name',
     chosen: (count: number) => `${count} selected`,
     chosenHint: 'Drag one to move them all',
+    fixedTo: (host: string) => `Fixed to ${host}`,
+    detach: 'Detach',
     order: 'Order',
     bringToFront: 'Bring to front',
     bringForward: 'Bring forward',

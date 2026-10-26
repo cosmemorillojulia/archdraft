@@ -132,6 +132,8 @@ export function toFlow(
       return {
         ...base,
         type: 'shape',
+        // Text fixed to a box moves with it, not by itself.
+        ...(node.attachedTo === undefined ? {} : { draggable: false }),
         ariaLabel: spoken(node.label, kinds[node.kind].label),
         data: { node, appearDelay: appearDelay(node.id) },
       };

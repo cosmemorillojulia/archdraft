@@ -77,6 +77,9 @@ export const ArchNodeSchema = z.strictObject({
     .optional()
     .describe('Concrete product name when it differs from the catalog default, e.g. "Aurora"'),
   parentId: IdSchema.optional().describe('Id of the container node this node sits in'),
+  attachedTo: IdSchema.optional().describe(
+    'Text only: id of the box it is fixed to, which carries it when moved, copied or deleted',
+  ),
   attributes: NodeAttributesSchema.optional(),
   tags: z.array(z.string().trim().min(1).max(LIMITS.tagLength)).max(LIMITS.maxTags).optional(),
 });

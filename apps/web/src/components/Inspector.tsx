@@ -478,6 +478,22 @@ function NodeForm({
             update({ description: description === '' ? undefined : description })
           }
         />
+        {node.attachedTo !== undefined && (
+          <section className="flex items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2 text-xs">
+            <span className="min-w-0 truncate">
+              {strings.inspector.fixedTo(
+                graph.nodes.find((host) => host.id === node.attachedTo)?.label || node.attachedTo,
+              )}
+            </span>
+            <Button
+              variant="ghost"
+              onClick={() => update({ attachedTo: undefined })}
+              className="shrink-0"
+            >
+              {strings.inspector.detach}
+            </Button>
+          </section>
+        )}
         <OrderControls id={node.id} graph={graph} />
         {!plain && (
           <section className="flex flex-col gap-2.5 border-t border-line pt-3.5">
