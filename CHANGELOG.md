@@ -43,6 +43,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- `@archdraft/web`: the templates live in a dropdown button in the header instead of a row of pills above the prompt, which leaves more room for the diagram; shapes are drawn exactly as in Excalidraw: crosshair cursor, the live preview is the figure itself, Shift keeps the sides equal, Alt draws from the centre, and what is placed by hand stays where it was put (no nudging away from neighbours, no entrance animation, no view jump).
+
 - `DEFAULT_NODE_SIZE` and `DEFAULT_CONTAINER_SIZE` moved from `@archdraft/layout` to `@archdraft/core`.
 - `@archdraft/web`: the header shows the product name in slanted capitals, as a wordmark.
 - `@archdraft/web`: every diagram opens fitted whole in the free part of the canvas, on phones too, instead of at a readable minimum zoom.

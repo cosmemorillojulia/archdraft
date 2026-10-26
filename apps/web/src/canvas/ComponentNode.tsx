@@ -39,7 +39,8 @@ export const ComponentNode = memo(function ComponentNode({
     // the node and hid their arrowheads.
     <div className="group h-full w-full">
       <m.div
-        initial={{ opacity: 0, scale: 0.86, y: 6 }}
+        // A component placed by hand is already there, where the pointer put it: no entrance.
+        initial={canvas.placedId === id ? false : { opacity: 0, scale: 0.86, y: 6 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ ...SPRING_POP, delay: canvas.building ? appearDelay : 0 }}
         className="h-full w-full"

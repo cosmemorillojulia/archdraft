@@ -1,3 +1,4 @@
+import type { NodeKind } from '@archdraft/core';
 import type { NodeProps } from '@xyflow/react';
 import { m } from 'motion/react';
 import { memo } from 'react';
@@ -12,10 +13,56 @@ import { ResizeHandles } from './ResizeHandles.tsx';
  * Outline of the diamond and the note, drawn in a 100 × 100 box stretched to
  * the node; the stroke keeps its width (`vector-effect`).
  */
+export const SHAPE_FILL = (kind: NodeKind) => (kind === 'note' ? 'var(--note)' : 'var(--surface)');
+
 const OUTLINES = {
   diamond: 'M50 1 L99 50 L50 99 L1 50 Z',
   note: 'M1 1 H85 L99 15 V99 H1 Z M85 1 V15 H99',
 } as const;
+
+/**
+ * The body of a figure, filling its box: what a box, circle, diamond or note
+ * looks like, without its text. Drawn by the node, and while a shape is being
+ * drawn on the diagram, so that what is dragged is what is left.
+ */
+export function ShapeBody({
+  kind,
+  stroke,
+  fill,
+  selected = false,
+}: {
+  kind: NodeKind;
+  stroke: string;
+  fill: string;
+  selected?: boolean;
+}) {
+  const outline = kind === 'diamond' || kind === 'note' ? OUTLINES[kind] : null;
+  return outline === null ? (
+    <span
+      aria-hidden="true"
+      className={`absolute inset-0 border-[1.5px] transition-[border-color,box-shadow] duration-200 ${
+        kind === 'circle' ? 'rounded-full' : 'rounded-lg'
+      } ${selected ? 'shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_25%,transparent)]' : ''}`}
+      style={{ borderColor: stroke, backgroundColor: fill }}
+    />
+  ) : (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      className="absolute inset-0 h-full w-full overflow-visible"
+    >
+      <path
+        d={outline}
+        vectorEffect="non-scaling-stroke"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        className="transition-[stroke] duration-200"
+        style={{ stroke, fill }}
+      />
+    </svg>
+  );
+}
 
 /**
  * A plain figure for simple flows: a box, a circle, a diamond or a note, with
@@ -34,15 +81,15 @@ export const ShapeNode = memo(function ShapeNode({
   const dimmed = canvas.dimOthers && !canvas.nodes.has(id);
   const selected = isSelected(canvas.selection, 'node', id);
   const kind = node.kind;
-  const outline = kind === 'diamond' || kind === 'note' ? OUTLINES[kind] : null;
   const stroke = focused || selected ? 'var(--accent)' : 'var(--shape-line)';
-  const fill = kind === 'note' ? 'var(--note)' : 'var(--surface)';
+  const fill = SHAPE_FILL(kind);
 
   return (
     // Connection points stay outside the animated figure, so React Flow measures them unscaled.
     <div className="group h-full w-full">
       <m.div
-        initial={{ opacity: 0, scale: 0.86 }}
+        // A shape placed by hand is already there, as it was drawn: no entrance.
+        initial={canvas.placedId === id ? false : { opacity: 0, scale: 0.86 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ ...SPRING_POP, delay: canvas.building ? appearDelay : 0 }}
         className="h-full w-full"
@@ -53,31 +100,7 @@ export const ShapeNode = memo(function ShapeNode({
           title={node.label}
           className="relative flex h-full w-full items-center justify-center transition-[opacity,transform] duration-200 ease-out-soft data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.03]"
         >
-          {outline === null ? (
-            <span
-              aria-hidden="true"
-              className={`absolute inset-0 border-[1.5px] transition-[border-color,box-shadow] duration-200 ${
-                kind === 'circle' ? 'rounded-full' : 'rounded-lg'
-              } ${selected ? 'shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_25%,transparent)]' : ''}`}
-              style={{ borderColor: stroke, backgroundColor: fill }}
-            />
-          ) : (
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              className="absolute inset-0 h-full w-full overflow-visible"
-            >
-              <path
-                d={outline}
-                vectorEffect="non-scaling-stroke"
-                strokeWidth={1.5}
-                strokeLinejoin="round"
-                className="transition-[stroke] duration-200"
-                style={{ stroke, fill }}
-              />
-            </svg>
-          )}
+          <ShapeBody kind={kind} stroke={stroke} fill={fill} selected={selected} />
           {canvas.renamingId === id ? (
             <NameEditor
               id={id}

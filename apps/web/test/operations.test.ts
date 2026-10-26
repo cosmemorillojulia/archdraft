@@ -142,6 +142,30 @@ describe('addNode', () => {
     expect(edit.ok && edit.selection).toEqual({ type: 'node', id: 'cache' });
   });
 
+  it('keeps a node put by hand exactly where it was put, even over another node', () => {
+    const other = [...absoluteBoxes(document.graph, document.layout).values()][0]!;
+    const centre = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
+    const size = { width: 140, height: 60 };
+    const next = edited(addNode(document, 'box', centre, { size, exact: true }));
+    const placed = absoluteBoxes(next.graph, next.layout).get('box');
+    expect(placed).toEqual({
+      x: Math.round(centre.x - 70),
+      y: Math.round(centre.y - 30),
+      ...size,
+    });
+    const moved = edited(addNode(document, 'box', centre, { size }));
+    expect(absoluteBoxes(moved.graph, moved.layout).get('box')).not.toEqual(placed);
+  });
+
+  it('leaves a node put by hand outside a container it only half covers', () => {
+    const vpc = absoluteBoxes(document.graph, document.layout).get('vpc')!;
+    const centre = { x: vpc.x + vpc.width - 10, y: vpc.y + vpc.height / 2 };
+    const size = { width: 100, height: 60 };
+    const exact = edited(addNode(document, 'box', centre, { size, exact: true }));
+    expect(nodeOf(exact, 'box')?.parentId).toBeUndefined();
+    expect(absoluteBoxes(exact.graph, exact.layout).get('box')?.x).toBe(Math.round(centre.x - 50));
+  });
+
   it('places a component dropped on a container inside it', () => {
     const next = edited(addNode(document, 'cache', { x: 700, y: 300 }));
     expect(nodeOf(next, 'cache')?.parentId).toBe('vpc');

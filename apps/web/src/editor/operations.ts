@@ -254,30 +254,48 @@ function originOf(boxes: ReadonlyMap<string, Box>, parentId: string | undefined)
  * numbered if taken; by default the English name of the kind. A node drawn by
  * dragging has the size `drawn` (see `drawnSize`) instead of the usual one.
  */
+export interface AddOptions {
+  /** Name of the node, numbered if taken; by default the English name of the kind. */
+  readonly name?: string;
+  /** Size drawn by dragging (see `drawnSize`) instead of the usual one. */
+  readonly size?: Size;
+  /** Keep the node exactly where it is put, even if that is over other nodes. */
+  readonly exact?: boolean;
+}
+
 export function addNode(
   document: DiagramDocument,
   kind: NodeKind,
   centre: Point,
-  name: string = getNodeDefinition(kind).label,
-  drawn?: Size,
+  options: AddOptions = {},
 ): Edit {
+  const { name = getNodeDefinition(kind).label, size: drawn, exact = false } = options;
   const { graph, layout } = document;
   if (graph.nodes.length >= LIMITS.maxNodes) return reject(currentStrings().edit.tooManyNodes);
 
   const id = uniqueId(kind, new Set(graph.nodes.map((node) => node.id)));
   const label = uniqueLabel(name, new Set(graph.nodes.map((node) => node.label)));
   const size = drawn === undefined ? sizeOfKind(kind) : drawnSize(kind, drawn);
-  const parentId = containerAt(document, centre, kind);
-  const origin = originOf(absoluteBoxes(graph, layout), parentId);
-  const position = roomFor(
-    document,
-    parentId,
-    insideParent(
-      round({ x: centre.x - size.width / 2 - origin.x, y: centre.y - size.height / 2 - origin.y }),
-      parentId,
-    ),
-    size,
-  );
+  const boxes = absoluteBoxes(graph, layout);
+  const topLeft = { x: centre.x - size.width / 2, y: centre.y - size.height / 2 };
+  const bottomRight = { x: topLeft.x + size.width, y: topLeft.y + size.height };
+  let parentId = containerAt(document, centre, kind);
+  const parentBox = parentId === undefined ? undefined : boxes.get(parentId);
+  // Put by hand, a node joins a container only if it is drawn wholly inside it; one that
+  // sticks out stays on the diagram, where it was drawn, instead of being pulled in.
+  if (
+    exact &&
+    parentBox !== undefined &&
+    !(contains(parentBox, topLeft) && contains(parentBox, bottomRight))
+  ) {
+    parentId = undefined;
+  }
+  const origin = originOf(boxes, parentId);
+  const placed = round({ x: topLeft.x - origin.x, y: topLeft.y - origin.y });
+  // Where the author put it, even over other nodes, or else the nearest spot clear of them.
+  const position = exact
+    ? placed
+    : roomFor(document, parentId, insideParent(placed, parentId), size);
 
   const node: ArchNode = withParent({ id, kind, label }, parentId);
   const nextGraph = { ...graph, nodes: [...graph.nodes, node] };

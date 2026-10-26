@@ -69,8 +69,9 @@ describe('App', () => {
   it('marks components that run outside the provider of the diagram', async () => {
     const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole('button', { name: strings.prompt.templates }));
     await user.click(
-      screen.getByRole('button', { name: strings.prompt.templateNames['serverless-api'] }),
+      screen.getByRole('menuitemradio', { name: strings.prompt.templateNames['serverless-api'] }),
     );
     const diagram = await diagramOf(ARCHITECTURE_TEMPLATES['serverless-api'].title);
     expect(flowNode(diagram, 'Email service')).toHaveTextContent(
@@ -90,19 +91,43 @@ describe('App', () => {
     }
   });
 
-  it('switches the diagram from the template selector', async () => {
+  it('switches the diagram from the templates menu in the header', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const templates = screen.getByRole('group', { name: strings.prompt.templates });
-    const rag = within(templates).getByRole('button', {
+    expect(screen.queryByRole('group', { name: strings.prompt.templates })).toBeNull();
+    const button = within(screen.getByRole('banner')).getByRole('button', {
+      name: strings.prompt.templates,
+    });
+    await user.click(button);
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    const menu = screen.getByRole('menu', { name: strings.prompt.templates });
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(6);
+    const rag = within(menu).getByRole('menuitemradio', {
       name: strings.prompt.templateNames['rag-chatbot'],
     });
+    expect(rag).toHaveAttribute('aria-checked', 'false');
 
     await user.click(rag);
     const graph = ARCHITECTURE_TEMPLATES['rag-chatbot'];
-    expect(rag).toHaveAttribute('aria-pressed', 'true');
     expect(await screen.findByRole('region', { name: graph.title })).toBeInTheDocument();
     expect(await diagramOf(graph.title)).toBeInTheDocument();
+    // Choosing closes the menu; the template that was opened is the checked one.
+    expect(screen.queryByRole('menu')).toBeNull();
+    await user.click(button);
+    expect(
+      screen.getByRole('menuitemradio', { name: strings.prompt.templateNames['rag-chatbot'] }),
+    ).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('closes the templates menu with Escape and returns the focus to its button', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const button = screen.getByRole('button', { name: strings.prompt.templates });
+    await user.click(button);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    expect(button).toHaveFocus();
   });
 
   it('has a labelled prompt whose generate button explains that it is not available yet', async () => {

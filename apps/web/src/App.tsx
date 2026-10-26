@@ -22,7 +22,7 @@ import {
   openTemplate,
 } from './editor/open-document.ts';
 import { readSavedDocument, startAutosave } from './persist/autosave.ts';
-import { usePaletteDrag } from './palette/palette-drag.ts';
+import { usePaletteDrag, type DrawnBox } from './palette/palette-drag.ts';
 import { PaletteDiscard } from './palette/PaletteDiscard.tsx';
 import { PaletteDragGhost } from './palette/PaletteDragGhost.tsx';
 import { linkPayload } from './persist/share-link.ts';
@@ -59,8 +59,8 @@ async function openFirstDiagram(direction: LayoutDirection): Promise<void> {
 /** Space taken by the floating interface around the canvas, in pixels. */
 function canvasInsets(wide: boolean, paletteOpen: boolean): Insets {
   return wide
-    ? { top: 24, right: 24, bottom: 150, left: paletteOpen ? PALETTE_WIDTH + 16 : 24 }
-    : { top: 150, right: 16, bottom: 200, left: 16 };
+    ? { top: 24, right: 24, bottom: 100, left: paletteOpen ? PALETTE_WIDTH + 16 : 24 }
+    : { top: 150, right: 16, bottom: 140, left: 16 };
 }
 
 const loadMotionFeatures = () => import('./motion-features.ts').then((module) => module.default);
@@ -102,7 +102,6 @@ function Editor() {
   const canvasRef = useRef<HTMLElement>(null);
   const sheetOpen = paletteOpen && !wide;
   const graph = useEditor((state) => state.current?.document.graph);
-  const templateId = useEditor((state) => state.opening ?? state.current?.templateId ?? null);
   const selecting = useEditor((state) => state.selection !== null);
   const reviewing = useReview((state) => state.open);
   // On narrow screens a panel takes the place of the prompt.
@@ -151,19 +150,19 @@ function Editor() {
     return element !== null && canvasRef.current?.contains(element) === true;
   }, []);
   const addAt = useCallback(
-    (kind: NodeKind, point: Point, to?: Point) => {
-      if (to === undefined) {
-        editorStore.getState().addNode(kind, flow.screenToFlowPosition(point));
+    (kind: NodeKind, point: Point, drawn?: DrawnBox) => {
+      // What is put by hand stays exactly where it is put; a shape drawn takes the size dragged.
+      if (drawn === undefined) {
+        editorStore.getState().addNode(kind, flow.screenToFlowPosition(point), { exact: true });
       } else {
-        // A shape drawn on the diagram takes the position and size of what was dragged.
-        const a = flow.screenToFlowPosition(point);
-        const b = flow.screenToFlowPosition(to);
+        const a = flow.screenToFlowPosition(drawn.from);
+        const b = flow.screenToFlowPosition(drawn.to);
         editorStore
           .getState()
           .addNode(
             kind,
             { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
-            { width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) },
+            { size: { width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) }, exact: true },
           );
       }
       if (!wide) setPaletteOpen(false);
@@ -183,7 +182,7 @@ function Editor() {
             <DiagramCanvas
               insets={insets}
               showMiniMap={wide}
-              controlsClassName={wide ? 'right-3 bottom-3' : 'right-3 bottom-34'}
+              controlsClassName={wide ? 'right-3 bottom-3' : 'right-3 bottom-24'}
               inspectorPlacement={wide ? 'side' : 'bottom'}
             />
           </main>
@@ -200,7 +199,7 @@ function Editor() {
             </aside>
           )}
 
-          <div className="pointer-events-none absolute inset-x-3 top-3 bottom-36 z-10 flex flex-col items-end gap-3 md:bottom-46 md:left-auto md:w-80">
+          <div className="pointer-events-none absolute inset-x-3 top-3 bottom-24 z-10 flex flex-col items-end gap-3 md:bottom-46 md:left-auto md:w-80">
             {graph && <DiagramCard graph={graph} />}
             {wide && <PanelSlot placement="side" />}
           </div>
@@ -220,7 +219,7 @@ function Editor() {
                 className="pointer-events-none absolute inset-x-0 bottom-0 z-20"
               >
                 {!wide && (
-                  <div className="pointer-events-none absolute bottom-34 left-3">
+                  <div className="pointer-events-none absolute bottom-24 left-3">
                     <ComponentsSheetToggle
                       open={paletteOpen}
                       onOpenChange={setPaletteOpen}
@@ -229,10 +228,7 @@ function Editor() {
                   </div>
                 )}
                 <div className="pointer-events-none flex justify-center px-3 pb-4 md:px-78">
-                  <PromptDock
-                    templateId={templateId}
-                    onTemplateChange={(id) => void openTemplate(id, direction)}
-                  />
+                  <PromptDock />
                 </div>
               </m.div>
             )}

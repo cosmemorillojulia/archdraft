@@ -4,7 +4,6 @@ import {
   isContainerKind,
   isShapeKind,
   type NodeKind,
-  type Point,
 } from '@archdraft/core';
 import { useReactFlow } from '@xyflow/react';
 import { AnimatePresence, m } from 'motion/react';
@@ -12,7 +11,8 @@ import { createPortal } from 'react-dom';
 import { useStrings } from '../i18n/locale.ts';
 import { KIND_ICONS } from '../icons.ts';
 import { SPRING_POP } from '../motion.ts';
-import { usePaletteDrag } from './palette-drag.ts';
+import { SHAPE_FILL, ShapeBody } from '../canvas/ShapeNode.tsx';
+import { usePaletteDrag, type DrawnBox } from './palette-drag.ts';
 
 /**
  * What a palette tile becomes while it is dragged: the node itself, at the
@@ -26,8 +26,8 @@ export function PaletteDragGhost() {
 
   return createPortal(
     <AnimatePresence>
-      {drag?.drawFrom !== null && drag?.drawFrom !== undefined && (
-        <Drawing key="drawing" kind={drag.kind} from={drag.drawFrom} to={drag.point} />
+      {drag?.drawing !== null && drag?.drawing !== undefined && (
+        <Drawing key="drawing" kind={drag.kind} box={drag.drawing} />
       )}
       {drag && (
         <div
@@ -37,7 +37,14 @@ export function PaletteDragGhost() {
           className="pointer-events-none fixed top-0 left-0 z-50"
           style={{ transform: `translate(${drag.point.x}px, ${drag.point.y}px)` }}
         >
-          {drag.drawFrom === null ? (
+          {/* A shape over the diagram is drawn, not carried: the crosshair is its cursor. */}
+          {drag.drawing === null &&
+          !(
+            drag.mode === 'carry' &&
+            isShapeKind(drag.kind) &&
+            drag.overCanvas &&
+            !drag.overDiscard
+          ) ? (
             <Ghost
               kind={drag.kind}
               label={strings.kinds[drag.kind].label}
@@ -106,40 +113,23 @@ function Ghost({
   );
 }
 
-/** The outline of a shape being drawn on the diagram, from where the press started to the pointer. */
-function Drawing({ kind, from, to }: { kind: NodeKind; from: Point; to: Point }) {
-  const left = Math.min(from.x, to.x);
-  const top = Math.min(from.y, to.y);
-  const width = Math.abs(to.x - from.x);
-  const height = Math.abs(to.y - from.y);
+/** A shape being drawn on the diagram: the very figure it will be, so nothing changes on release. */
+function Drawing({ kind, box }: { kind: NodeKind; box: DrawnBox }) {
+  const left = Math.min(box.from.x, box.to.x);
+  const top = Math.min(box.from.y, box.to.y);
   return (
     <div
       aria-hidden="true"
       data-palette-drawing
       className="pointer-events-none fixed z-50"
-      style={{ left, top, width, height }}
+      style={{
+        left,
+        top,
+        width: Math.abs(box.to.x - box.from.x),
+        height: Math.abs(box.to.y - box.from.y),
+      }}
     >
-      {kind === 'diamond' ? (
-        <svg
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          className="h-full w-full overflow-visible"
-        >
-          <path
-            d="M50 0 L100 50 L50 100 L0 50 Z"
-            vectorEffect="non-scaling-stroke"
-            strokeWidth={1.5}
-            strokeLinejoin="round"
-            className="fill-accent/10 stroke-accent"
-          />
-        </svg>
-      ) : (
-        <div
-          className={`h-full w-full border-[1.5px] border-accent bg-accent/10 ${
-            kind === 'circle' ? 'rounded-full' : 'rounded-md'
-          }`}
-        />
-      )}
+      <ShapeBody kind={kind} stroke="var(--accent)" fill={SHAPE_FILL(kind)} selected />
     </div>
   );
 }

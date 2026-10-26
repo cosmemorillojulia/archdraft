@@ -25,6 +25,8 @@ export interface CanvasState {
   selection: Selection | null;
   /** Node whose name is being edited in its own box. */
   renamingId: string | null;
+  /** Node just placed by hand where the pointer put it: it appears at once and the view stays. */
+  placedId: string | null;
   /** Container that the node being dragged would move into. */
   dropTargetId: string | null;
   /** True while the diagram builds in; elements added later appear without delay. */
@@ -46,6 +48,7 @@ export const CanvasContext = createContext<CanvasState>({
   dimOthers: false,
   selection: null,
   renamingId: null,
+  placedId: null,
   dropTargetId: null,
   building: false,
   particles: true,

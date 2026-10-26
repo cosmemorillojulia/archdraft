@@ -60,6 +60,8 @@ export interface EditorState {
   readonly connectingFrom: string | null;
   /** Node whose name is being edited in its own box on the canvas. */
   readonly renaming: string | null;
+  /** Node just placed by hand, until something else is selected. */
+  readonly placed: string | null;
   /**
    * Selection whose inspector was expanded on a narrow screen. Any other
    * selection opens it collapsed, as a strip with its name and quick actions.
@@ -84,7 +86,11 @@ export interface EditorActions {
     document: DiagramDocument,
     origin: { direction: LayoutDirection; templateId: TemplateId | null },
   ) => void;
-  addNode: (kind: NodeKind, centre: Point, size?: Size) => void;
+  /**
+   * Adds a node centred on `centre`. A node placed `exact`ly stays where it is put, even over
+   * others, and is not scrolled into view; its `size` is the one drawn by dragging.
+   */
+  addNode: (kind: NodeKind, centre: Point, options?: { size?: Size; exact?: boolean }) => void;
   connect: (source: string, target: string) => void;
   moveNode: (id: string, position: Point) => void;
   resizeNode: (id: string, box: Point & Size) => void;
@@ -115,6 +121,7 @@ const INITIAL_STATE: EditorState = {
   selection: null,
   connectingFrom: null,
   renaming: null,
+  placed: null,
   expandedSelection: null,
   message: null,
   opening: null,
@@ -196,6 +203,7 @@ export function createEditorStore() {
         selection: result.selection === undefined ? selection : result.selection,
         connectingFrom: null,
         renaming: null,
+        placed: null,
       });
     };
 
@@ -209,6 +217,7 @@ export function createEditorStore() {
         selection: selection && exists(target.document, selection) ? selection : null,
         connectingFrom: null,
         renaming: null,
+        placed: null,
       });
     };
 
@@ -224,6 +233,7 @@ export function createEditorStore() {
           selection: null,
           connectingFrom: null,
           renaming: null,
+          placed: null,
           expandedSelection: null,
           opening: null,
         });
@@ -232,10 +242,23 @@ export function createEditorStore() {
         const { current } = get();
         if (current) set({ current: { ...current, document: { ...current.document, graph } } });
       },
-      addNode: (kind, centre, size) =>
+      addNode: (kind, centre, options = {}) => {
+        const before = get().current?.document.graph.nodes.length;
         apply((document) =>
-          addNode(document, kind, centre, currentStrings().kinds[kind].label, size),
-        ),
+          addNode(document, kind, centre, {
+            name: currentStrings().kinds[kind].label,
+            ...options,
+          }),
+        );
+        const { current, selection } = get();
+        if (
+          options.exact === true &&
+          selection?.type === 'node' &&
+          current?.document.graph.nodes.length !== before
+        ) {
+          set({ placed: selection.id });
+        }
+      },
       connect: (source, target) => apply((document) => connect(document, source, target)),
       moveNode: (id, position) => apply((document) => moveNode(document, id, position)),
       resizeNode: (id, box) => apply((document) => resizeNode(document, id, box)),
@@ -249,7 +272,7 @@ export function createEditorStore() {
         const { selection } = get();
         if (selection?.type === 'node') apply((document) => duplicate(document, selection.id));
       },
-      select: (selection) => set({ selection, connectingFrom: null, renaming: null }),
+      select: (selection) => set({ selection, connectingFrom: null, renaming: null, placed: null }),
       startRename: (id) =>
         set({ selection: { type: 'node', id }, connectingFrom: null, renaming: id }),
       stopRename: () => set({ renaming: null }),

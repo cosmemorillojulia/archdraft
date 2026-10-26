@@ -22,18 +22,39 @@ export interface PaletteDrag {
   readonly overDiscard: boolean;
   /** Held down from the tile (`drag`), or stuck to the pointer after a click on it (`carry`). */
   readonly mode: 'drag' | 'carry';
-  /** Where a shape started to be drawn on the diagram, if it has. */
-  readonly drawFrom: Point | null;
+  /** The box a shape is being drawn into on the diagram, if it is. */
+  readonly drawing: DrawnBox | null;
+}
+
+/** Keys held while drawing: Shift keeps the sides equal, Alt draws from the centre. */
+export interface DrawKeys {
+  readonly shift: boolean;
+  readonly alt: boolean;
+}
+
+/** Two opposite corners of a shape drawn on the diagram, in window coordinates. */
+export interface DrawnBox {
+  readonly from: Point;
+  readonly to: Point;
 }
 
 /**
- * The corner a shape is drawn to. A circle stays a circle: it takes the
- * longer side of what was dragged, in the direction of the pointer.
+ * The box a shape is drawn into, as in Excalidraw: from where the press
+ * started to the pointer. A circle, or any shape with Shift held, takes the
+ * longer side for both, towards the pointer; with Alt the press is the centre
+ * and the box grows to both sides of it.
  */
-export function drawnCorner(kind: NodeKind, from: Point, to: Point): Point {
-  if (kind !== 'circle') return to;
-  const side = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
-  return { x: from.x + (to.x < from.x ? -side : side), y: from.y + (to.y < from.y ? -side : side) };
+export function drawnBox(kind: NodeKind, from: Point, to: Point, keys: DrawKeys): DrawnBox {
+  let dx = to.x - from.x;
+  let dy = to.y - from.y;
+  if (kind === 'circle' || keys.shift) {
+    const side = Math.max(Math.abs(dx), Math.abs(dy));
+    dx = dx < 0 ? -side : side;
+    dy = dy < 0 ? -side : side;
+  }
+  return keys.alt
+    ? { from: { x: from.x - dx, y: from.y - dy }, to: { x: from.x + dx, y: from.y + dy } }
+    : { from, to: { x: from.x + dx, y: from.y + dy } };
 }
 
 /** Whether a point of the window is over the box that discards what is being carried. */
@@ -65,9 +86,9 @@ export interface PressOptions {
   onStart?: () => void;
   /**
    * Where the node is to be added, in window coordinates; for a shape drawn on the diagram, also
-   * the opposite corner it was dragged to.
+   * the box that was drawn.
    */
-  onDrop: (kind: NodeKind, point: Point, to?: Point) => void;
+  onDrop: (kind: NodeKind, point: Point, drawn?: DrawnBox) => void;
   isOverCanvas: (point: Point) => boolean;
 }
 
@@ -112,7 +133,7 @@ export function pressTile(
         overCanvas: isOverCanvas(point),
         overDiscard: isOverDiscard(point),
         mode: 'drag',
-        drawFrom: null,
+        drawing: null,
       },
     });
 
@@ -197,25 +218,34 @@ export function carryTile(
   stopCarrying?.();
   const shape = isShapeKind(kind);
   let last = start;
+  let keys: DrawKeys = { shift: false, alt: false };
   let pointerId: number | null = null;
   let drawFrom: Point | null = null;
 
+  const box = (): DrawnBox | null =>
+    drawFrom === null ? null : drawnBox(kind, drawFrom, last, keys);
+
   const show = () => {
-    const point = drawFrom === null ? last : drawnCorner(kind, drawFrom, last);
+    const drawing = box();
     paletteDragStore.setState({
       drag: {
         kind,
-        point,
+        point: last,
         overCanvas: isOverCanvas(last),
         overDiscard: isOverDiscard(last),
         mode: 'carry',
-        drawFrom,
+        drawing,
       },
     });
   };
 
+  const remember = (event: PointerEvent | KeyboardEvent) => {
+    keys = { shift: event.shiftKey, alt: event.altKey };
+  };
+
   const onMove = (event: PointerEvent) => {
     last = { x: event.clientX, y: event.clientY };
+    remember(event);
     show();
   };
 
@@ -232,6 +262,7 @@ export function carryTile(
     event.stopPropagation();
     pointerId = event.pointerId;
     last = point;
+    remember(event);
     window.addEventListener('click', swallow, true);
     if (shape) drawFrom = point;
     show();
@@ -239,15 +270,25 @@ export function carryTile(
 
   const onUp = (event: PointerEvent) => {
     if (event.pointerId !== pointerId) return;
-    const point = { x: event.clientX, y: event.clientY };
-    const from = drawFrom ?? point;
+    last = { x: event.clientX, y: event.clientY };
+    remember(event);
+    const drawing = box();
     const drawn =
-      drawFrom !== null && Math.hypot(point.x - from.x, point.y - from.y) > DRAW_DISTANCE;
-    if (isOverCanvas(point) && !isOverDiscard(point)) {
-      if (drawn) onDrop(kind, from, drawnCorner(kind, from, point));
-      else onDrop(kind, point);
+      drawing !== null &&
+      Math.hypot(last.x - drawing.from.x, last.y - drawing.from.y) > DRAW_DISTANCE;
+    // A drawing ends wherever the pointer is let go, as in Excalidraw, except over the discard box.
+    if (!isOverDiscard(last)) {
+      if (drawn) onDrop(kind, drawing.from, drawing);
+      else if (isOverCanvas(last)) onDrop(kind, drawFrom ?? last);
     }
     stop();
+  };
+
+  /** Shift and Alt pressed or let go while drawing change the box at once. */
+  const onKeyChange = (event: KeyboardEvent) => {
+    if (drawFrom === null) return;
+    remember(event);
+    show();
   };
 
   const onKey = (event: KeyboardEvent) => {
@@ -266,7 +307,10 @@ export function carryTile(
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('pointercancel', stop);
     window.removeEventListener('keydown', onKey);
+    window.removeEventListener('keydown', onKeyChange);
+    window.removeEventListener('keyup', onKeyChange);
     window.removeEventListener('contextmenu', stop);
+    delete document.documentElement.dataset.drawing;
     // The click, if any, comes right after the release.
     setTimeout(() => window.removeEventListener('click', swallow, true), 0);
     if (stopCarrying === stop) stopCarrying = null;
@@ -279,6 +323,10 @@ export function carryTile(
   window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', stop);
   window.addEventListener('keydown', onKey);
+  window.addEventListener('keydown', onKeyChange);
+  window.addEventListener('keyup', onKeyChange);
   window.addEventListener('contextmenu', stop);
+  // Shapes are drawn with a crosshair, as in Excalidraw (see styles.css).
+  if (shape) document.documentElement.dataset.drawing = '';
   show();
 }

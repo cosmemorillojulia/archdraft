@@ -316,7 +316,10 @@ describe('language switch', () => {
     localeStore.getState().setLocale('es');
     render(<App />);
     await diagramNamed(localizedTemplate('three-tier-web', 'es').title);
-    await user.click(screen.getByRole('button', { name: es.prompt.templateNames['rag-chatbot'] }));
+    await user.click(screen.getByRole('button', { name: es.prompt.templates }));
+    await user.click(
+      screen.getByRole('menuitemradio', { name: es.prompt.templateNames['rag-chatbot'] }),
+    );
     expect(await diagramNamed(localizedTemplate('rag-chatbot', 'es').title)).toBeInTheDocument();
   });
 

@@ -320,3 +320,9 @@
   height: 12px;
   transform: translate(0, -50%);
 }
+
+/* A shape is being drawn: crosshair everywhere, as in Excalidraw. */
+html[data-drawing],
+html[data-drawing] * {
+  cursor: crosshair !important;
+}

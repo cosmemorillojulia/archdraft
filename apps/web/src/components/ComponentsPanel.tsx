@@ -11,7 +11,13 @@ import { AnimatePresence, m, useDragControls } from 'motion/react';
 import { type KeyboardEvent, type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { KIND_ICONS } from '../icons.ts';
 import { EASE_OUT, SPRING_POP, SPRING_SLIDE } from '../motion.ts';
-import { carryTile, pressTile, takeDragClick, usePaletteDrag } from '../palette/palette-drag.ts';
+import {
+  carryTile,
+  pressTile,
+  takeDragClick,
+  usePaletteDrag,
+  type DrawnBox,
+} from '../palette/palette-drag.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
@@ -46,7 +52,7 @@ interface PaletteActions {
    * Adds one where a tile dragged onto the diagram is let go, in window coordinates; a shape drawn
    * on the diagram also gets the corner it was dragged to.
    */
-  onDrop: (kind: NodeKind, point: Point, to?: Point) => void;
+  onDrop: (kind: NodeKind, point: Point, drawn?: DrawnBox) => void;
   /** Whether a point of the window is on the diagram, not on a panel above it. */
   isOverCanvas: (point: Point) => boolean;
 }

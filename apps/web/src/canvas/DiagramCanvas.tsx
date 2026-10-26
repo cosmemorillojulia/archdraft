@@ -110,6 +110,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const { document: diagram, direction } = snapshot;
   const selection = useEditor((state) => state.selection);
   const renamingId = useEditor((state) => state.renaming);
+  const placedId = useEditor((state) => state.placed);
   const inspectorExpanded = useEditor(isInspectorExpanded);
   const particles = usePreferences((state) => state.flowAnimation);
   const findings = useFindings();
@@ -215,7 +216,16 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const busyId = draggingId ?? resizing?.id ?? null;
   const canvas = useMemo(() => {
     const hovered = busyId === null ? hoverId : null;
-    const shared = { selection, renamingId, dropTargetId, building, particles, issues, resize };
+    const shared = {
+      selection,
+      renamingId,
+      placedId,
+      dropTargetId,
+      building,
+      particles,
+      issues,
+      resize,
+    };
     if (hovered === null && activeFinding) {
       const nodes = new Set(activeFinding.nodeIds);
       return {
@@ -245,6 +255,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     hoverId,
     issues,
     particles,
+    placedId,
     renamingId,
     resize,
     selectedNodeId,
@@ -346,6 +357,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     const last = revealed.current;
     if (selectedNodeId === last.id && inspectorExpanded === last.expanded) return;
     revealed.current = { id: selectedNodeId, expanded: inspectorExpanded };
+    // A node placed or drawn by hand is where its author wanted it: the view does not move.
+    if (selectedNodeId !== null && selectedNodeId === editorStore.getState().placed) return;
     const box = selectedNodeId === null ? undefined : boxes.get(selectedNodeId);
     const area = freeArea();
     if (!box || !area) return;

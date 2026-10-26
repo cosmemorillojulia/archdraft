@@ -102,7 +102,6 @@ La `base` de Vite es `/archdraft/` también en desarrollo: GitHub Pages sirve el
 │                  diagrama sobre cuadrícula de puntos         │
 │                                                              │
 │          [✦ ejemplo de descripción que va rotando     ↑]     │
-│          ( plantilla activa ) plantilla  plantilla  …        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -169,27 +168,27 @@ Animaciones del recorrido:
 | Añadir                         | El nodo nuevo aparece con un muelle, sin esperar a la construcción del diagrama; las cifras de la tarjeta ruedan                                                               |
 | Arrastrar                      | El nodo arrastrado pasa por encima de todo; el grupo en el que caería se ilumina                                                                                               |
 | Rechazo                        | El aviso baja desde arriba y se va solo a los 4,5 s                                                                                                                            |
-| Elegir plantilla               | El indicador de la plantilla activa se desliza hasta ella; la tarjeta del diagrama cambia el título y las cifras ruedan                                                        |
+| Elegir plantilla               | El menú de la cabecera se cierra; la tarjeta del diagrama cambia el título y las cifras ruedan                                                                                 |
 | Paleta                         | Entra desde la izquierda con un muelle, los mosaicos aparecen en cascada y la rejilla se recoloca al filtrar; el lienzo ajusta su margen                                       |
 | Campo de descripción           | Ejemplos de descripción que se suceden cada 3,6 s mientras está vacío; al enfocarlo aparece un halo del color de acento                                                        |
 | Cambio de tema                 | La página en el tema anterior se funde con la del nuevo en 450 ms, con un fundido cruzado (ADR 0018); el icono gira y se funde                                                 |
 
 ## Piezas de la interfaz
 
-| Pieza             | Contenido                                                                                                                                                                                                                                                                          |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Header`          | Barra fija: nombre del producto en mayúsculas inclinadas, sin logotipo gráfico, descripción, deshacer y rehacer (`HistoryControls`), compartir y ficheros (`ShareMenu`), idioma (`LanguageToggle`) y cambio de tema                                                                |
-| `DiagramCard`     | Tarjeta flotante: título, proveedor, descripción recortada a dos líneas, número de componentes y conexiones, y estado de la revisión de diseño en el color del hallazgo más grave; es el botón que abre la revisión, y una región `role="status"` oculta anuncia sus cambios       |
-| `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón. Cada mosaico es un botón «Add …» (ver Edición)                                                                                 |
-| `PromptDock`      | Campo que crece con el texto (`field-sizing: content`) con ejemplos rotatorios decorativos (`aria-hidden`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, y las seis plantillas con icono en una cápsula con indicador deslizante (`aria-pressed`) |
-| `DiagramCanvas`   | Lienzo React Flow con el diagrama, zoom, minimapa, resaltado y edición directa (ver Lienzo y Edición)                                                                                                                                                                              |
-| `PanelSlot`       | Lugar bajo la tarjeta, o abajo en móvil, para un panel a la vez: la revisión de diseño si está abierta y, si no, el inspector. Uno sale mientras el otro entra (`FloatingPanel` es la carcasa común)                                                                               |
-| `Inspector`       | Panel flotante con las propiedades de lo seleccionado (ver Edición)                                                                                                                                                                                                                |
-| `ReviewPanel`     | Panel de revisión de diseño (ver Revisión de diseño)                                                                                                                                                                                                                               |
-| `EditorNotice`    | Avisos arriba en el centro: por qué no se hizo una edición (`role="alert"`) y la conexión pendiente desde el inspector, con su botón para cancelar                                                                                                                                 |
-| `Button`          | Variantes `primary`, `secondary`, `ghost` y `danger`; tamaños `default` e `icon`. Los tamaños son variantes con nombre porque dos utilidades de Tailwind sobre la misma propiedad no se anulan por su orden en `class`                                                             |
+| Pieza             | Contenido                                                                                                                                                                                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Header`          | Barra fija: nombre del producto en mayúsculas inclinadas, sin logotipo gráfico, descripción, deshacer y rehacer (`HistoryControls`), compartir y ficheros (`ShareMenu`), idioma (`LanguageToggle`) y cambio de tema                                                          |
+| `DiagramCard`     | Tarjeta flotante: título, proveedor, descripción recortada a dos líneas, número de componentes y conexiones, y estado de la revisión de diseño en el color del hallazgo más grave; es el botón que abre la revisión, y una región `role="status"` oculta anuncia sus cambios |
+| `ComponentsPanel` | Cerrada al empezar. Buscador por nombre, grupos por categoría y mosaicos con icono y nombre; la descripción del catálogo aparece al pasar el ratón. Cada mosaico es un botón «Add …» (ver Edición)                                                                           |
+| `PromptDock`      | Campo que crece con el texto (`field-sizing: content`) con ejemplos rotatorios decorativos (`aria-hidden`), botón de generar deshabilitado con el motivo enlazado por `aria-describedby`, sin plantillas: viven en el menú de la cabecera                                    |
+| `DiagramCanvas`   | Lienzo React Flow con el diagrama, zoom, minimapa, resaltado y edición directa (ver Lienzo y Edición)                                                                                                                                                                        |
+| `PanelSlot`       | Lugar bajo la tarjeta, o abajo en móvil, para un panel a la vez: la revisión de diseño si está abierta y, si no, el inspector. Uno sale mientras el otro entra (`FloatingPanel` es la carcasa común)                                                                         |
+| `Inspector`       | Panel flotante con las propiedades de lo seleccionado (ver Edición)                                                                                                                                                                                                          |
+| `ReviewPanel`     | Panel de revisión de diseño (ver Revisión de diseño)                                                                                                                                                                                                                         |
+| `EditorNotice`    | Avisos arriba en el centro: por qué no se hizo una edición (`role="alert"`) y la conexión pendiente desde el inspector, con su botón para cancelar                                                                                                                           |
+| `Button`          | Variantes `primary`, `secondary`, `ghost` y `danger`; tamaños `default` e `icon`. Los tamaños son variantes con nombre porque dos utilidades de Tailwind sobre la misma propiedad no se anulan por su orden en `class`                                                       |
 
-En pantallas estrechas la cabecera oculta la descripción, la tarjeta ocupa el ancho sin la descripción del diagrama y las plantillas se desplazan en horizontal.
+En pantallas estrechas la cabecera oculta la descripción, la tarjeta ocupa el ancho sin la descripción del diagrama y el menú de plantillas pasa a ser un icono.
 
 ### Paleta en escritorio y en móvil
 
@@ -228,7 +227,7 @@ La versión empaquetada de elkjs, al ejecutarse en un contexto con `self` y sin 
 
 ### Distribución en escritorio
 
-Los paneles flotantes se reparten el espacio sin dejar huecos junto a la barra de descripción: la paleta de componentes llega de arriba abajo en el lado izquierdo; a la derecha, la tarjeta del diagrama y el inspector (o la revisión) ocupan la columna hasta el grupo de zoom y minimapa, que está en la esquina inferior derecha; y la barra de descripción, con las plantillas, se queda entre ambos con un ancho máximo de 48 rem, que se estrecha en pantallas pequeñas (la fila de plantillas se desplaza en horizontal). En alturas pequeñas, como 626 px, el inspector queda unos 40 px más bajo que antes y se desplaza por dentro.
+Los paneles flotantes se reparten el espacio sin dejar huecos junto a la barra de descripción: la paleta de componentes llega de arriba abajo en el lado izquierdo; a la derecha, la tarjeta del diagrama y el inspector (o la revisión) ocupan la columna hasta el grupo de zoom y minimapa, que está en la esquina inferior derecha; y la barra de descripción se queda entre ambos con un ancho máximo de 48 rem, que se estrecha en pantallas pequeñas. En alturas pequeñas, como 626 px, el inspector queda unos 40 px más bajo que antes y se desplaza por dentro.
 
 ### Zoom y desplazamiento
 
@@ -266,7 +265,7 @@ Al pasar el ratón por un componente, este crece un 4 % y se perfila con su colo
 
 ### Cambio de plantilla
 
-El botón de la plantilla se marca en cuanto se pulsa (`opening` en el store). El diagrama anterior se mantiene hasta que la nueva disposición está lista; entonces sale con un fundido y el nuevo lienzo se monta y se construye (`AnimatePresence` en modo `wait`, con la clave del documento). Si se eligen varias plantillas seguidas, solo se abre la última. Si la disposición falla, un aviso lo dice y el error va a la consola. Abrir una plantilla es un paso del historial: deshacer devuelve el diagrama anterior, con lo editado.
+La plantilla elegida en el menú de la cabecera (`TemplatesMenu`: botón «Plantillas» con un menú `role="menu"` de seis `menuitemradio`, flechas, Inicio y Fin, Escape devuelve el foco al botón) se marca en cuanto se pulsa (`opening` en el store). El diagrama anterior se mantiene hasta que la nueva disposición está lista; entonces sale con un fundido y el nuevo lienzo se monta y se construye (`AnimatePresence` en modo `wait`, con la clave del documento). Si se eligen varias plantillas seguidas, solo se abre la última. Si la disposición falla, un aviso lo dice y el error va a la consola. Abrir una plantilla es un paso del historial: deshacer devuelve el diagrama anterior, con lo editado.
 
 ### Revisión de diseño de T08
 
@@ -315,7 +314,8 @@ En el panel de escritorio, un clic de ratón o lápiz en un mosaico (`carryTile`
 
 - Un clic en el diagrama lo coloca ahí; el grupo bajo el puntero lo recibe, como al arrastrar. La pulsación que coloca no se transmite, así que no mueve el lienzo ni selecciona lo que hay debajo (el clic que la sigue también se descarta).
 - Una caja arriba, «Suelta aquí para descartar» (`PaletteDiscard`), descarta lo que se lleva: se pulsa, o se suelta sobre ella un mosaico arrastrado. Escape y el botón derecho también lo descartan. Una pulsación sobre un panel no hace nada y deja el mosaico pegado, para poder elegir otro. Un aviso `role="status"` lo anuncia a los lectores de pantalla.
-- Las figuras (caja, círculo, rombo y nota) se dibujan como en Excalidraw: se pulsa en el diagrama, se arrastra y al soltar nace una figura de exactamente ese tamaño y posición (`addNode` con `drawnSize`: se redondea y no baja del mínimo de la figura). Un círculo sigue siendo un círculo (`drawnCorner`: toma el lado más largo, hacia donde apunta el puntero). Una pulsación que se mueve menos de 6 px coloca la figura con su tamaño habitual. Mientras se arrastra se ve su contorno.
+- Las figuras (caja, círculo, rombo y nota) se dibujan como en Excalidraw: con una figura elegida el cursor es una cruz (`data-drawing` en `html`), se pulsa en el diagrama, se arrastra y al soltar nace una figura de exactamente ese tamaño y posición (`addNode` con `size` y `exact`; `drawnSize` redondea y no baja del mínimo de la figura). Mientras se arrastra se ve la propia figura (`ShapeBody`, el mismo cuerpo que dibuja el nodo), así que al soltar no cambia nada. `drawnBox` aplica las teclas: un círculo sigue siendo un círculo, Mayús iguala los lados y Alt dibuja desde el centro. Se termina donde se suelte el botón, aunque sea sobre un panel, salvo sobre la caja de descarte; Escape cancela. Una pulsación que se mueve menos de 6 px coloca la figura con su tamaño habitual.
+- Lo que se coloca a mano queda exactamente donde se puso (`exact`): no se desplaza para esquivar a sus vecinos, no entra con la animación de aparición, la vista no se mueve para revelarlo (`placed` en el store, hasta que se selecciona otra cosa) y solo entra en un grupo si cabe entero dentro; una figura que sobresale queda en el diagrama, donde se dibujó. Las altas por teclado y por el botón del centro siguen buscando hueco libre.
 - Arrastrar un mosaico desde el panel, como antes, lo coloca al soltarlo con el tamaño habitual; soltarlo sobre la caja de descarte lo descarta.
 
 ### Fluidez
