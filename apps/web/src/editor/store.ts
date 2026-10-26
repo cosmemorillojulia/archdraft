@@ -58,6 +58,8 @@ export interface EditorState {
   readonly selection: Selection | null;
   /** Component that a connection started from the inspector leaves from. */
   readonly connectingFrom: string | null;
+  /** Node whose name is being edited in its own box on the canvas. */
+  readonly renaming: string | null;
   /**
    * Selection whose inspector was expanded on a narrow screen. Any other
    * selection opens it collapsed, as a strip with its name and quick actions.
@@ -82,7 +84,7 @@ export interface EditorActions {
     document: DiagramDocument,
     origin: { direction: LayoutDirection; templateId: TemplateId | null },
   ) => void;
-  addNode: (kind: NodeKind, centre: Point) => void;
+  addNode: (kind: NodeKind, centre: Point, size?: Size) => void;
   connect: (source: string, target: string) => void;
   moveNode: (id: string, position: Point) => void;
   resizeNode: (id: string, box: Point & Size) => void;
@@ -93,6 +95,9 @@ export interface EditorActions {
   select: (selection: Selection | null) => void;
   /** Expands or collapses the inspector of the current selection on narrow screens. */
   expandInspector: (expanded: boolean) => void;
+  /** Selects a node and edits its name in place. */
+  startRename: (id: string) => void;
+  stopRename: () => void;
   startConnection: (source: string) => void;
   cancelConnection: () => void;
   undo: () => void;
@@ -109,6 +114,7 @@ const INITIAL_STATE: EditorState = {
   future: [],
   selection: null,
   connectingFrom: null,
+  renaming: null,
   expandedSelection: null,
   message: null,
   opening: null,
@@ -189,6 +195,7 @@ export function createEditorStore() {
         future: [],
         selection: result.selection === undefined ? selection : result.selection,
         connectingFrom: null,
+        renaming: null,
       });
     };
 
@@ -201,6 +208,7 @@ export function createEditorStore() {
         future,
         selection: selection && exists(target.document, selection) ? selection : null,
         connectingFrom: null,
+        renaming: null,
       });
     };
 
@@ -215,6 +223,7 @@ export function createEditorStore() {
           future: [],
           selection: null,
           connectingFrom: null,
+          renaming: null,
           expandedSelection: null,
           opening: null,
         });
@@ -223,8 +232,10 @@ export function createEditorStore() {
         const { current } = get();
         if (current) set({ current: { ...current, document: { ...current.document, graph } } });
       },
-      addNode: (kind, centre) =>
-        apply((document) => addNode(document, kind, centre, currentStrings().kinds[kind].label)),
+      addNode: (kind, centre, size) =>
+        apply((document) =>
+          addNode(document, kind, centre, currentStrings().kinds[kind].label, size),
+        ),
       connect: (source, target) => apply((document) => connect(document, source, target)),
       moveNode: (id, position) => apply((document) => moveNode(document, id, position)),
       resizeNode: (id, box) => apply((document) => resizeNode(document, id, box)),
@@ -238,7 +249,10 @@ export function createEditorStore() {
         const { selection } = get();
         if (selection?.type === 'node') apply((document) => duplicate(document, selection.id));
       },
-      select: (selection) => set({ selection, connectingFrom: null }),
+      select: (selection) => set({ selection, connectingFrom: null, renaming: null }),
+      startRename: (id) =>
+        set({ selection: { type: 'node', id }, connectingFrom: null, renaming: id }),
+      stopRename: () => set({ renaming: null }),
       expandInspector: (expanded) => set({ expandedSelection: expanded ? get().selection : null }),
       startConnection: (source) => set({ connectingFrom: source, message: null }),
       cancelConnection: () => set({ connectingFrom: null }),

@@ -251,20 +251,22 @@ function originOf(boxes: ReadonlyMap<string, Box>, parentId: string | undefined)
  * Adds a node of `kind` centred on `centre` (diagram coordinates), or as
  * close as possible without touching another node, inside the innermost
  * container there that can hold it, and selects it. Its name is `name`,
- * numbered if taken; by default the English name of the kind.
+ * numbered if taken; by default the English name of the kind. A node drawn by
+ * dragging has the size `drawn` (see `drawnSize`) instead of the usual one.
  */
 export function addNode(
   document: DiagramDocument,
   kind: NodeKind,
   centre: Point,
   name: string = getNodeDefinition(kind).label,
+  drawn?: Size,
 ): Edit {
   const { graph, layout } = document;
   if (graph.nodes.length >= LIMITS.maxNodes) return reject(currentStrings().edit.tooManyNodes);
 
   const id = uniqueId(kind, new Set(graph.nodes.map((node) => node.id)));
   const label = uniqueLabel(name, new Set(graph.nodes.map((node) => node.label)));
-  const size = sizeOfKind(kind);
+  const size = drawn === undefined ? sizeOfKind(kind) : drawnSize(kind, drawn);
   const parentId = containerAt(document, centre, kind);
   const origin = originOf(absoluteBoxes(graph, layout), parentId);
   const position = roomFor(
@@ -289,6 +291,19 @@ export function addNode(
     document: { graph: nextGraph, layout: nextLayout },
     selection: { type: 'node', id },
   };
+}
+
+/**
+ * Size of a node drawn by dragging: the size dragged, rounded, but not
+ * below the smallest the node can be; a circle is as wide as it is tall.
+ */
+export function drawnSize(kind: NodeKind, dragged: Size): Size {
+  const min = minSizeOf(kind);
+  const width = Math.max(Math.round(dragged.width), min.width);
+  const height = Math.max(Math.round(dragged.height), min.height);
+  if (kind !== 'circle') return { width, height };
+  const side = Math.max(width, height);
+  return { width: side, height: side };
 }
 
 /** Connects `source` to `target` and selects the new edge. */

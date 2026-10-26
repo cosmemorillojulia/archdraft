@@ -37,6 +37,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/web`: preview card for shared links (`og-image.png`, 1200 × 630, dark) with the Open Graph and Twitter tags in `index.html`.
 - `@archdraft/web`: every component and shape has four connection points: connections arrive at the left and the top and leave by the right and the bottom, and each one picks the shortest pair (`edgeSides`), in the editor and in the SVG and PNG export.
 - `@archdraft/web`: desktop layout: the zoom controls sit beside the minimap in the bottom right corner, the minimap shows on every desktop width, the prompt bar is narrower and the components panel reaches the bottom.
+- `@archdraft/web`: rename a node in its own box (double click, Enter or F2).
+- `@archdraft/web`: on desktop, a click on a palette tile sticks the node to the pointer until it is placed with a click, with a box at the top to discard it; shapes are drawn at the size dragged, like in Excalidraw.
 - `@archdraft/core`: six architecture templates (`ARCHITECTURE_TEMPLATES`) for the gallery and the generation prompt: three-tier web application, serverless API, event-driven microservices, RAG chatbot, analytics pipeline and static site with a headless CMS. They cover every provider, are valid without warnings and have no design findings.
 
 ### Changed

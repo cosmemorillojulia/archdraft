@@ -14,6 +14,8 @@ function isTyping(target: EventTarget | null): boolean {
  * - Delete or Backspace: delete the selection.
  * - Ctrl or ⌘ + Z: undo; with Shift, or Ctrl + Y: redo.
  * - Ctrl or ⌘ + D: duplicate the selected node.
+ * - Enter or F2: edit the name of the selected node in its box, when the focus is on that node or
+ *   on the page. A node that is not selected yet is just selected by Enter, as React Flow does.
  * - Escape: close the design review, or cancel a connection, or clear the selection.
  */
 export function useEditorShortcuts(enabled: boolean): void {
@@ -49,7 +51,26 @@ export function useEditorShortcuts(enabled: boolean): void {
       }
       if (handled) event.preventDefault();
     };
+    // Before React Flow sees the key, so that Enter on a node that is not selected yet only selects it.
+    const onRenameKey = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (key !== 'enter' && key !== 'f2') return;
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isTyping(event.target)) return;
+      const { selection } = editorStore.getState();
+      if (selection?.type !== 'node') return;
+      const focused =
+        event.target instanceof HTMLElement ? event.target.closest('.react-flow__node') : null;
+      if (event.target !== document.body && focused?.getAttribute('data-id') !== selection.id)
+        return;
+      event.preventDefault();
+      editorStore.getState().startRename(selection.id);
+    };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onRenameKey, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onRenameKey, true);
+    };
   }, [enabled]);
 }

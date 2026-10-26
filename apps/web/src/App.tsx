@@ -23,6 +23,7 @@ import {
 } from './editor/open-document.ts';
 import { readSavedDocument, startAutosave } from './persist/autosave.ts';
 import { usePaletteDrag } from './palette/palette-drag.ts';
+import { PaletteDiscard } from './palette/PaletteDiscard.tsx';
 import { PaletteDragGhost } from './palette/PaletteDragGhost.tsx';
 import { linkPayload } from './persist/share-link.ts';
 import { useEditorShortcuts } from './editor/shortcuts.ts';
@@ -150,8 +151,21 @@ function Editor() {
     return element !== null && canvasRef.current?.contains(element) === true;
   }, []);
   const addAt = useCallback(
-    (kind: NodeKind, point: Point) => {
-      editorStore.getState().addNode(kind, flow.screenToFlowPosition(point));
+    (kind: NodeKind, point: Point, to?: Point) => {
+      if (to === undefined) {
+        editorStore.getState().addNode(kind, flow.screenToFlowPosition(point));
+      } else {
+        // A shape drawn on the diagram takes the position and size of what was dragged.
+        const a = flow.screenToFlowPosition(point);
+        const b = flow.screenToFlowPosition(to);
+        editorStore
+          .getState()
+          .addNode(
+            kind,
+            { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+            { width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) },
+          );
+      }
       if (!wide) setPaletteOpen(false);
     },
     [flow, wide],
@@ -243,6 +257,7 @@ function Editor() {
         />
       )}
       <PaletteDragGhost />
+      <PaletteDiscard />
     </>
   );
 }
