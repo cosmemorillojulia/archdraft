@@ -27,7 +27,7 @@ import { PaletteDragGhost } from './palette/PaletteDragGhost.tsx';
 import { linkPayload } from './persist/share-link.ts';
 import { useEditorShortcuts } from './editor/shortcuts.ts';
 import { editorStore, useEditor } from './editor/store.ts';
-import { EXTRA_WIDE_SCREEN, useMediaQuery, WIDE_SCREEN } from './media.ts';
+import { useMediaQuery, WIDE_SCREEN } from './media.ts';
 import { useReview } from './review/review-store.ts';
 import { EASE_OUT } from './motion.ts';
 import { useStrings } from './i18n/locale.ts';
@@ -97,7 +97,6 @@ function Editor() {
   // The diagram is the first thing to see; the palette opens on demand.
   const [paletteOpen, setPaletteOpen] = useState(false);
   const wide = useMediaQuery(WIDE_SCREEN);
-  const extraWide = useMediaQuery(EXTRA_WIDE_SCREEN);
   const sheetToggleRef = useRef<HTMLButtonElement>(null);
   const canvasRef = useRef<HTMLElement>(null);
   const sheetOpen = paletteOpen && !wide;
@@ -169,14 +168,14 @@ function Editor() {
           <main ref={canvasRef} aria-label={strings.canvas.label} className="absolute inset-0">
             <DiagramCanvas
               insets={insets}
-              showMiniMap={extraWide}
-              controlsClassName={wide ? 'bottom-4 left-3' : 'bottom-34 left-3'}
+              showMiniMap={wide}
+              controlsClassName={wide ? 'right-3 bottom-3' : 'right-3 bottom-34'}
               inspectorPlacement={wide ? 'side' : 'bottom'}
             />
           </main>
 
           {wide && (
-            <aside className="pointer-events-none absolute top-3 bottom-52 left-3 z-10 flex items-start">
+            <aside className="pointer-events-none absolute top-3 bottom-3 left-3 z-10 flex items-start">
               <ComponentsPanel
                 open={paletteOpen}
                 onOpenChange={setPaletteOpen}
@@ -187,7 +186,7 @@ function Editor() {
             </aside>
           )}
 
-          <div className="pointer-events-none absolute inset-x-3 top-3 bottom-36 z-10 flex flex-col items-end gap-3 md:left-auto md:w-80">
+          <div className="pointer-events-none absolute inset-x-3 top-3 bottom-36 z-10 flex flex-col items-end gap-3 md:bottom-46 md:left-auto md:w-80">
             {graph && <DiagramCard graph={graph} />}
             {wide && <PanelSlot placement="side" />}
           </div>
@@ -207,7 +206,7 @@ function Editor() {
                 className="pointer-events-none absolute inset-x-0 bottom-0 z-20"
               >
                 {!wide && (
-                  <div className="pointer-events-none absolute right-3 bottom-34">
+                  <div className="pointer-events-none absolute bottom-34 left-3">
                     <ComponentsSheetToggle
                       open={paletteOpen}
                       onOpenChange={setPaletteOpen}
@@ -215,7 +214,7 @@ function Editor() {
                     />
                   </div>
                 )}
-                <div className="pointer-events-none flex justify-center px-3 pb-4">
+                <div className="pointer-events-none flex justify-center px-3 pb-4 md:px-78">
                   <PromptDock
                     templateId={templateId}
                     onTemplateChange={(id) => void openTemplate(id, direction)}

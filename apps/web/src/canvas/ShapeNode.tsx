@@ -1,9 +1,10 @@
-import { Handle, type NodeProps } from '@xyflow/react';
+import type { NodeProps } from '@xyflow/react';
 import { m } from 'motion/react';
 import { memo } from 'react';
 import { SPRING_POP } from '../motion.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import type { ShapeFlowNode } from './flow.ts';
+import { ConnectionHandles } from './ConnectionHandles.tsx';
 import { ResizeHandles } from './ResizeHandles.tsx';
 
 /**
@@ -26,7 +27,7 @@ export const ShapeNode = memo(function ShapeNode({
   data,
   isConnectable,
 }: NodeProps<ShapeFlowNode>) {
-  const { node, sourcePosition, targetPosition, appearDelay } = data;
+  const { node, appearDelay } = data;
   const canvas = useCanvas();
   const focused = canvas.focusId === id;
   const dimmed = canvas.dimOthers && !canvas.nodes.has(id);
@@ -87,19 +88,7 @@ export const ShapeNode = memo(function ShapeNode({
       </m.div>
       {/* After the figure, so its corner handles are above it. */}
       <ResizeHandles id={id} kind={kind} visible={selected} />
-      <Handle
-        type="target"
-        position={targetPosition}
-        isConnectable={isConnectable}
-        className="flow-handle pointer-events-none"
-      />
-      <Handle
-        type="source"
-        position={sourcePosition}
-        isConnectable={isConnectable}
-        data-selected={selected || undefined}
-        className="flow-handle connect-handle"
-      />
+      <ConnectionHandles selected={selected} isConnectable={isConnectable} />
     </div>
   );
 });

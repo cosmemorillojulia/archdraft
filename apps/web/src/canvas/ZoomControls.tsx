@@ -35,7 +35,7 @@ export const ZoomControls = memo(function ZoomControls({
     <div
       role="group"
       aria-label={strings.canvas.zoom.label}
-      className="floating pointer-events-auto flex flex-col items-center gap-0.5 rounded-panel p-1"
+      className="floating pointer-events-auto flex flex-col items-center gap-0.5 rounded-panel p-1 md:[&_button]:size-7"
     >
       <Button
         variant="ghost"

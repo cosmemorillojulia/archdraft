@@ -7,8 +7,10 @@ import {
   arrowhead,
   boundsOf,
   drawingScale,
+  edgeSides,
   initialViewport,
   nestingDepths,
+  sidePoint,
 } from '../src/canvas/geometry.ts';
 
 const graph: ArchitectureGraph = {
@@ -151,5 +153,49 @@ describe('arrowhead', () => {
     expect(arrowhead(100, 50, 'top').outline).toBe(
       `M ${100 - half} ${top} L 100 50 L ${100 + half} ${top} Z`,
     );
+  });
+});
+
+describe('edgeSides', () => {
+  const box = (x: number, y: number) => ({ x, y, width: 100, height: 50 });
+
+  it('goes across, from the right to the left, to a node further along', () => {
+    expect(edgeSides(box(0, 0), box(200, 0), 'LR')).toEqual({ source: 'right', target: 'left' });
+  });
+
+  it('goes down, from the bottom to the top, to a node right below', () => {
+    expect(edgeSides(box(0, 0), box(0, 150), 'LR')).toEqual({ source: 'bottom', target: 'top' });
+  });
+
+  it('goes down when the target is mostly below, even if a little to the side', () => {
+    expect(edgeSides(box(0, 0), box(40, 200), 'TB')).toEqual({ source: 'bottom', target: 'top' });
+  });
+
+  it('always leaves by the right or the bottom and arrives at the left or the top', () => {
+    const others = [
+      box(-300, 0),
+      box(300, 0),
+      box(0, -200),
+      box(0, 200),
+      box(-250, -150),
+      box(250, 150),
+    ];
+    for (const direction of ['LR', 'RL', 'TB', 'BT'] as const) {
+      for (const other of others) {
+        const sides = edgeSides(box(0, 0), other, direction);
+        expect(['right', 'bottom']).toContain(sides.source);
+        expect(['left', 'top']).toContain(sides.target);
+      }
+    }
+  });
+});
+
+describe('sidePoint', () => {
+  it('is the middle of each side', () => {
+    const b = { x: 10, y: 20, width: 100, height: 40 };
+    expect(sidePoint(b, 'left')).toEqual({ x: 10, y: 40 });
+    expect(sidePoint(b, 'right')).toEqual({ x: 110, y: 40 });
+    expect(sidePoint(b, 'top')).toEqual({ x: 60, y: 20 });
+    expect(sidePoint(b, 'bottom')).toEqual({ x: 60, y: 60 });
   });
 });

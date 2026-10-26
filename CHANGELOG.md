@@ -35,6 +35,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `@archdraft/web`: every node can be resized when selected, groups included (never smaller than what they hold, with their contents kept in place); palette tiles can be dragged onto the diagram with the mouse or, after holding them, with a finger, with the node following the pointer.
 - `@archdraft/web`: export from the Share menu: copy or download Mermaid, download draw.io, and SVG and PNG images drawn from the document in the theme and language of the editor, with file names taken from the title.
 - `@archdraft/web`: preview card for shared links (`og-image.png`, 1200 × 630, dark) with the Open Graph and Twitter tags in `index.html`.
+- `@archdraft/web`: every component and shape has four connection points: connections arrive at the left and the top and leave by the right and the bottom, and each one picks the shortest pair (`edgeSides`), in the editor and in the SVG and PNG export.
+- `@archdraft/web`: desktop layout: the zoom controls sit beside the minimap in the bottom right corner, the minimap shows on every desktop width, the prompt bar is narrower and the components panel reaches the bottom.
 - `@archdraft/core`: six architecture templates (`ARCHITECTURE_TEMPLATES`) for the gallery and the generation prompt: three-tier web application, serverless API, event-driven microservices, RAG chatbot, analytics pipeline and static site with a headless CMS. They cover every provider, are valid without warnings and have no design findings.
 
 ### Changed

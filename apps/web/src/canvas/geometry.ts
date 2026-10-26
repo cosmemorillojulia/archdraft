@@ -1,4 +1,5 @@
 import { type ArchitectureGraph, type DiagramLayout, layoutEntry } from '@archdraft/core';
+import type { LayoutDirection } from '@archdraft/layout';
 
 export interface Box {
   readonly x: number;
@@ -160,4 +161,78 @@ export function arrowhead(
     `L ${x} ${y} ` +
     `L ${base.x + arrival.y * half} ${base.y - arrival.x * half} Z`;
   return { base, outline };
+}
+
+/** Point where an edge leaves or reaches a node on this side: the middle of that side. */
+export function sidePoint(box: Box, side: Side): { x: number; y: number } {
+  switch (side) {
+    case 'left':
+      return { x: box.x, y: box.y + box.height / 2 };
+    case 'right':
+      return { x: box.x + box.width, y: box.y + box.height / 2 };
+    case 'top':
+      return { x: box.x + box.width / 2, y: box.y };
+    case 'bottom':
+      return { x: box.x + box.width / 2, y: box.y + box.height };
+  }
+}
+
+/** Sides of a node edges leave from, and sides they arrive at: out by right or bottom, in by left or top. */
+export type SourceSide = 'right' | 'bottom';
+export type TargetSide = 'left' | 'top';
+
+/** The four ways to join two nodes, in the order they win a tie for each flow direction. */
+const ACROSS = { source: 'right', target: 'left' } as const;
+const DOWN = { source: 'bottom', target: 'top' } as const;
+const COMBINATIONS: Record<'horizontal' | 'vertical', readonly EdgeSides[]> = {
+  horizontal: [
+    ACROSS,
+    DOWN,
+    { source: 'right', target: 'top' },
+    { source: 'bottom', target: 'left' },
+  ],
+  vertical: [
+    DOWN,
+    ACROSS,
+    { source: 'bottom', target: 'left' },
+    { source: 'right', target: 'top' },
+  ],
+};
+
+export interface EdgeSides {
+  readonly source: SourceSide;
+  readonly target: TargetSide;
+}
+
+/** How much a pixel of going against the side an edge leaves or arrives at costs, in pixels of length. */
+const AGAINST_COST = 3;
+
+/**
+ * Sides an edge connects, from the position of its two nodes: it always
+ * leaves by the right or the bottom of the source and arrives at the left or
+ * the top of the target. Of the four combinations, it picks the one with the
+ * shortest line, counting extra for lines that would leave a side backwards
+ * (for example, leaving by the right towards a target on the left). Ties go to
+ * the combination that follows the flow direction.
+ */
+export function edgeSides(source: Box, target: Box, direction: LayoutDirection): EdgeSides {
+  const options =
+    COMBINATIONS[direction === 'LR' || direction === 'RL' ? 'horizontal' : 'vertical'];
+  let best = options[0] as EdgeSides;
+  let bestCost = Infinity;
+  for (const option of options) {
+    const from = sidePoint(source, option.source);
+    const to = sidePoint(target, option.target);
+    const backwardsX =
+      option.source === 'right' || option.target === 'left' ? Math.max(0, from.x - to.x) : 0;
+    const backwardsY =
+      option.source === 'bottom' || option.target === 'top' ? Math.max(0, from.y - to.y) : 0;
+    const cost =
+      Math.hypot(to.x - from.x, to.y - from.y) + AGAINST_COST * (backwardsX + backwardsY);
+    if (cost < bestCost) {
+      best = option;
+      bestCost = cost;
+    }
+  }
+  return best;
 }
