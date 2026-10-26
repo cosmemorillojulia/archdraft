@@ -83,6 +83,8 @@ export const en = {
     components: (count: number) => (count === 1 ? 'component' : 'components'),
     connections: (count: number) => (count === 1 ? 'connection' : 'connections'),
     shapes: (count: number) => (count === 1 ? 'shape' : 'shapes'),
+    rename: 'Diagram name',
+    provider: 'Cloud',
   },
   providers: {
     generic: 'Any cloud',
@@ -236,10 +238,13 @@ export const en = {
     exportFailed: 'The image could not be created. Try again, or export SVG.',
     file: 'File',
     download: 'Download JSON',
-    openFile: 'Open JSON file',
-    fileHint: 'Opening a file replaces the diagram; undo brings it back.',
+    openFile: 'Open or import a file',
+    fileHint:
+      'Opens Archdraft JSON, Mermaid flowcharts and draw.io files. It replaces the diagram; undo brings it back.',
   },
   persist: {
+    importedTitle: 'Imported diagram',
+    importedWithNotes: (notes: string) => `Imported. ${notes}`,
     openFailed: {
       file: (reason: string) => `This file could not be opened. ${reason}`,
       link: (reason: string) => `This link could not be opened. ${reason}`,
@@ -269,6 +274,13 @@ export const en = {
     collapse: 'Hide properties',
     connection: 'Connection',
     name: 'Name',
+    chosen: (count: number) => `${count} selected`,
+    chosenHint: 'Drag one to move them all',
+    order: 'Order',
+    bringToFront: 'Bring to front',
+    bringForward: 'Bring forward',
+    sendBackward: 'Send backward',
+    sendToBack: 'Send to back',
     product: 'Product',
     provider: 'Runs on',
     providerDefault: (provider: string) => `Diagram default (${provider})`,

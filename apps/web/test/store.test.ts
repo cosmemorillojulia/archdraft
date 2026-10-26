@@ -31,6 +31,55 @@ function loaded() {
 const labels = (store: ReturnType<typeof createEditorStore>) =>
   store.getState().current?.document.graph.nodes.map((node) => node.label);
 
+describe('choosing several nodes', () => {
+  it('chooses with a toggle, moves them together and deletes them in one step', () => {
+    const store = loaded();
+    store.getState().select({ type: 'node', id: 'user' });
+    store.getState().toggleSelected('api');
+    expect(store.getState().group).toEqual(['user', 'api']);
+    store.getState().moveNodes([
+      { id: 'user', position: { x: 5, y: 6 } },
+      { id: 'api', position: { x: 30, y: 60 } },
+    ]);
+    expect(store.getState().current?.document.layout.positions.user).toEqual({ x: 5, y: 6 });
+    expect(store.getState().group).toEqual(['user', 'api']);
+    store.getState().removeSelection();
+    expect(labels(store)).toEqual(['VPC']);
+    expect(store.getState().group).toEqual([]);
+    store.getState().undo();
+    expect(labels(store)).toEqual(['User', 'VPC', 'API']);
+  });
+
+  it('takes a node out of the group, and a lone one is a plain selection again', () => {
+    const store = loaded();
+    store.getState().toggleSelected('user');
+    store.getState().toggleSelected('api');
+    store.getState().toggleSelected('vpc');
+    expect(store.getState().group).toEqual(['user', 'api', 'vpc']);
+    store.getState().toggleSelected('vpc');
+    store.getState().toggleSelected('api');
+    expect(store.getState().group).toEqual([]);
+    expect(store.getState().selection).toEqual({ type: 'node', id: 'user' });
+    store.getState().toggleSelected('api');
+    store.getState().select(null);
+    expect(store.getState().group).toEqual([]);
+  });
+});
+
+describe('the diagram card edits', () => {
+  it('renames the diagram and changes its cloud, with a step each', () => {
+    const store = loaded();
+    store.getState().updateDiagram({ title: 'Mine' });
+    store.getState().updateDiagram({ provider: 'azure' });
+    expect(store.getState().current?.document.graph).toMatchObject({
+      title: 'Mine',
+      provider: 'azure',
+    });
+    store.getState().undo();
+    expect(store.getState().current?.document.graph.provider).toBe('aws');
+  });
+});
+
 describe('editor store', () => {
   it('starts empty and ignores edits until a diagram is loaded', () => {
     const store = createEditorStore();

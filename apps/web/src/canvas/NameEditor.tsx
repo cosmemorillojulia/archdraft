@@ -1,4 +1,4 @@
-import { LIMITS } from '@archdraft/core';
+import { isShapeKind, LIMITS } from '@archdraft/core';
 import { useEffect, useRef } from 'react';
 import { editorStore } from '../editor/store.ts';
 import { useStrings } from '../i18n/locale.ts';
@@ -6,7 +6,8 @@ import { useStrings } from '../i18n/locale.ts';
 /**
  * The name of a node, edited in its own box: a text field that takes the
  * place of the label. Enter, or leaving the field, keeps the new name (an
- * empty one keeps the old); Escape drops it. Typing here never reaches the
+ * empty one keeps the old, except on a shape, which may have none); Escape
+ * drops it. Text that is left empty is removed, as it would show nothing. Typing here never reaches the
  * canvas, which would pan, drag or take the keys as shortcuts.
  */
 export function NameEditor({
@@ -33,7 +34,14 @@ export function NameEditor({
     const name = field.current?.value.trim() ?? '';
     const editor = editorStore.getState();
     editor.stopRename();
-    if (keep && name !== '' && name !== value) editor.updateNode(id, { label: name });
+    const kind = editor.current?.document.graph.nodes.find((node) => node.id === id)?.kind;
+    const mayBeEmpty = kind !== undefined && isShapeKind(kind);
+    const label = keep && name !== value && (name !== '' || mayBeEmpty) ? name : value;
+    if (label !== value) editor.updateNode(id, { label });
+    if (kind === 'text' && label === '') {
+      editor.select({ type: 'node', id });
+      editor.removeSelection();
+    }
   };
 
   return (

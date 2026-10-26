@@ -279,6 +279,13 @@ const definitions = {
     icon: 'sticky-note',
     services: {},
   },
+  text: {
+    category: 'shape',
+    label: 'Text',
+    description: 'Free text anywhere on the diagram; no architecture meaning',
+    icon: 'type',
+    services: {},
+  },
   region: {
     category: 'container',
     label: 'Region',

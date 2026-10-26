@@ -23,6 +23,8 @@ export interface CanvasState {
   /** Whether everything else fades: only while the pointer rests on a component. */
   dimOthers: boolean;
   selection: Selection | null;
+  /** Nodes chosen together; while there are any, none of them shows its own handles. */
+  group: ReadonlySet<string>;
   /** Node whose name is being edited in its own box. */
   renamingId: string | null;
   /** Node just placed by hand where the pointer put it: it appears at once and the view stays. */
@@ -47,6 +49,7 @@ export const CanvasContext = createContext<CanvasState>({
   edges: new Set(),
   dimOthers: false,
   selection: null,
+  group: new Set(),
   renamingId: null,
   placedId: null,
   dropTargetId: null,
@@ -80,4 +83,16 @@ export function relatedTo(
     nodes.add(target);
   }
   return { nodes, edges: edgeIds };
+}
+
+/** Whether a node is chosen, alone or with others, and whether it is one of several. */
+export function nodeChoice(
+  canvas: CanvasState,
+  id: string,
+): { selected: boolean; grouped: boolean } {
+  const grouped = canvas.group.size > 0;
+  return {
+    selected: grouped ? canvas.group.has(id) : isSelected(canvas.selection, 'node', id),
+    grouped,
+  };
 }

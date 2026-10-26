@@ -34,7 +34,7 @@ const flow: ArchitectureGraph = {
 
 describe('shapes', () => {
   it('are plain figures of their own category', () => {
-    expect(SHAPE_KINDS).toEqual(['box', 'circle', 'diamond', 'note']);
+    expect(SHAPE_KINDS).toEqual(['box', 'circle', 'diamond', 'note', 'text']);
     for (const kind of SHAPE_KINDS) {
       expect(isShapeKind(kind)).toBe(true);
       expect(getNodeDefinition(kind)).toMatchObject({ category: 'shape', services: {} });
@@ -93,5 +93,24 @@ describe('shapes', () => {
     expect(xml).toContain('rhombus;');
     expect(xml).toContain('shape=note;');
     expect(xml).toContain(`width="${SHAPE_SIZES.diamond.width}"`);
+  });
+});
+
+describe('shapes without a name', () => {
+  it('export with a blank label that Mermaid accepts, and as text in draw.io', () => {
+    const graph: ArchitectureGraph = {
+      schemaVersion: 1,
+      title: 'Blank',
+      provider: 'generic',
+      nodes: [
+        { id: 'a', kind: 'box', label: '' },
+        { id: 't', kind: 'text', label: 'Hello' },
+      ],
+      edges: [],
+    };
+    expect(toMermaid(graph)).toContain('a[" "]');
+    const xml = toDrawio(graph, { positions: {}, sizes: {} });
+    expect(xml).toContain('style="');
+    expect(xml).toMatch(/text;html=1/);
   });
 });

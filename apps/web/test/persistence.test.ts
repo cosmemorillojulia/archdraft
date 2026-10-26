@@ -7,7 +7,12 @@ import {
 import { computeLayout } from '@archdraft/layout';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileNameFor } from '../src/export/files.ts';
-import { inferDirection, openDocumentText, openLink } from '../src/editor/open-document.ts';
+import {
+  inferDirection,
+  openDocumentText,
+  openFileText,
+  openLink,
+} from '../src/editor/open-document.ts';
 import { createEditorStore } from '../src/editor/store.ts';
 import { readSavedDocument, SAVED_DOCUMENT_KEY, startAutosave } from '../src/persist/autosave.ts';
 import {
@@ -86,6 +91,39 @@ describe('share links', () => {
     await expect(decodeDocument('A'.repeat(600_000))).rejects.toMatchObject({
       reason: 'too-large',
     });
+  });
+});
+
+describe('opening files from other tools', () => {
+  it('opens a Mermaid flowchart laid out, titled after the file', async () => {
+    const store = createEditorStore();
+    const text = 'flowchart LR\n  A[Start] --> B{Ok?}\n  B -->|yes| C((Done))';
+    expect(await openFileText(text, 'my-flow.mmd', 'LR', store)).toBe(true);
+    const { document } = store.getState().current!;
+    expect(document.graph.title).toBe('my-flow');
+    expect(document.graph.nodes.map((node) => node.kind)).toEqual(['box', 'diamond', 'circle']);
+    expect(Object.keys(document.layout.positions)).toHaveLength(3);
+  });
+
+  it('opens a draw.io file in place, and says what it left out', async () => {
+    const store = createEditorStore();
+    const xml = `<mxfile><diagram name="Plan"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>
+      <mxCell id="a" value="One" style="rounded=1;" vertex="1" parent="1"><mxGeometry x="10" y="20" width="100" height="40" as="geometry"/></mxCell>
+      <mxCell id="b" value="Two" style="" vertex="1" parent="1"><mxGeometry x="210" y="20" width="100" height="40" as="geometry"/></mxCell>
+      <mxCell id="e" edge="1" parent="1" source="a" target="b"><mxGeometry relative="1" as="geometry"/></mxCell>
+      <mxCell id="loose" edge="1" parent="1" source="a"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root></mxGraphModel></diagram></mxfile>`;
+    expect(await openFileText(xml, 'plan.drawio', 'LR', store)).toBe(true);
+    const current = store.getState().current!;
+    expect(current.document.graph.title).toBe('Plan');
+    expect(current.document.layout.positions.a).toEqual({ x: 10, y: 20 });
+    expect(store.getState().message?.text).toMatch(/Imported\. 1 connectors/);
+  });
+
+  it('says why a file cannot be opened', async () => {
+    const store = createEditorStore();
+    expect(await openFileText('sequenceDiagram\n A->>B: hi', 'x.mmd', 'LR', store)).toBe(false);
+    expect(store.getState().message?.text).toMatch(/could not be opened/);
   });
 });
 

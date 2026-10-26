@@ -5,6 +5,8 @@ import {
   type DiagramDocument,
   type DiagramLayout,
   importDocument,
+  importDrawio,
+  importMermaid,
   layoutEntry,
   type TemplateId,
 } from '@archdraft/core';
@@ -125,8 +127,18 @@ export async function openDocumentText(
     return false;
   }
 
-  const { graph } = result;
-  let layout = result.layout;
+  return showDiagram(result.graph, result.layout, direction, request, store);
+}
+
+/** Lays out what the diagram lacks a position for, and shows it. Only the latest request shows. */
+async function showDiagram(
+  graph: ArchitectureGraph,
+  placed: DiagramLayout | null,
+  direction: LayoutDirection,
+  request: number,
+  store: typeof editorStore,
+): Promise<boolean> {
+  let layout = placed;
   let shown = layout ? (inferDirection({ graph, layout }) ?? direction) : direction;
   if (!layout || !isComplete(graph, layout)) {
     try {
@@ -141,6 +153,47 @@ export async function openDocumentText(
   if (request !== latestRequest) return false;
   store.getState().load({ graph, layout }, { direction: shown, templateId: null });
   return true;
+}
+
+/**
+ * Opens a file from this or another tool: an Archdraft JSON file, a Mermaid
+ * flowchart or a draw.io diagram, told apart by what is inside. What the other
+ * formats hold that Archdraft cannot show is said afterwards. Returns whether
+ * it opened.
+ */
+export async function openFileText(
+  text: string,
+  fileName: string,
+  direction: LayoutDirection,
+  store = editorStore,
+): Promise<boolean> {
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith('{')) return openDocumentText(text, 'file', direction, store);
+
+  const request = ++latestRequest;
+  const strings = currentStrings();
+  const drawio = /<(mxfile|mxGraphModel|diagram)[\s>]/.test(trimmed.slice(0, 4000));
+  const result = drawio ? await importDrawio(text) : importMermaid(text);
+  if (!result.success) {
+    store.getState().notify(strings.persist.openFailed.file(result.message));
+    return false;
+  }
+  let { graph } = result.document;
+  if (graph.title === 'Imported diagram') {
+    const stem = fileName.replace(/\.[^.]*$/, '').trim();
+    graph = { ...graph, title: (stem === '' ? strings.persist.importedTitle : stem).slice(0, 120) };
+  }
+  const opened = await showDiagram(
+    graph,
+    result.placed ? result.document.layout : null,
+    direction,
+    request,
+    store,
+  );
+  if (opened && result.warnings.length > 0) {
+    store.getState().notify(strings.persist.importedWithNotes(result.warnings.join(' ')));
+  }
+  return opened;
 }
 
 /** Opens the diagram of a `#d=…` link. Returns whether it opened. */

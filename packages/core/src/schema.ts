@@ -60,7 +60,11 @@ export const NodeAttributesSchema = z
 export const ArchNodeSchema = z.strictObject({
   id: IdSchema,
   kind: NodeKindSchema.describe('Component or container type from the catalog'),
-  label: z.string().trim().min(1).max(LIMITS.labelLength).describe('Short display name'),
+  label: z
+    .string()
+    .trim()
+    .max(LIMITS.labelLength)
+    .describe('Short display name; only shapes and text may leave it empty'),
   description: z.string().trim().max(LIMITS.descriptionLength).optional(),
   provider: CloudProviderSchema.optional().describe(
     'Overrides the diagram provider for this node, e.g. a SaaS outside the main cloud',

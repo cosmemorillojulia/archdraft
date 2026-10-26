@@ -21,6 +21,15 @@ describe('validateGraph', () => {
     expect(validateGraph(threeTierGraph())).toEqual([]);
   });
 
+  it('lets shapes and text have no name, but not anything else', () => {
+    const graph = graphWith([
+      { id: 'a', kind: 'box', label: '' },
+      { id: 'b', kind: 'text', label: '' },
+      { id: 'c', kind: 'vm', label: '' },
+    ]);
+    expect(validateGraph(graph)).toMatchObject([{ code: 'EMPTY_LABEL', nodeIds: ['c'] }]);
+  });
+
   it('reports duplicate node and edge ids', () => {
     const graph = graphWith(
       [

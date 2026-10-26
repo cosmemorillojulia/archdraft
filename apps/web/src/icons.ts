@@ -39,6 +39,7 @@ import {
   Warehouse,
   WavesHorizontal,
   Zap,
+  Type as TextIcon,
 } from 'lucide-react';
 
 /**
@@ -80,6 +81,7 @@ export const KIND_ICONS = {
   circle: Circle,
   diamond: Diamond,
   note: StickyNote,
+  text: TextIcon,
   region: MapIcon,
   'availability-zone': MapPin,
   network: Network,

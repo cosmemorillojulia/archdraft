@@ -1,4 +1,9 @@
-import { type ArchitectureGraph, type DiagramLayout, layoutEntry } from '@archdraft/core';
+import {
+  type ArchitectureGraph,
+  type ArchNode,
+  type DiagramLayout,
+  layoutEntry,
+} from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
 
 export interface Box {
@@ -6,6 +11,32 @@ export interface Box {
   readonly y: number;
   readonly width: number;
   readonly height: number;
+}
+
+/**
+ * The nodes from back to front. The order of `graph.nodes` is the stacking
+ * order among nodes of the same container; a container comes before its
+ * children, and its whole contents stay together, so one sent to the front
+ * takes them with it. Parents come first, which React Flow needs.
+ */
+export function stackingOrder(graph: ArchitectureGraph): ArchNode[] {
+  const ids = new Set(graph.nodes.map((node) => node.id));
+  const children = new Map<string | undefined, ArchNode[]>();
+  for (const node of graph.nodes) {
+    const parent =
+      node.parentId !== undefined && ids.has(node.parentId) ? node.parentId : undefined;
+    children.set(parent, [...(children.get(parent) ?? []), node]);
+  }
+  const ordered: ArchNode[] = [];
+  const visit = (parent: string | undefined, seen: ReadonlySet<string>) => {
+    for (const node of children.get(parent) ?? []) {
+      if (seen.has(node.id)) continue;
+      ordered.push(node);
+      visit(node.id, new Set([...seen, node.id]));
+    }
+  };
+  visit(undefined, new Set());
+  return ordered;
 }
 
 /**

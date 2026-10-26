@@ -49,6 +49,7 @@ export const SHAPE_SIZES: Readonly<Record<ShapeKind, Size>> = {
   circle: { width: 96, height: 96 },
   diamond: { width: 140, height: 96 },
   note: { width: 160, height: 96 },
+  text: { width: 160, height: 36 },
 };
 
 /** Size of a node of `kind` that has not been measured, resized or laid out yet. */

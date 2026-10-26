@@ -109,6 +109,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const strings = useStrings();
   const { document: diagram, direction } = snapshot;
   const selection = useEditor((state) => state.selection);
+  const group = useEditor((state) => state.group);
   const renamingId = useEditor((state) => state.renaming);
   const placedId = useEditor((state) => state.placed);
   const inspectorExpanded = useEditor(isInspectorExpanded);
@@ -139,7 +140,13 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   }, [boxes]);
 
   const [hoverId, setHoverId] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<{ id: string; position: XYPosition } | null>(null);
+  const [dragging, setDragging] = useState<{
+    id: string;
+    position: XYPosition;
+    /** The rest of the chosen nodes, which move by the same distance. */
+    others: readonly { id: string; position: XYPosition }[];
+  } | null>(null);
+  const dragStart = useRef<ReadonlyMap<string, XYPosition> | null>(null);
   const [nodeDropTargetId, setDropTargetId] = useState<string | null>(null);
   // A tile dragged from the palette lights up the group it would be added to, like a dragged node.
   const paletteDropTargetId = usePaletteDrag(({ drag }) =>
@@ -165,14 +172,17 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   }, []);
 
   // The store holds where nodes rest; while one is dragged, its position lives here.
-  const selectedNodeId = selection?.type === 'node' ? selection.id : null;
+  const selectedNodeId = selection?.type === 'node' && group.length < 2 ? selection.id : null;
+  const groupIds = useMemo(() => new Set(group), [group]);
   // A resize in progress shows the box the editor will accept, with the contents of a group in place.
   const fitted = useMemo(
     () => (resizing ? fitResize(diagram, resizing.id, resizing.box) : null),
     [diagram, resizing],
   );
   const nodes = useMemo(() => {
-    if (!dragging && !resizing && selectedNodeId === null) return elements.nodes;
+    if (!dragging && !resizing && selectedNodeId === null && groupIds.size === 0) {
+      return elements.nodes;
+    }
     return elements.nodes.map((node) => {
       if (resizing && fitted && node.id === resizing.id) {
         const { x, y, width, height } = fitted.box;
@@ -191,10 +201,12 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       if (node.id === dragging?.id) {
         return { ...node, position: dragging.position, draggable: true, zIndex: DRAGGED_Z };
       }
-      if (node.id === selectedNodeId) return { ...node, draggable: true };
+      const moved = dragging?.others.find((other) => other.id === node.id);
+      if (moved) return { ...node, position: moved.position, draggable: true, zIndex: DRAGGED_Z };
+      if (node.id === selectedNodeId || groupIds.has(node.id)) return { ...node, draggable: true };
       return node;
     });
-  }, [elements.nodes, dragging, fitted, resizing, selectedNodeId]);
+  }, [elements.nodes, dragging, fitted, groupIds, resizing, selectedNodeId]);
 
   // While the review is open, components show their most severe finding, and the chosen
   // finding stands out with everything else faded.
@@ -217,7 +229,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const canvas = useMemo(() => {
     const hovered = busyId === null ? hoverId : null;
     const shared = {
-      selection,
+      selection: group.length > 1 ? null : selection,
+      group: groupIds,
       renamingId,
       placedId,
       dropTargetId,
@@ -260,6 +273,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     resize,
     selectedNodeId,
     selection,
+    group,
+    groupIds,
   ]);
 
   /** The whole diagram, centred in the part of the canvas the floating interface leaves free. */
@@ -398,7 +413,22 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const onNodesChange = useCallback((changes: NodeChange<ArchitectureFlowNode>[]) => {
     for (const change of changes) {
       if (change.type === 'position' && change.dragging && change.position) {
-        setDragging({ id: change.id, position: change.position });
+        const { id, position } = change;
+        const start = dragStart.current;
+        const origin = start?.get(id);
+        const others =
+          start && origin
+            ? [...start]
+                .filter(([other]) => other !== id)
+                .map(([other, from]) => ({
+                  id: other,
+                  position: {
+                    x: from.x + position.x - origin.x,
+                    y: from.y + position.y - origin.y,
+                  },
+                }))
+            : [];
+        setDragging({ id, position, others });
       }
     }
   }, []);
@@ -409,12 +439,29 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
 
   // Handlers given to React Flow keep their identity (see useStableHandler).
   // Moving a node is not editing it: the selection, and so the inspector, stay as they were.
-  const onNodeDragStart = useStableHandler(() => setHoverId(null));
+  const onNodeDragStart = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
+    setHoverId(null);
+    // Dragging one of several chosen nodes drags them all; groups stay where they are.
+    const chosen = editorStore.getState().group;
+    dragStart.current = chosen.includes(node.id)
+      ? new Map(
+          elements.nodes
+            .filter((other) => chosen.includes(other.id) && other.type !== 'container')
+            .map((other) => [other.id, other.position] as const),
+        )
+      : null;
+  });
   const onNodeDrag = useStableHandler((_event: unknown, node: ArchitectureFlowNode) =>
     setDropTargetId(dropTargetFor(node)),
   );
   const onNodeDragStop = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
-    editorStore.getState().moveNode(node.id, node.position);
+    const together = dragging?.others ?? [];
+    if (together.length > 0) {
+      editorStore.getState().moveNodes([{ id: node.id, position: node.position }, ...together]);
+    } else {
+      editorStore.getState().moveNode(node.id, node.position);
+    }
+    dragStart.current = null;
     setDragging(null);
     setDropTargetId(null);
   });
@@ -423,8 +470,14 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     if (pointerType.current !== 'touch' && node.type !== 'container') setHoverId(node.id);
   });
   const onNodeMouseLeave = useStableHandler(() => setHoverId(null));
-  const onNodeClick = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
+  const onNodeClick = useStableHandler((event: React.MouseEvent, node: ArchitectureFlowNode) => {
     const editor = editorStore.getState();
+    // Ctrl, Cmd or Shift with a click chooses several nodes, to move or delete them together.
+    if ((event.ctrlKey || event.metaKey || event.shiftKey) && editor.connectingFrom === null) {
+      reviewStore.getState().setOpen(false);
+      editor.toggleSelected(node.id);
+      return;
+    }
     // Choosing a component on the canvas means editing it: the inspector takes over.
     reviewStore.getState().setOpen(false);
     if (editor.connectingFrom === null) editor.select({ type: 'node', id: node.id });

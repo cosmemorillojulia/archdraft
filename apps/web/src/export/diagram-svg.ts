@@ -17,6 +17,7 @@ import { getBezierPath, Position } from '@xyflow/react';
 import { groupTint } from '../canvas/appearance.ts';
 import {
   absoluteBoxes,
+  stackingOrder,
   arrowhead,
   type Box,
   boundsOf,
@@ -75,6 +76,8 @@ export const FONT_FAMILY = "'Instrument Sans Variable', 'Instrument Sans', syste
 const LABEL: TextStyle = { size: 13, weight: 600 };
 const PRODUCT: TextStyle = { size: 11, weight: 400 };
 const SHAPE_LABEL: TextStyle = { size: 13, weight: 500 };
+/** Free text is a little larger than the text inside a figure. */
+const TEXT_LABEL: TextStyle = { size: 15, weight: 500 };
 const GROUP_LABEL: TextStyle = { size: 12, weight: 600 };
 const EDGE_LABEL: TextStyle = { size: 10.5, weight: 600 };
 const BADGE: TextStyle = { size: 9.5, weight: 500 };
@@ -248,21 +251,31 @@ function shape(node: ArchNode, box: Box, options: DrawingOptions): string {
   const fill = node.kind === 'note' ? palette.note : palette.surface;
   const paint = `fill="${fill}" stroke="${palette.shapeLine}" stroke-width="1.5" stroke-linejoin="round"`;
   const outline =
-    node.kind === 'circle'
-      ? `<ellipse cx="${w / 2}" cy="${h / 2}" rx="${w / 2}" ry="${h / 2}" ${paint}/>`
-      : node.kind === 'diamond'
-        ? `<path d="M${w / 2} 0L${w} ${h / 2}L${w / 2} ${h}L0 ${h / 2}Z" ${paint}/>`
-        : node.kind === 'note'
-          ? `<path d="M0 0H${round(w * 0.85)}L${w} ${round(h * 0.15)}V${h}H0Z" ${paint}/><path d="M${round(w * 0.85)} 0V${round(h * 0.15)}H${w}" fill="none" stroke="${palette.shapeLine}" stroke-width="1.5" stroke-linejoin="round"/>`
-          : `<rect width="${w}" height="${h}" rx="8" ${paint}/>`;
-  const share = node.kind === 'diamond' ? 0.62 : node.kind === 'circle' ? 0.74 : 0.88;
-  const lineHeight = SHAPE_LABEL.size * 1.375;
-  const lines = wrapText(node.label, w * share, 3, SHAPE_LABEL, measure);
+    node.kind === 'text'
+      ? ''
+      : node.kind === 'circle'
+        ? `<ellipse cx="${w / 2}" cy="${h / 2}" rx="${w / 2}" ry="${h / 2}" ${paint}/>`
+        : node.kind === 'diamond'
+          ? `<path d="M${w / 2} 0L${w} ${h / 2}L${w / 2} ${h}L0 ${h / 2}Z" ${paint}/>`
+          : node.kind === 'note'
+            ? `<path d="M0 0H${round(w * 0.85)}L${w} ${round(h * 0.15)}V${h}H0Z" ${paint}/><path d="M${round(w * 0.85)} 0V${round(h * 0.15)}H${w}" fill="none" stroke="${palette.shapeLine}" stroke-width="1.5" stroke-linejoin="round"/>`
+            : `<rect width="${w}" height="${h}" rx="8" ${paint}/>`;
+  const style = node.kind === 'text' ? TEXT_LABEL : SHAPE_LABEL;
+  const share =
+    node.kind === 'diamond'
+      ? 0.62
+      : node.kind === 'circle'
+        ? 0.74
+        : node.kind === 'text'
+          ? 1
+          : 0.88;
+  const lineHeight = style.size * 1.375;
+  const lines = wrapText(node.label, w * share, 3, style, measure);
   const top = (h - lines.length * lineHeight) / 2;
   return [
     `<g transform="translate(${round(box.x)} ${round(box.y)})">`,
     outline,
-    textLines(lines, w / 2, top, lineHeight, SHAPE_LABEL, palette.ink, 'middle'),
+    textLines(lines, w / 2, top, lineHeight, style, palette.ink, 'middle'),
     '</g>',
   ].join('');
 }
@@ -333,10 +346,16 @@ export function diagramToSvg(document: DiagramDocument, options: DrawingOptions)
   const height = Math.ceil(bounds.height + DRAWING_MARGIN * 2);
   const depths = nestingDepths(graph);
 
-  const groups = graph.nodes
-    .filter((node) => isContainerKind(node.kind) && boxes.has(node.id))
-    .sort((a, b) => (depths.get(a.id) ?? 0) - (depths.get(b.id) ?? 0))
-    .map((node) => group(node, boxes.get(node.id) as Box, depths.get(node.id) ?? 0, options));
+  // Groups first, then the connections, then the other nodes, each from back to front as in the
+  // editor. A figure sent behind a group is hidden by it in the editor, but not here.
+  const ordered = stackingOrder(graph).filter((node) => boxes.has(node.id));
+  const draw = (node: ArchNode): string => {
+    const box = boxes.get(node.id) as Box;
+    if (isContainerKind(node.kind)) return group(node, box, depths.get(node.id) ?? 0, options);
+    return isShapeKind(node.kind)
+      ? shape(node, box, options)
+      : component(node, box, graph, options);
+  };
   const obstacles = graph.nodes.flatMap((node) => {
     const box = boxes.get(node.id);
     return box && !isContainerKind(node.kind) ? [box] : [];
@@ -346,14 +365,8 @@ export function diagramToSvg(document: DiagramDocument, options: DrawingOptions)
     const target = boxes.get(edge.target);
     return source && target ? [connection(edge, source, target, obstacles, options)] : [];
   });
-  const nodes = graph.nodes
-    .filter((node) => !isContainerKind(node.kind) && boxes.has(node.id))
-    .map((node) => {
-      const box = boxes.get(node.id) as Box;
-      return isShapeKind(node.kind)
-        ? shape(node, box, options)
-        : component(node, box, graph, options);
-    });
+  const behind = ordered.filter((node) => isContainerKind(node.kind)).map(draw);
+  const inFront = ordered.filter((node) => !isContainerKind(node.kind)).map(draw);
 
   const style = options.fontFace === undefined ? '' : `<style>${options.fontFace}</style>`;
   const svg = [
@@ -361,9 +374,9 @@ export function diagramToSvg(document: DiagramDocument, options: DrawingOptions)
     `<title>${escapeXml(graph.title)}</title>`,
     style,
     `<rect x="${round(x)}" y="${round(y)}" width="${width}" height="${height}" fill="${options.palette.canvas}"/>`,
-    ...groups,
+    ...behind,
     ...connections.map(({ line }) => line),
-    ...nodes,
+    ...inFront,
     ...connections.map(({ label }) => label),
     '</svg>',
   ].join('\n');

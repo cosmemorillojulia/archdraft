@@ -13,10 +13,29 @@ import {
   type NodeAttributes,
   resolveEdgeMode,
 } from '@archdraft/core';
-import { ArrowRight, Cable, Copy, type LucideIcon, Spline, Trash2, X } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowRight,
+  ArrowUp,
+  ArrowUpToLine,
+  Boxes,
+  Cable,
+  Copy,
+  type LucideIcon,
+  Spline,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { AnimatePresence, type DragControls, m, type PanInfo, useDragControls } from 'motion/react';
 import { type ReactNode, useId, useRef } from 'react';
-import type { EdgePatch, NodePatch, Selection } from '../editor/operations.ts';
+import {
+  canStack,
+  type EdgePatch,
+  type NodePatch,
+  type Selection,
+  type StackMove,
+} from '../editor/operations.ts';
 import { editorStore, useEditor } from '../editor/store.ts';
 import { KIND_ICONS } from '../icons.ts';
 import { EASE_OUT } from '../motion.ts';
@@ -131,6 +150,40 @@ export function Inspector({ placement, selection, graph, expanded }: InspectorPr
           {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} compact={compact} />}
         </m.div>
       </AnimatePresence>
+    </FloatingPanel>
+  );
+}
+
+/** Panel for several nodes chosen together: how many, and what can be done to all of them. */
+export function GroupPanel({ placement, count }: { placement: PanelPlacement; count: number }) {
+  const strings = useStrings();
+  const headingId = useId();
+  const title = strings.inspector.chosen(count);
+  return (
+    <FloatingPanel placement={placement} labelledBy={headingId}>
+      <PanelHeader
+        headingId={headingId}
+        title={title}
+        subtitle={strings.inspector.chosenHint}
+        icon={
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-surface-muted text-muted">
+            <Boxes size={18} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+        }
+        closeLabel={strings.inspector.close}
+        onClose={() => editorStore.getState().select(null)}
+      />
+      <Actions>
+        <ActionButton
+          compact={false}
+          variant="danger"
+          icon={Trash2}
+          label={strings.inspector.delete}
+          aria-keyshortcuts="Delete Backspace"
+          onClick={() => editorStore.getState().removeSelection()}
+          className="ml-auto"
+        />
+      </Actions>
     </FloatingPanel>
   );
 }
@@ -253,6 +306,54 @@ function ActionButton({
   );
 }
 
+/** Moves a box in front of or behind the ones it overlaps; any kind of box has it. */
+function OrderControls({ id, graph }: { id: string; graph: ArchitectureGraph }) {
+  const strings = useStrings();
+  const can = canStack(graph, id);
+  const moves: readonly { move: StackMove; icon: LucideIcon; label: string; enabled: boolean }[] = [
+    {
+      move: 'front',
+      icon: ArrowUpToLine,
+      label: strings.inspector.bringToFront,
+      enabled: can.forward,
+    },
+    { move: 'forward', icon: ArrowUp, label: strings.inspector.bringForward, enabled: can.forward },
+    {
+      move: 'backward',
+      icon: ArrowDown,
+      label: strings.inspector.sendBackward,
+      enabled: can.backward,
+    },
+    {
+      move: 'back',
+      icon: ArrowDownToLine,
+      label: strings.inspector.sendToBack,
+      enabled: can.backward,
+    },
+  ];
+  return (
+    <section className="flex flex-col gap-2 border-t border-line pt-3.5">
+      <h3 className="text-xs font-semibold">{strings.inspector.order}</h3>
+      <div className="grid grid-cols-4 gap-1.5">
+        {moves.map(({ move, icon: Icon, label, enabled }) => (
+          <Button
+            key={move}
+            variant="ghost"
+            size="icon"
+            aria-label={label}
+            title={label}
+            disabled={!enabled}
+            onClick={() => editorStore.getState().stackNode(id, move)}
+            className="w-full border border-line"
+          >
+            <Icon size={16} aria-hidden="true" />
+          </Button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function NodeForm({
   node,
   graph,
@@ -286,7 +387,8 @@ function NodeForm({
 
   const title = {
     headingId,
-    title: node.label,
+    // A shape or text with no name is introduced by what it is.
+    title: node.label === '' ? strings.kinds[node.kind].label : node.label,
     subtitle: strings.kinds[node.kind].label,
     icon: (
       <span
@@ -345,7 +447,7 @@ function NodeForm({
           label={strings.inspector.name}
           value={node.label}
           maxLength={LIMITS.labelLength}
-          required
+          required={!isShapeKind(node.kind)}
           onCommit={(label) => update({ label })}
         />
         {!plain && (
@@ -376,6 +478,7 @@ function NodeForm({
             update({ description: description === '' ? undefined : description })
           }
         />
+        <OrderControls id={node.id} graph={graph} />
         {!plain && (
           <section className="flex flex-col gap-2.5 border-t border-line pt-3.5">
             <h3 className="text-xs font-semibold">{strings.inspector.operations}</h3>
@@ -424,7 +527,10 @@ function EdgeForm({
   compact: boolean;
 }) {
   const strings = useStrings();
-  const labelOf = (id: string) => graph.nodes.find((node) => node.id === id)?.label ?? id;
+  const labelOf = (id: string) => {
+    const node = graph.nodes.find((candidate) => candidate.id === id);
+    return node === undefined ? id : node.label || strings.kinds[node.kind].label;
+  };
   const update = (patch: EdgePatch) => editorStore.getState().updateEdge(edge.id, patch);
   const { mode: _mode, ...withoutMode } = edge;
   const inferred = resolveEdgeMode(withoutMode);

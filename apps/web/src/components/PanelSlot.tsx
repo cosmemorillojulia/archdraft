@@ -2,7 +2,7 @@ import { AnimatePresence } from 'motion/react';
 import { isInspectorExpanded, useEditor } from '../editor/store.ts';
 import { useReview } from '../review/review-store.ts';
 import type { PanelPlacement } from './FloatingPanel.tsx';
-import { Inspector, useInspecting } from './Inspector.tsx';
+import { GroupPanel, Inspector, useInspecting } from './Inspector.tsx';
 import { ReviewPanel } from './ReviewPanel.tsx';
 
 /**
@@ -14,6 +14,7 @@ export function PanelSlot({ placement }: { placement: PanelPlacement }) {
   const reviewOpen = useReview((state) => state.open);
   const inspecting = useInspecting(placement);
   const selection = useEditor((state) => state.selection);
+  const group = useEditor((state) => state.group);
   const graph = useEditor((state) => state.current?.document.graph);
   const expanded = useEditor(isInspectorExpanded);
 
@@ -22,13 +23,17 @@ export function PanelSlot({ placement }: { placement: PanelPlacement }) {
       {reviewOpen ? (
         <ReviewPanel key="review" placement={placement} />
       ) : inspecting && selection && graph ? (
-        <Inspector
-          key="inspector"
-          placement={placement}
-          selection={selection}
-          graph={graph}
-          expanded={expanded}
-        />
+        group.length > 1 ? (
+          <GroupPanel key="group" placement={placement} count={group.length} />
+        ) : (
+          <Inspector
+            key="inspector"
+            placement={placement}
+            selection={selection}
+            graph={graph}
+            expanded={expanded}
+          />
+        )
       ) : null}
     </AnimatePresence>
   );

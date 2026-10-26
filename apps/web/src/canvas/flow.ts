@@ -16,7 +16,10 @@ import type { LayoutDirection } from '@archdraft/layout';
 import type { Edge, Node } from '@xyflow/react';
 import { en, type KindText } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
-import { absoluteBoxes, boundsOf, edgeSides, nestingDepths } from './geometry.ts';
+import { absoluteBoxes, boundsOf, edgeSides, nestingDepths, stackingOrder } from './geometry.ts';
+
+/** What a screen reader says for a node: name and kind, or only the kind if it has no name. */
+const spoken = (label: string, kind: string): string => (label === '' ? kind : `${label}, ${kind}`);
 
 /** Seconds the diagram takes to build from its first layer to its last. */
 export const BUILD_SPREAD = 0.6;
@@ -100,9 +103,7 @@ export function toFlow(
     return 0.1 + progress * BUILD_SPREAD;
   };
 
-  const placed = graph.nodes
-    .filter((node) => boxes.has(node.id))
-    .sort((a, b) => (depths.get(a.id) ?? 0) - (depths.get(b.id) ?? 0));
+  const placed = stackingOrder(graph).filter((node) => boxes.has(node.id));
 
   const nodes = placed.map((node): ArchitectureFlowNode => {
     const position = layoutEntry(layout.positions, node.id) ?? { x: 0, y: 0 };
@@ -123,7 +124,7 @@ export function toFlow(
         ...base,
         type: 'container',
         draggable: false,
-        ariaLabel: `${node.label}, ${kinds[node.kind].label}`,
+        ariaLabel: spoken(node.label, kinds[node.kind].label),
         data: { node, depth: depths.get(node.id) ?? 0, appearDelay: appearDelay(node.id) * 0.5 },
       };
     }
@@ -131,7 +132,7 @@ export function toFlow(
       return {
         ...base,
         type: 'shape',
-        ariaLabel: `${node.label}, ${kinds[node.kind].label}`,
+        ariaLabel: spoken(node.label, kinds[node.kind].label),
         data: { node, appearDelay: appearDelay(node.id) },
       };
     }

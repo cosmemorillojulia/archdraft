@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import { CONTAINMENT_RULES } from './catalog.ts';
 import { type GraphIndex, indexGraph } from './graph.ts';
-import { isContainerKind } from './kinds.ts';
+import { isContainerKind, isShapeKind } from './kinds.ts';
 import { type ArchitectureGraph, type ArchNode, ArchitectureGraphSchema } from './schema.ts';
 
 /**
@@ -17,6 +17,7 @@ export const VALIDATION_CODES = [
   'UNSUPPORTED_SCHEMA_VERSION',
   'MIGRATION_FAILED',
   'SCHEMA',
+  'EMPTY_LABEL',
   'DUPLICATE_NODE_ID',
   'DUPLICATE_EDGE_ID',
   'EDGE_UNKNOWN_SOURCE',
@@ -72,6 +73,12 @@ export function validateGraph(graph: ArchitectureGraph): ValidationIssue[] {
 
 function checkNodeIds(graph: ArchitectureGraph): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  // Shapes and text are what they show, so they may show nothing; everything else needs a name.
+  for (const { id, kind, label } of graph.nodes) {
+    if (label.trim() === '' && !isShapeKind(kind)) {
+      issues.push(error('EMPTY_LABEL', `Node "${id}" needs a name`, { nodeIds: [id] }));
+    }
+  }
   const seen = new Set<string>();
   for (const { id } of graph.nodes) {
     if (seen.has(id)) {

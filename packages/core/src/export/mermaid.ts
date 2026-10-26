@@ -83,10 +83,9 @@ function idOf(ids: ReadonlyMap<string, string>, nodeId: string): string {
 
 function nodeShape(node: ArchNode, graph: ArchitectureGraph): string {
   const subtitle = nodeSubtitle(node, graph);
-  const label =
-    subtitle === undefined
-      ? escapeLabel(node.label)
-      : `${escapeLabel(node.label)}<br/>${escapeLabel(subtitle)}`;
+  // Mermaid rejects an empty label, so a shape without a name gets a space.
+  const name = node.label === '' ? ' ' : escapeLabel(node.label);
+  const label = subtitle === undefined ? name : `${name}<br/>${escapeLabel(subtitle)}`;
   switch (node.kind) {
     case 'circle':
       return `(("${label}"))`;

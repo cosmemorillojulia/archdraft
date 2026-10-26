@@ -43,10 +43,10 @@ describe('ArchitectureGraphSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('trims labels and rejects blank ones', () => {
+  it('trims labels, and leaves blank ones to the validation, which only lets shapes have them', () => {
     const trimmed = ArchNodeSchema.parse({ id: 'a', kind: 'vm', label: '  Web  ' });
     expect(trimmed.label).toBe('Web');
-    expect(ArchNodeSchema.safeParse({ id: 'a', kind: 'vm', label: '   ' }).success).toBe(false);
+    expect(ArchNodeSchema.parse({ id: 'a', kind: 'box', label: '   ' }).label).toBe('');
   });
 
   it('enforces the node limit', () => {

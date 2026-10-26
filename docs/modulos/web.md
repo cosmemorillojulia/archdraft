@@ -263,6 +263,14 @@ Los botones de zoom y el de la animación del flujo forman un grupo llamado «Vi
 
 Al pasar el ratón por un componente, este crece un 4 % y se perfila con su color, sus conexiones se vuelven del color de acento con su etiqueta y el resto se atenúa. Un componente seleccionado (al tocarlo en una pantalla táctil, por ejemplo) resalta también sus conexiones, pero no atenúa el resto, que sigue siendo editable. El tipo de puntero se recuerda en cada `pointerdown`, porque React Flow notifica el hover con eventos de ratón también en pantallas táctiles. Este estado, la selección y el grupo de destino de un arrastre viven en un contexto (`CanvasContext`) para no recalcular los nodos. Las etiquetas se pintan en la capa de etiquetas de React Flow, que se sube por encima de los nodos porque los grupos opacos las taparían.
 
+### Figuras sin nombre, texto, orden y selección múltiple
+
+- Las figuras (caja, círculo, rombo, nota) nacen sin nombre y pueden quedarse así: solo ellas y el texto admiten un nombre vacío (`EMPTY_LABEL` en core). El inspector no lo exige y se presentan por su tipo.
+- El tipo Texto (`text`, una figura sin contorno) se coloca con un clic o dibujando su caja, y se escribe ahí mismo; si se deja vacío al terminar, se elimina. Seleccionado o al dibujarse, muestra un marco discontinuo.
+- El orden de apilado es el de `graph.nodes` entre los nodos de un mismo grupo (`stackingOrder` en geometry.ts, que el lienzo y la exportación a SVG comparten; un grupo siempre va antes que sus hijos y arrastra su contenido). El inspector de cualquier nodo tiene cuatro botones: al frente, subir, bajar y al fondo (`stackNode`, `canStack`). En el SVG exportado los grupos siguen dibujándose bajo las conexiones, así que una figura enviada detrás de un grupo se ve ahí aunque el editor la oculte.
+- Ctrl, Cmd o Mayús con un clic en un nodo lo suma o lo quita de la selección (`group` en el store). Con dos o más, un panel dice cuántos hay y ofrece borrar; arrastrar uno mueve todos (excepto los grupos) con un solo paso del historial (`moveNodes`) y Suprimir los borra con su contenido (`removeNodes`). Un clic sin teclas, Escape o un clic en el lienzo la terminan.
+- En la tarjeta del diagrama, el título se edita al pulsarlo (da nombre a los ficheros que se exportan) y la nube se elige con un desplegable (`updateDiagram`); las dos cosas son un paso del historial.
+
 ### Diagrama en blanco
 
 El botón + de la cabecera (`openBlank`, en `editor/open-document.ts`) abre un diagrama vacío titulado «Diagrama sin título» en el idioma de la interfaz, con la dirección que corresponde a la pantalla. Es un paso del historial: deshacer devuelve el diagrama anterior. Descarta una plantilla que aún se esté disponiendo, para que no sustituya al diagrama en blanco al terminar.
@@ -428,7 +436,7 @@ Al abrir un enlace, que puede estar manipulado, `decodeDocument` rechaza caracte
 
 ### Ficheros
 
-«Download JSON» descarga el documento con el título como nombre (`three-tier-web-application.archdraft.json`). «Open JSON file» abre un documento o un grafo suelto, por ejemplo uno escrito a mano o exportado con `toJson`; sin disposición, se coloca con ELK.
+«Download JSON» descarga el documento con el título como nombre (`three-tier-web-application.archdraft.json`). «Abrir o importar un fichero» (`openFileText`) distingue por el contenido un documento o grafo suelto de Archdraft (JSON, por ejemplo uno escrito a mano o exportado con `toJson`), un flowchart de Mermaid (`.mmd`, `.mermaid`, `.md`, `.txt`) y un fichero de draw.io (`.drawio`, `.xml`); ver «Importar de otras herramientas» en core.md. Lo que no tiene disposición, como Mermaid, se coloca con ELK; el título sale del fichero o, si no lo trae, de su nombre. Si se omitió algo, un aviso lo cuenta («Importado. 2 connectors…»).
 
 ### Exportar
 

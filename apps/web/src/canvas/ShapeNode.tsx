@@ -3,7 +3,7 @@ import type { NodeProps } from '@xyflow/react';
 import { m } from 'motion/react';
 import { memo } from 'react';
 import { SPRING_POP } from '../motion.ts';
-import { isSelected, useCanvas } from './canvas-context.ts';
+import { nodeChoice, useCanvas } from './canvas-context.ts';
 import type { ShapeFlowNode } from './flow.ts';
 import { ConnectionHandles } from './ConnectionHandles.tsx';
 import { NameEditor } from './NameEditor.tsx';
@@ -13,7 +13,8 @@ import { ResizeHandles } from './ResizeHandles.tsx';
  * Outline of the diamond and the note, drawn in a 100 × 100 box stretched to
  * the node; the stroke keeps its width (`vector-effect`).
  */
-export const SHAPE_FILL = (kind: NodeKind) => (kind === 'note' ? 'var(--note)' : 'var(--surface)');
+export const SHAPE_FILL = (kind: NodeKind) =>
+  kind === 'note' ? 'var(--note)' : kind === 'text' ? 'transparent' : 'var(--surface)';
 
 const OUTLINES = {
   diamond: 'M50 1 L99 50 L50 99 L1 50 Z',
@@ -37,6 +38,16 @@ export function ShapeBody({
   selected?: boolean;
 }) {
   const outline = kind === 'diamond' || kind === 'note' ? OUTLINES[kind] : null;
+  // Text has no figure: only a dashed frame while it is selected or being drawn.
+  if (kind === 'text') {
+    return (
+      <span
+        aria-hidden="true"
+        className="absolute inset-0 rounded-md border-[1.5px] border-dashed transition-[border-color] duration-200"
+        style={{ borderColor: selected ? stroke : 'transparent' }}
+      />
+    );
+  }
   return outline === null ? (
     <span
       aria-hidden="true"
@@ -79,7 +90,7 @@ export const ShapeNode = memo(function ShapeNode({
   const canvas = useCanvas();
   const focused = canvas.focusId === id;
   const dimmed = canvas.dimOthers && !canvas.nodes.has(id);
-  const selected = isSelected(canvas.selection, 'node', id);
+  const { selected, grouped } = nodeChoice(canvas, id);
   const kind = node.kind;
   const stroke = focused || selected ? 'var(--accent)' : 'var(--shape-line)';
   const fill = SHAPE_FILL(kind);
@@ -97,7 +108,7 @@ export const ShapeNode = memo(function ShapeNode({
         <div
           data-state={focused ? 'focused' : dimmed ? 'dimmed' : 'idle'}
           data-selected={selected || undefined}
-          title={node.label}
+          title={node.label === '' ? undefined : node.label}
           className="relative flex h-full w-full items-center justify-center transition-[opacity,transform] duration-200 ease-out-soft data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.03]"
         >
           <ShapeBody kind={kind} stroke={stroke} fill={fill} selected={selected} />
@@ -105,18 +116,22 @@ export const ShapeNode = memo(function ShapeNode({
             <NameEditor
               id={id}
               value={node.label}
-              className={`relative px-1 text-center text-[13px] font-medium ${
-                kind === 'diamond' ? 'w-[62%]' : kind === 'circle' ? 'w-[74%]' : 'w-[88%]'
-              }`}
+              className={`relative px-1 text-center font-medium ${
+                kind === 'text' ? 'w-full text-[15px]' : 'text-[13px]'
+              } ${kind === 'diamond' ? 'w-[62%]' : kind === 'circle' ? 'w-[74%]' : kind === 'text' ? '' : 'w-[88%]'}`}
             />
           ) : (
             <span
-              className={`relative line-clamp-3 text-center text-[13px] leading-snug font-medium break-words ${
+              className={`relative line-clamp-3 text-center leading-snug font-medium break-words ${
+                kind === 'text' ? 'max-w-full text-[15px]' : 'text-[13px]'
+              } ${
                 kind === 'diamond'
                   ? 'max-w-[62%]'
                   : kind === 'circle'
                     ? 'max-w-[74%]'
-                    : 'max-w-[88%]'
+                    : kind === 'text'
+                      ? ''
+                      : 'max-w-[88%]'
               }`}
             >
               {node.label}
@@ -125,8 +140,8 @@ export const ShapeNode = memo(function ShapeNode({
         </div>
       </m.div>
       {/* After the figure, so its corner handles are above it. */}
-      <ResizeHandles id={id} kind={kind} visible={selected} />
-      <ConnectionHandles selected={selected} isConnectable={isConnectable} />
+      <ResizeHandles id={id} kind={kind} visible={selected && !grouped} />
+      <ConnectionHandles selected={selected && !grouped} isConnectable={isConnectable} />
     </div>
   );
 });

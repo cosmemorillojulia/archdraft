@@ -101,6 +101,10 @@ const KINDS: Record<NodeKind, KindText> = {
     label: 'Nota',
     description: 'Un comentario sobre el diagrama; sin significado de arquitectura',
   },
+  text: {
+    label: 'Texto',
+    description: 'Texto libre en cualquier punto del diagrama; sin significado de arquitectura',
+  },
   region: { label: 'Región', description: 'Región geográfica de la nube' },
   'availability-zone': {
     label: 'Zona de disponibilidad',
@@ -261,6 +265,8 @@ export const es: Strings = {
     components: (count: number) => (count === 1 ? 'componente' : 'componentes'),
     connections: (count: number) => (count === 1 ? 'conexión' : 'conexiones'),
     shapes: (count: number) => (count === 1 ? 'figura' : 'figuras'),
+    rename: 'Nombre del diagrama',
+    provider: 'Nube',
   },
   providers: {
     generic: 'Cualquier nube',
@@ -403,10 +409,13 @@ export const es: Strings = {
     exportFailed: 'No se ha podido crear la imagen. Vuelve a intentarlo o exporta SVG.',
     file: 'Fichero',
     download: 'Descargar JSON',
-    openFile: 'Abrir fichero JSON',
-    fileHint: 'Abrir un fichero sustituye el diagrama; deshacer lo recupera.',
+    openFile: 'Abrir o importar un fichero',
+    fileHint:
+      'Abre JSON de Archdraft, diagramas de flujo de Mermaid y ficheros de draw.io. Sustituye el diagrama; deshacer lo recupera.',
   },
   persist: {
+    importedTitle: 'Diagrama importado',
+    importedWithNotes: (notes: string) => `Importado. ${notes}`,
     openFailed: {
       file: (reason: string) => `No se ha podido abrir este fichero. ${reason}`,
       link: (reason: string) => `No se ha podido abrir este enlace. ${reason}`,
@@ -434,6 +443,13 @@ export const es: Strings = {
     collapse: 'Ocultar propiedades',
     connection: 'Conexión',
     name: 'Nombre',
+    chosen: (count: number) => `${count} seleccionados`,
+    chosenHint: 'Arrastra uno para moverlos todos',
+    order: 'Orden',
+    bringToFront: 'Traer al frente',
+    bringForward: 'Subir un nivel',
+    sendBackward: 'Bajar un nivel',
+    sendToBack: 'Enviar al fondo',
     product: 'Producto',
     provider: 'Se ejecuta en',
     providerDefault: (provider: string) => `El del diagrama (${provider})`,

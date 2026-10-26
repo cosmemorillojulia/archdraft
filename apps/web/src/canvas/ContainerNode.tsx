@@ -3,7 +3,7 @@ import { m } from 'motion/react';
 import { memo } from 'react';
 import { KIND_ICONS } from '../icons.ts';
 import { EASE_OUT } from '../motion.ts';
-import { isSelected, useCanvas } from './canvas-context.ts';
+import { nodeChoice, useCanvas } from './canvas-context.ts';
 import { groupTint } from './appearance.ts';
 import type { ContainerFlowNode } from './flow.ts';
 import { NameEditor } from './NameEditor.tsx';
@@ -25,7 +25,7 @@ export const ContainerNode = memo(function ContainerNode({
   const { node, depth, appearDelay } = data;
   const Icon = KIND_ICONS[node.kind];
   const canvas = useCanvas();
-  const selected = isSelected(canvas.selection, 'node', id);
+  const { selected, grouped } = nodeChoice(canvas, id);
   const dropTarget = canvas.dropTargetId === id;
   const tint = groupTint(depth) + (dropTarget ? DROP_TINT : 0);
 
@@ -57,7 +57,7 @@ export const ContainerNode = memo(function ContainerNode({
           )}
         </div>
       </m.div>
-      <ResizeHandles id={id} kind={node.kind} visible={selected} />
+      <ResizeHandles id={id} kind={node.kind} visible={selected && !grouped} />
     </>
   );
 });

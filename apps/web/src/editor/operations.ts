@@ -83,7 +83,8 @@ export function uniqueId(base: string, taken: ReadonlySet<string>): string {
 
 /** `label`, or `label 2`, `label 3`… if another node has it. */
 export function uniqueLabel(label: string, taken: ReadonlySet<string>): string {
-  if (!taken.has(label)) return label;
+  // No name is not a name: any number of shapes may have none.
+  if (label === '' || !taken.has(label)) return label;
   const base = label.replace(/ \d+$/, '');
   for (let n = 2; ; n++) {
     const suffix = ` ${n}`;
@@ -269,7 +270,12 @@ export function addNode(
   centre: Point,
   options: AddOptions = {},
 ): Edit {
-  const { name = getNodeDefinition(kind).label, size: drawn, exact = false } = options;
+  // A shape is born without a name: it is what it looks like, and text is what is typed in it.
+  const {
+    name = isShapeKind(kind) ? '' : getNodeDefinition(kind).label,
+    size: drawn,
+    exact = false,
+  } = options;
   const { graph, layout } = document;
   if (graph.nodes.length >= LIMITS.maxNodes) return reject(currentStrings().edit.tooManyNodes);
 
@@ -322,6 +328,57 @@ export function drawnSize(kind: NodeKind, dragged: Size): Size {
   if (kind !== 'circle') return { width, height };
   const side = Math.max(width, height);
   return { width: side, height: side };
+}
+
+/** Where a node goes among the nodes it is stacked with. */
+export type StackMove = 'front' | 'forward' | 'backward' | 'back';
+
+/** Nodes in the same container as `id`, from back to front, and where `id` is among them. */
+function siblingsOf(graph: ArchitectureGraph, id: string) {
+  const node = graph.nodes.find((candidate) => candidate.id === id);
+  if (!node) return undefined;
+  const slots = graph.nodes.flatMap((other, index) =>
+    other.parentId === node.parentId ? [index] : [],
+  );
+  const siblings = slots.map((index) => graph.nodes[index] as ArchNode);
+  return { slots, siblings, at: siblings.findIndex((sibling) => sibling.id === id) };
+}
+
+/** Which ways `id` can still move in the stack: nothing is in front of the first, or behind the last. */
+export function canStack(
+  graph: ArchitectureGraph,
+  id: string,
+): { forward: boolean; backward: boolean } {
+  const found = siblingsOf(graph, id);
+  if (!found) return { forward: false, backward: false };
+  return { forward: found.at < found.siblings.length - 1, backward: found.at > 0 };
+}
+
+/**
+ * Moves a node in the stacking order, among the nodes of its own container: to
+ * the very front or back, or one step. A container carries its contents. The
+ * order is that of `graph.nodes`, so it is saved with the diagram.
+ */
+export function stackNode(document: DiagramDocument, id: string, move: StackMove): Edit {
+  const { graph } = document;
+  const found = siblingsOf(graph, id);
+  if (!found) return unchanged(document);
+  const { slots, siblings, at } = found;
+  const last = siblings.length - 1;
+  const to =
+    move === 'front'
+      ? last
+      : move === 'back'
+        ? 0
+        : Math.min(Math.max(at + (move === 'forward' ? 1 : -1), 0), last);
+  if (to === at) return unchanged(document);
+  const reordered = siblings.filter((_, index) => index !== at);
+  reordered.splice(to, 0, siblings[at] as ArchNode);
+  const nodes = [...graph.nodes];
+  slots.forEach((slot, index) => {
+    nodes[slot] = reordered[index] as ArchNode;
+  });
+  return { ok: true, document: { ...document, graph: { ...graph, nodes } } };
 }
 
 /** Connects `source` to `target` and selects the new edge. */
@@ -386,14 +443,29 @@ export function moveNode(document: DiagramDocument, id: string, position: Point)
   return { ok: true, document: { graph: nextGraph, layout: nextLayout } };
 }
 
+/** Moves several nodes in one edit, each as `moveNode` does. */
+export function moveNodes(
+  document: DiagramDocument,
+  moves: readonly { readonly id: string; readonly position: Point }[],
+): Edit {
+  let next = document;
+  for (const { id, position } of moves) {
+    const edit = moveNode(next, id, position);
+    if (edit.ok) next = edit.document;
+  }
+  return next === document ? unchanged(document) : { ok: true, document: next };
+}
+
 /** Smallest size a node can be resized to, by what it is, in diagram pixels. */
 export const MIN_SIZES = {
   component: { width: 132, height: 52 },
   shape: { width: 40, height: 40 },
+  text: { width: 40, height: 24 },
   container: { width: 120, height: 72 },
 } as const satisfies Record<string, Size>;
 
 export function minSizeOf(kind: NodeKind): Size {
+  if (kind === 'text') return MIN_SIZES.text;
   return isContainerKind(kind)
     ? MIN_SIZES.container
     : isShapeKind(kind)
@@ -524,6 +596,17 @@ export function remove(document: DiagramDocument, selection: Selection): Edit {
   };
 }
 
+/** Deletes several nodes, with what is inside them and their connections, in one edit. */
+export function removeNodes(document: DiagramDocument, ids: readonly string[]): Edit {
+  let next = document;
+  for (const id of ids) {
+    // A node inside one that was already deleted is gone too.
+    const edit = remove(next, { type: 'node', id });
+    if (edit.ok) next = edit.document;
+  }
+  return next === document ? unchanged(document) : { ok: true, document: next, selection: null };
+}
+
 /**
  * Copies a node, with everything inside it and the edges between those, next
  * to the original in the same container, and selects the copy.
@@ -616,6 +699,21 @@ export function updateNode(document: DiagramDocument, id: string, patch: NodePat
       },
     },
   };
+}
+
+/** Fields of the diagram itself that the card edits. */
+export interface DiagramPatch {
+  readonly title?: string;
+  readonly provider?: ArchitectureGraph['provider'];
+}
+
+/** Renames the diagram, which names the files it is exported to, or changes its cloud. */
+export function updateDiagram(document: DiagramDocument, patch: DiagramPatch): Edit {
+  const { graph } = document;
+  const title = patch.title === undefined ? graph.title : patch.title.trim();
+  const provider = patch.provider ?? graph.provider;
+  if (title === graph.title && provider === graph.provider) return unchanged(document);
+  return { ok: true, document: { ...document, graph: { ...graph, title, provider } } };
 }
 
 export function updateEdge(document: DiagramDocument, id: string, patch: EdgePatch): Edit {

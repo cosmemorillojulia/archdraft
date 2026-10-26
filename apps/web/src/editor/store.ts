@@ -1,6 +1,7 @@
 import {
   type ArchitectureGraph,
   ArchitectureGraphSchema,
+  isShapeKind,
   CONTAINMENT_RULES,
   type DiagramDocument,
   isContainerKind,
@@ -23,10 +24,16 @@ import {
   type EdgePatch,
   exists,
   moveNode,
+  moveNodes,
   type NodePatch,
   resizeNode,
   remove,
+  removeNodes,
   type Selection,
+  type DiagramPatch,
+  type StackMove,
+  stackNode,
+  updateDiagram,
   updateEdge,
   updateNode,
 } from './operations.ts';
@@ -56,6 +63,11 @@ export interface EditorState {
   readonly past: readonly Snapshot[];
   readonly future: readonly Snapshot[];
   readonly selection: Selection | null;
+  /**
+   * Nodes chosen together with Ctrl, Cmd or Shift and a click, when there are two or more.
+   * They move and are deleted together; `selection` is the last one chosen.
+   */
+  readonly group: readonly string[];
   /** Component that a connection started from the inspector leaves from. */
   readonly connectingFrom: string | null;
   /** Node whose name is being edited in its own box on the canvas. */
@@ -96,9 +108,17 @@ export interface EditorActions {
   resizeNode: (id: string, box: Point & Size) => void;
   updateNode: (id: string, patch: NodePatch) => void;
   updateEdge: (id: string, patch: EdgePatch) => void;
+  /** Renames the diagram or changes its cloud provider. */
+  updateDiagram: (patch: DiagramPatch) => void;
+  /** Moves a node in front of or behind the nodes it is stacked with. */
+  stackNode: (id: string, move: StackMove) => void;
   removeSelection: () => void;
   duplicateSelection: () => void;
   select: (selection: Selection | null) => void;
+  /** Adds a node to the group of chosen nodes, or takes it out if it is in it. */
+  toggleSelected: (id: string) => void;
+  /** Moves the nodes of the group, or any others, together. */
+  moveNodes: (moves: readonly { id: string; position: Point }[]) => void;
   /** Expands or collapses the inspector of the current selection on narrow screens. */
   expandInspector: (expanded: boolean) => void;
   /** Selects a node and edits its name in place. */
@@ -119,6 +139,7 @@ const INITIAL_STATE: EditorState = {
   past: [],
   future: [],
   selection: null,
+  group: [],
   connectingFrom: null,
   renaming: null,
   placed: null,
@@ -181,7 +202,7 @@ export function createEditorStore() {
 
     /** Records `edit` as a new step of the history, unless it fails or changes nothing. */
     const apply = (edit: (document: DiagramDocument) => Edit) => {
-      const { current, past, selection } = get();
+      const { current, past, selection, group } = get();
       if (!current) return;
       const result = edit(current.document);
       if (!result.ok) {
@@ -201,6 +222,12 @@ export function createEditorStore() {
         past: [...past, current].slice(-HISTORY_LIMIT),
         future: [],
         selection: result.selection === undefined ? selection : result.selection,
+        // An edit that chooses something else ends the group; one that keeps the choice keeps it.
+        group:
+          result.selection === undefined &&
+          group.every((id) => exists(result.document, { type: 'node', id }))
+            ? group
+            : [],
         connectingFrom: null,
         renaming: null,
         placed: null,
@@ -215,6 +242,7 @@ export function createEditorStore() {
         past,
         future,
         selection: selection && exists(target.document, selection) ? selection : null,
+        group: [],
         connectingFrom: null,
         renaming: null,
         placed: null,
@@ -231,6 +259,7 @@ export function createEditorStore() {
           past: current ? [...past, current].slice(-HISTORY_LIMIT) : [],
           future: [],
           selection: null,
+          group: [],
           connectingFrom: null,
           renaming: null,
           placed: null,
@@ -246,35 +275,53 @@ export function createEditorStore() {
         const before = get().current?.document.graph.nodes.length;
         apply((document) =>
           addNode(document, kind, centre, {
-            name: currentStrings().kinds[kind].label,
+            name: isShapeKind(kind) ? '' : currentStrings().kinds[kind].label,
             ...options,
           }),
         );
         const { current, selection } = get();
-        if (
-          options.exact === true &&
-          selection?.type === 'node' &&
-          current?.document.graph.nodes.length !== before
-        ) {
-          set({ placed: selection.id });
-        }
+        if (selection?.type !== 'node' || current?.document.graph.nodes.length === before) return;
+        // Text is typed where it is placed, as in Excalidraw.
+        if (kind === 'text') set({ renaming: selection.id });
+        if (options.exact === true) set({ placed: selection.id });
       },
       connect: (source, target) => apply((document) => connect(document, source, target)),
       moveNode: (id, position) => apply((document) => moveNode(document, id, position)),
       resizeNode: (id, box) => apply((document) => resizeNode(document, id, box)),
       updateNode: (id, patch) => apply((document) => updateNode(document, id, patch)),
       updateEdge: (id, patch) => apply((document) => updateEdge(document, id, patch)),
+      updateDiagram: (patch) => apply((document) => updateDiagram(document, patch)),
+      stackNode: (id, move) => apply((document) => stackNode(document, id, move)),
       removeSelection: () => {
-        const { selection } = get();
-        if (selection) apply((document) => remove(document, selection));
+        const { selection, group } = get();
+        if (group.length > 1) apply((document) => removeNodes(document, group));
+        else if (selection) apply((document) => remove(document, selection));
       },
       duplicateSelection: () => {
         const { selection } = get();
-        if (selection?.type === 'node') apply((document) => duplicate(document, selection.id));
+        const { group } = get();
+        if (selection?.type === 'node' && group.length < 2) {
+          apply((document) => duplicate(document, selection.id));
+        }
       },
-      select: (selection) => set({ selection, connectingFrom: null, renaming: null, placed: null }),
+      select: (selection) =>
+        set({ selection, group: [], connectingFrom: null, renaming: null, placed: null }),
+      toggleSelected: (id) => {
+        const { selection, group } = get();
+        const chosen = group.length > 1 ? group : selection?.type === 'node' ? [selection.id] : [];
+        const next = chosen.includes(id) ? chosen.filter((other) => other !== id) : [...chosen, id];
+        const last = next.at(-1);
+        set({
+          selection: last === undefined ? null : { type: 'node', id: last },
+          group: next.length > 1 ? next : [],
+          connectingFrom: null,
+          renaming: null,
+          placed: null,
+        });
+      },
+      moveNodes: (moves) => apply((document) => moveNodes(document, moves)),
       startRename: (id) =>
-        set({ selection: { type: 'node', id }, connectingFrom: null, renaming: id }),
+        set({ selection: { type: 'node', id }, group: [], connectingFrom: null, renaming: id }),
       stopRename: () => set({ renaming: null }),
       expandInspector: (expanded) => set({ expandedSelection: expanded ? get().selection : null }),
       startConnection: (source) => set({ connectingFrom: source, message: null }),

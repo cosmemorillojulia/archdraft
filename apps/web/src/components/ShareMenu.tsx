@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
-import { openDocumentText } from '../editor/open-document.ts';
+import { openFileText } from '../editor/open-document.ts';
 import { type Snapshot, useEditor } from '../editor/store.ts';
 import { drawingToPng, drawSnapshot } from '../export/browser.ts';
 import { type ExportFormat, fileNameFor, saveFile } from '../export/files.ts';
@@ -217,7 +217,7 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
     event.target.value = '';
     if (!file) return;
     onDone();
-    await openDocumentText(await file.text(), 'file', wide ? 'LR' : 'TB');
+    await openFileText(await file.text(), file.name, wide ? 'LR' : 'TB');
   };
 
   return (
@@ -331,7 +331,7 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
           <input
             ref={fileRef}
             type="file"
-            accept=".json,application/json"
+            accept=".json,.mmd,.mermaid,.md,.drawio,.xml,.txt,application/json,text/plain,text/xml"
             aria-label={strings.share.openFile}
             onChange={(event) => void openFile(event)}
             className="sr-only"

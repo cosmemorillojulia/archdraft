@@ -42,6 +42,7 @@ const SHAPE_STYLES: Readonly<Partial<Record<NodeKind, string>>> = {
   circle: 'ellipse;fillColor=#ffffff;strokeColor=#333333;',
   diamond: 'rhombus;fillColor=#ffffff;strokeColor=#333333;',
   note: 'shape=note;size=14;fillColor=#fff9db;strokeColor=#b8a046;',
+  text: 'text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;',
 };
 
 const EDGE_STYLE = 'edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;';

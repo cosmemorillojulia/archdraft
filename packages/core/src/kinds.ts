@@ -69,10 +69,10 @@ export const COMPONENT_KINDS = [
 export type ComponentKind = (typeof COMPONENT_KINDS)[number];
 
 /**
- * Plain figures for simple flows, notes and anything the catalog does not
- * model. They have no architecture meaning: design rules ignore them.
+ * Plain figures for simple flows, notes, free text and anything the catalog
+ * does not model. They have no architecture meaning: design rules ignore them.
  */
-export const SHAPE_KINDS = ['box', 'circle', 'diamond', 'note'] as const;
+export const SHAPE_KINDS = ['box', 'circle', 'diamond', 'note', 'text'] as const;
 export type ShapeKind = (typeof SHAPE_KINDS)[number];
 
 /** Nodes that group other nodes. They never take part in edges. */

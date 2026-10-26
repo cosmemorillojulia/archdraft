@@ -11,6 +11,11 @@ import { absoluteBoxes } from '../src/canvas/geometry.ts';
 import {
   addNode,
   canContain,
+  canStack,
+  moveNodes,
+  removeNodes,
+  stackNode,
+  updateDiagram,
   connect,
   containerAt,
   duplicate,
@@ -473,5 +478,73 @@ describe('drawnSize', () => {
 
   it('makes a circle as wide as it is tall', () => {
     expect(drawnSize('circle', { width: 120, height: 60 })).toEqual({ width: 120, height: 120 });
+  });
+});
+
+describe('shapes without a name', () => {
+  it('are born blank, any number of them, and text too', () => {
+    let next = document;
+    for (const kind of ['box', 'box', 'text'] as const) {
+      next = edited(addNode(next, kind, { x: 100, y: 700 + next.graph.nodes.length * 100 }));
+    }
+    const added = next.graph.nodes.slice(document.graph.nodes.length);
+    expect(added.map((node) => node.label)).toEqual(['', '', '']);
+    expect(added.map((node) => node.kind)).toEqual(['box', 'box', 'text']);
+  });
+});
+
+describe('stackNode', () => {
+  const ids = (doc: DiagramDocument, parentId?: string) =>
+    doc.graph.nodes.filter((node) => node.parentId === parentId).map((node) => node.id);
+
+  it('moves a node to the front, back or one step, among the nodes of its container', () => {
+    expect(ids(edited(stackNode(document, 'user', 'front')))).toEqual(['region', 'db', 'user']);
+    expect(ids(edited(stackNode(document, 'db', 'back')))).toEqual(['db', 'user', 'region']);
+    expect(ids(edited(stackNode(document, 'user', 'forward')))).toEqual(['region', 'user', 'db']);
+    expect(ids(edited(stackNode(document, 'db', 'backward')))).toEqual(['user', 'db', 'region']);
+  });
+
+  it('leaves the rest of the list where it is, and changes nothing at the ends', () => {
+    const next = edited(stackNode(document, 'user', 'front'));
+    expect(next.graph.nodes.map((node) => node.id)).toEqual([
+      'region',
+      'db',
+      'vpc',
+      'subnet',
+      'api',
+      'user',
+    ]);
+    expect(next.graph.nodes.find((node) => node.id === 'vpc')?.parentId).toBe('region');
+    expect(stackNode(document, 'db', 'front')).toMatchObject({ ok: true, document });
+    expect(stackNode(document, 'user', 'back')).toMatchObject({ ok: true, document });
+    expect(canStack(document.graph, 'user')).toEqual({ forward: true, backward: false });
+    expect(canStack(document.graph, 'db')).toEqual({ forward: false, backward: true });
+  });
+});
+
+describe('several nodes at once', () => {
+  it('moves them in one edit and deletes them with what they hold', () => {
+    const moved = edited(
+      moveNodes(document, [
+        { id: 'user', position: { x: 10, y: 20 } },
+        { id: 'db', position: { x: 1010, y: 120 } },
+      ]),
+    );
+    expect(moved.layout.positions.user).toEqual({ x: 10, y: 20 });
+    expect(moved.layout.positions.db).toEqual({ x: 1010, y: 120 });
+    const removed = edited(removeNodes(document, ['region', 'api', 'db']));
+    expect(removed.graph.nodes.map((node) => node.id)).toEqual(['user']);
+    expect(removed.graph.edges).toEqual([]);
+  });
+});
+
+describe('updateDiagram', () => {
+  it('renames the diagram and changes its cloud, and ignores what changes nothing', () => {
+    const next = edited(updateDiagram(document, { title: '  Mine  ', provider: 'gcp' }));
+    expect(next.graph).toMatchObject({ title: 'Mine', provider: 'gcp' });
+    expect(updateDiagram(document, { title: 'Test', provider: 'aws' })).toMatchObject({
+      ok: true,
+      document,
+    });
   });
 });

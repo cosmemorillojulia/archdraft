@@ -170,6 +170,7 @@ Hay dos capas, ambas en `validate.ts`, precedidas al importar un fichero por el 
 | `UNSUPPORTED_SCHEMA_VERSION` | error     | Al importar, la versión es más nueva que la actual o no tiene migración    |
 | `MIGRATION_FAILED`           | error     | Al importar, una migración falla                                           |
 | `SCHEMA`                     | error     | La entrada no cumple el esquema. Incluye `path`                            |
+| `EMPTY_LABEL`                | error     | Un nodo que no es una figura ni texto tiene el nombre vacío                |
 | `DUPLICATE_NODE_ID`          | error     | Dos nodos con el mismo id                                                  |
 | `DUPLICATE_EDGE_ID`          | error     | Dos aristas con el mismo id                                                |
 | `EDGE_UNKNOWN_SOURCE`        | error     | El origen de una arista no existe                                          |

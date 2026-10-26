@@ -5,7 +5,7 @@ import { KIND_ICONS } from '../icons.ts';
 import { SPRING_POP } from '../motion.ts';
 import { SEVERITY_COLOR } from '../review/findings.ts';
 import { useStrings } from '../i18n/locale.ts';
-import { isSelected, useCanvas } from './canvas-context.ts';
+import { nodeChoice, useCanvas } from './canvas-context.ts';
 import { ConnectionHandles } from './ConnectionHandles.tsx';
 import { NameEditor } from './NameEditor.tsx';
 import type { ComponentFlowNode } from './flow.ts';
@@ -29,7 +29,7 @@ export const ComponentNode = memo(function ComponentNode({
   const canvas = useCanvas();
   const focused = canvas.focusId === id;
   const dimmed = canvas.dimOthers && !canvas.nodes.has(id);
-  const selected = isSelected(canvas.selection, 'node', id);
+  const { selected, grouped } = nodeChoice(canvas, id);
   const issue = canvas.issues.get(id);
   const inFinding = canvas.finding?.nodes.has(id) === true;
 
@@ -99,8 +99,8 @@ export const ComponentNode = memo(function ComponentNode({
         </div>
       </m.div>
       {/* After the card, so its handles are above it. */}
-      <ResizeHandles id={id} kind={node.kind} visible={selected} />
-      <ConnectionHandles selected={selected} isConnectable={isConnectable} />
+      <ResizeHandles id={id} kind={node.kind} visible={selected && !grouped} />
+      <ConnectionHandles selected={selected && !grouped} isConnectable={isConnectable} />
     </div>
   );
 });

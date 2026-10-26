@@ -41,12 +41,21 @@ packages/core/
 | `toMermaid`, `toDrawio`, `toJson`                                                                                                                      | Funciones                      | Exportación de texto, ver [exportacion.md](exportacion.md)              |
 | `importJson`, `importDocument`, `documentToJson`, `migrateDocument`, `MIGRATIONS`                                                                      | Funciones y mapa               | Importar ficheros y enlaces con migraciones                             |
 | `DiagramLayoutSchema`, `DiagramDocumentSchema`, `createEmptyLayout`, `layoutEntry`, `DEFAULT_NODE_SIZE`, `DEFAULT_CONTAINER_SIZE`, `CONTAINER_PADDING` | Esquemas, función y constantes | Disposición y documento del editor, ver [layout.md](layout.md)          |
+| `importMermaid(text)`, `importDrawio(xml)`                                                                                                             | Funciones                      | Leer un flowchart de Mermaid o un fichero de draw.io, ver más abajo     |
 | `SHAPE_KINDS`, `isShapeKind`, `SHAPE_SIZES`, `defaultSizeOf(kind)`                                                                                     | Constantes y funciones         | Figuras genéricas y tamaño por defecto de cualquier tipo                |
 | `ARCHITECTURE_TEMPLATES`, `TEMPLATE_IDS`, `TemplateId`, `TemplateGraph`                                                                                | Constantes y tipos             | Galería y ejemplos del prompt, ver [plantillas.md](plantillas.md)       |
 | `NODE_CATALOG`, `getNodeDefinition`                                                                                                                    | Constante y función            | Paleta, iconos, leyenda                                                 |
 | `CONTAINMENT_RULES`                                                                                                                                    | Constante                      | Validación y, en el editor, impedir anidamientos inválidos al arrastrar |
 | `architectureGraphJsonSchema()`                                                                                                                        | Función                        | Prompt del modelo                                                       |
 | `LIMITS`, `SCHEMA_VERSION`                                                                                                                             | Constantes                     | Límites compartidos                                                     |
+
+## Importar de otras herramientas
+
+`importMermaid` lee un `flowchart` o `graph` de Mermaid: cada nodo pasa a ser una caja, un círculo (`((…))`), un rombo (`{…}`) o una nota (`>…]`) según su forma; los cilindros, estadios y demás formas, cajas; los `subgraph` son grupos (`boundary`, anidados); las flechas con texto (`-->|texto|`, `-- texto -->`) llevan etiqueta y las punteadas (`-.->`) son asíncronas; `A & B --> C` y las cadenas se expanden. El título sale del bloque `---` inicial. Se ignoran los estilos, las clases y los enlaces. Mermaid no trae posiciones, así que el resultado va sin disposición (`placed: false`) y el editor lo coloca con ELK. Todos los nodos se importan como figuras y grupos, nunca como componentes del catálogo: deducir qué producto es un nodo sería adivinar, y las reglas de diseño dejarían de ser fiables. Los id se adaptan a `IdSchema`, las flechas repetidas, a sí mismas o a un grupo se omiten y se cuentan en `warnings`.
+
+`importDrawio` lee el primer diagrama de un fichero de draw.io, sin comprimir o comprimido (base64, deflate y URL), con un lector de XML mínimo propio porque el paquete no depende del DOM. Las formas `ellipse`, `rhombus`, `shape=note` y `text` pasan a círculo, rombo, nota y texto; el resto, a cajas; las que contienen a otras, a grupos con sus posiciones relativas. Conserva posiciones y tamaños (`placed: true`), el texto (sin HTML) y las flechas punteadas como asíncronas. Los conectores sueltos o atados a un grupo se omiten.
+
+Ambas devuelven `{ success: true, document, placed, warnings }` o `{ success: false, message }`.
 
 ## Decisiones de implementación
 
