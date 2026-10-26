@@ -1,5 +1,4 @@
 import type { ArchitectureGraph, DiagramDocument, DiagramLayout } from '@archdraft/core';
-import { Position } from '@xyflow/react';
 import { describe, expect, it } from 'vitest';
 import { BUILD_SPREAD, toFlow } from '../src/canvas/flow.ts';
 
@@ -84,17 +83,21 @@ describe('toFlow', () => {
     expect(nodes.find((node) => node.id === 'api')?.data).not.toHaveProperty('providerBadge');
   });
 
-  it('places handles along the flow direction', () => {
-    const lr = toFlow({ graph, layout }, 'LR').nodes.find((node) => node.id === 'user');
-    const tb = toFlow({ graph, layout }, 'TB').nodes.find((node) => node.id === 'user');
-    expect(lr?.data).toMatchObject({
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
-    });
-    expect(tb?.data).toMatchObject({
-      sourcePosition: Position.Bottom,
-      targetPosition: Position.Top,
-    });
+  it('joins each edge from the right or bottom of its source to the left or top of its target', () => {
+    // user → api (api is inside the VPC, to the right) and api → payments (down and right).
+    const { edges } = toFlow({ graph, layout }, 'LR');
+    const byId = new Map(edges.map((edge) => [edge.id, edge]));
+    expect(byId.get('e1')).toMatchObject({ sourceHandle: 'right', targetHandle: 'left' });
+    for (const edge of edges) {
+      expect(['right', 'bottom']).toContain(edge.sourceHandle);
+      expect(['left', 'top']).toContain(edge.targetHandle);
+    }
+  });
+
+  it('leaves out of the nodes the old per-direction connection points', () => {
+    const user = toFlow({ graph, layout }, 'TB').nodes.find((node) => node.id === 'user');
+    expect(user?.data).not.toHaveProperty('sourcePosition');
+    expect(user?.data).not.toHaveProperty('targetPosition');
   });
 
   it('builds along the flow: earlier layers appear first', () => {
@@ -164,8 +167,9 @@ describe('toFlow', () => {
     expect(nodes[1]).toMatchObject({
       type: 'shape',
       ariaLabel: 'Approved?, Diamond',
-      data: { sourcePosition: Position.Bottom, targetPosition: Position.Top },
     });
+    // `check` is level with `start` and to its right, so the edge goes across even in a TB layout.
+    expect(edges[0]).toMatchObject({ sourceHandle: 'right', targetHandle: 'left' });
     expect(edges[0]?.data?.sourceCategory).toBe('shape');
   });
 

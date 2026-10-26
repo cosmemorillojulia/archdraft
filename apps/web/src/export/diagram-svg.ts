@@ -13,9 +13,17 @@ import {
   resolveEdgeMode,
 } from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
-import { getBezierPath } from '@xyflow/react';
-import { FLOW_HANDLES, groupTint } from '../canvas/appearance.ts';
-import { absoluteBoxes, arrowhead, type Box, boundsOf, nestingDepths } from '../canvas/geometry.ts';
+import { getBezierPath, Position } from '@xyflow/react';
+import { groupTint } from '../canvas/appearance.ts';
+import {
+  absoluteBoxes,
+  arrowhead,
+  type Box,
+  boundsOf,
+  edgeSides,
+  nestingDepths,
+  sidePoint,
+} from '../canvas/geometry.ts';
 import type { KindText } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
 
@@ -259,19 +267,13 @@ function shape(node: ArchNode, box: Box, options: DrawingOptions): string {
   ].join('');
 }
 
-/** Point where an edge leaves or reaches a node on this side: the middle of that side. */
-function sidePoint(box: Box, side: string): { x: number; y: number } {
-  switch (side) {
-    case 'left':
-      return { x: box.x, y: box.y + box.height / 2 };
-    case 'right':
-      return { x: box.x + box.width, y: box.y + box.height / 2 };
-    case 'top':
-      return { x: box.x + box.width / 2, y: box.y };
-    default:
-      return { x: box.x + box.width / 2, y: box.y + box.height };
-  }
-}
+/** React Flow's name for each side, which its path helper expects. */
+const POSITIONS = {
+  left: Position.Left,
+  right: Position.Right,
+  top: Position.Top,
+  bottom: Position.Bottom,
+} as const;
 
 const overlaps = (a: Box, b: Box) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
@@ -284,17 +286,17 @@ function connection(
   options: DrawingOptions,
 ): { line: string; label: string } {
   const { palette, measure, direction } = options;
-  const handles = FLOW_HANDLES[direction];
-  const from = sidePoint(source, handles.source);
-  const to = sidePoint(target, handles.target);
-  const arrow = arrowhead(to.x, to.y, handles.target);
+  const sides = edgeSides(source, target, direction);
+  const from = sidePoint(source, sides.source);
+  const to = sidePoint(target, sides.target);
+  const arrow = arrowhead(to.x, to.y, sides.target);
   const [path, labelX, labelY] = getBezierPath({
     sourceX: from.x,
     sourceY: from.y,
     targetX: arrow.base.x,
     targetY: arrow.base.y,
-    sourcePosition: handles.source,
-    targetPosition: handles.target,
+    sourcePosition: POSITIONS[sides.source],
+    targetPosition: POSITIONS[sides.target],
   });
   const dashed = resolveEdgeMode(edge) === 'async' ? ' stroke-dasharray="5 5"' : '';
   const line =

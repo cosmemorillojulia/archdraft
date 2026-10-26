@@ -122,6 +122,27 @@ describe('flow animation', () => {
 });
 
 describe('connections', () => {
+  it('arrive at the left and the top of every node and leave by the right and the bottom', async () => {
+    const diagram = await openFlowchart();
+    await waitFor(() =>
+      expect(
+        diagram.querySelectorAll('.react-flow__node:not(.react-flow__node-container)'),
+      ).toHaveLength(4),
+    );
+    for (const node of diagram.querySelectorAll('.react-flow__node')) {
+      const handles = [...node.querySelectorAll('.react-flow__handle')].map(
+        (handle) =>
+          `${handle.classList.contains('source') ? 'source' : 'target'}:${handle.getAttribute('data-handleid')}`,
+      );
+      expect(handles.sort()).toEqual([
+        'source:bottom',
+        'source:right',
+        'target:left',
+        'target:top',
+      ]);
+    }
+  });
+
   it('end in an arrowhead whose tip is the end of the edge', async () => {
     const diagram = await openFlowchart();
     await waitFor(() =>

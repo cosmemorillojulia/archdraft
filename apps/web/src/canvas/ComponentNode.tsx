@@ -1,4 +1,4 @@
-import { Handle, type NodeProps } from '@xyflow/react';
+import type { NodeProps } from '@xyflow/react';
 import { m } from 'motion/react';
 import { memo } from 'react';
 import { KIND_ICONS } from '../icons.ts';
@@ -6,14 +6,15 @@ import { SPRING_POP } from '../motion.ts';
 import { SEVERITY_COLOR } from '../review/findings.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
+import { ConnectionHandles } from './ConnectionHandles.tsx';
 import type { ComponentFlowNode } from './flow.ts';
 import { ResizeHandles } from './ResizeHandles.tsx';
 
 /**
  * A component on the canvas: the icon of its kind on the colour of its
  * category, its name, the product it resolves to and, when it runs outside
- * the provider of the diagram, a badge saying so. Dragging from the dot on
- * its outgoing side, shown on hover or when selected, connects it; selected,
+ * the provider of the diagram, a badge saying so. Dragging from a dot on
+ * its right or bottom side, shown on hover or when selected, connects it; selected,
  * it can be resized.
  */
 export const ComponentNode = memo(function ComponentNode({
@@ -22,8 +23,7 @@ export const ComponentNode = memo(function ComponentNode({
   isConnectable,
 }: NodeProps<ComponentFlowNode>) {
   const strings = useStrings();
-  const { node, category, service, providerBadge, sourcePosition, targetPosition, appearDelay } =
-    data;
+  const { node, category, service, providerBadge, appearDelay } = data;
   const Icon = KIND_ICONS[node.kind];
   const canvas = useCanvas();
   const focused = canvas.focusId === id;
@@ -90,19 +90,7 @@ export const ComponentNode = memo(function ComponentNode({
       </m.div>
       {/* After the card, so its handles are above it. */}
       <ResizeHandles id={id} kind={node.kind} visible={selected} />
-      <Handle
-        type="target"
-        position={targetPosition}
-        isConnectable={isConnectable}
-        className="flow-handle pointer-events-none"
-      />
-      <Handle
-        type="source"
-        position={sourcePosition}
-        isConnectable={isConnectable}
-        data-selected={selected || undefined}
-        className="flow-handle connect-handle"
-      />
+      <ConnectionHandles selected={selected} isConnectable={isConnectable} />
     </div>
   );
 });

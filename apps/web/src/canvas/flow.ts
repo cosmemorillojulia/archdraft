@@ -13,11 +13,10 @@ import {
   resolveEdgeMode,
 } from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
-import type { Edge, Node, Position } from '@xyflow/react';
+import type { Edge, Node } from '@xyflow/react';
 import { en, type KindText } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
-import { FLOW_HANDLES } from './appearance.ts';
-import { absoluteBoxes, boundsOf, nestingDepths } from './geometry.ts';
+import { absoluteBoxes, boundsOf, edgeSides, nestingDepths } from './geometry.ts';
 
 /** Seconds the diagram takes to build from its first layer to its last. */
 export const BUILD_SPREAD = 0.6;
@@ -28,8 +27,6 @@ export interface ComponentNodeData extends Record<string, unknown> {
   service: string;
   /** Set when the component runs outside the provider of the diagram. */
   providerBadge?: CloudProvider;
-  sourcePosition: Position;
-  targetPosition: Position;
   /** Seconds before the component appears when the diagram builds. */
   appearDelay: number;
 }
@@ -43,8 +40,6 @@ export interface ContainerNodeData extends Record<string, unknown> {
 
 export interface ShapeNodeData extends Record<string, unknown> {
   node: ArchNode;
-  sourcePosition: Position;
-  targetPosition: Position;
   appearDelay: number;
 }
 
@@ -67,8 +62,6 @@ export interface FlowElements {
   edges: ArchitectureFlowEdge[];
 }
 
-const HANDLES = FLOW_HANDLES;
-
 /**
  * Pure adapter from the domain document to React Flow elements.
  *
@@ -78,6 +71,8 @@ const HANDLES = FLOW_HANDLES;
  * - Nodes without a layout entry are left out, with their edges.
  * - Kind names, in accessible names and as the product of components that
  *   name none, come from `kinds`, in the language of the interface.
+ * - Each edge leaves by the right or bottom of its source and arrives at the left or
+ *   top of its target, whichever pair makes the shortest line (`edgeSides`).
  * - Each element carries the delay of its entrance, so the diagram builds
  *   along its flow direction.
  * - Containers are not draggable here: dragging a large group by accident
@@ -133,20 +128,14 @@ export function toFlow(
       };
     }
     if (isShapeKind(node.kind)) {
-      const handles = HANDLES[direction];
       return {
         ...base,
         type: 'shape',
         ariaLabel: `${node.label}, ${kinds[node.kind].label}`,
-        data: {
-          node,
-          sourcePosition: handles.source,
-          targetPosition: handles.target,
-          appearDelay: appearDelay(node.id),
-        },
+        data: { node, appearDelay: appearDelay(node.id) },
       };
     }
-    const data = componentData(node, graph, direction, appearDelay(node.id), kinds);
+    const data = componentData(node, graph, appearDelay(node.id), kinds);
     return {
       ...base,
       type: 'component',
@@ -158,12 +147,17 @@ export function toFlow(
   const kindOf = new Map(graph.nodes.map((node) => [node.id, node.kind]));
   const edges = graph.edges.flatMap((edge): ArchitectureFlowEdge[] => {
     const sourceKind = kindOf.get(edge.source);
-    if (sourceKind === undefined || !boxes.has(edge.source) || !boxes.has(edge.target)) return [];
+    const from = boxes.get(edge.source);
+    const to = boxes.get(edge.target);
+    if (sourceKind === undefined || !from || !to) return [];
+    const sides = edgeSides(from, to, direction);
     return [
       {
         id: edge.id,
         source: edge.source,
         target: edge.target,
+        sourceHandle: sides.source,
+        targetHandle: sides.target,
         type: 'architecture',
         data: {
           edge,
@@ -181,11 +175,9 @@ export function toFlow(
 function componentData(
   node: ArchNode,
   graph: ArchitectureGraph,
-  direction: LayoutDirection,
   appearDelay: number,
   kinds: Readonly<Record<NodeKind, KindText>>,
 ): ComponentNodeData {
-  const handles = HANDLES[direction];
   return {
     node,
     category: getNodeDefinition(node.kind).category,
@@ -193,8 +185,6 @@ function componentData(
     ...(node.provider !== undefined && node.provider !== graph.provider
       ? { providerBadge: node.provider }
       : {}),
-    sourcePosition: handles.source,
-    targetPosition: handles.target,
     appearDelay,
   };
 }

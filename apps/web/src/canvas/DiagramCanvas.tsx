@@ -511,8 +511,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
               }
               nodeBorderRadius={6}
               maskColor="color-mix(in srgb, var(--canvas) 72%, transparent)"
-              className="floating !mb-9 overflow-hidden !rounded-panel"
-              style={{ width: 176, height: 116 }}
+              className="floating !m-3 !mr-15 overflow-hidden !rounded-panel"
+              style={{ width: 176, height: 157 }}
             />
           )}
         </ReactFlow>
