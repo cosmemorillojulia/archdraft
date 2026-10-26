@@ -105,7 +105,7 @@ export function ShareMenu() {
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((current) => !current)}
-        className="max-md:size-8 max-md:px-0"
+        className="max-md:size-7 max-md:px-0"
       >
         <Share2 size={16} aria-hidden="true" />
         <span className="max-md:sr-only">{strings.share.open}</span>

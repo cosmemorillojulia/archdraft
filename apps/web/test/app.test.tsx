@@ -69,7 +69,7 @@ describe('App', () => {
   it('marks components that run outside the provider of the diagram', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: strings.prompt.templates }));
+    await user.click(screen.getByRole('button', { name: strings.header.new }));
     await user.click(
       screen.getByRole('menuitemradio', { name: strings.prompt.templateNames['serverless-api'] }),
     );
@@ -96,11 +96,11 @@ describe('App', () => {
     render(<App />);
     expect(screen.queryByRole('group', { name: strings.prompt.templates })).toBeNull();
     const button = within(screen.getByRole('banner')).getByRole('button', {
-      name: strings.prompt.templates,
+      name: strings.header.new,
     });
     await user.click(button);
     expect(button).toHaveAttribute('aria-expanded', 'true');
-    const menu = screen.getByRole('menu', { name: strings.prompt.templates });
+    const menu = screen.getByRole('menu', { name: strings.header.new });
     expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(6);
     const rag = within(menu).getByRole('menuitemradio', {
       name: strings.prompt.templateNames['rag-chatbot'],
@@ -124,7 +124,8 @@ describe('App', () => {
     render(<App />);
     const title = ARCHITECTURE_TEMPLATES['three-tier-web'].title;
     await diagramOf(title);
-    await user.click(screen.getByRole('button', { name: strings.header.newDiagram }));
+    await user.click(screen.getByRole('button', { name: strings.header.new }));
+    await user.click(screen.getByRole('menuitem', { name: strings.header.newDiagram }));
     expect(
       await screen.findByRole('group', {
         name: strings.canvas.diagramLabel(strings.header.newDiagramTitle),
@@ -138,7 +139,7 @@ describe('App', () => {
   it('closes the templates menu with Escape and returns the focus to its button', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const button = screen.getByRole('button', { name: strings.prompt.templates });
+    const button = screen.getByRole('button', { name: strings.header.new });
     await user.click(button);
     expect(screen.getByRole('menu')).toBeInTheDocument();
     await user.keyboard('{Escape}');

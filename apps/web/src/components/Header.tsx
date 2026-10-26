@@ -1,7 +1,5 @@
-import { Moon, Plus, Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { openBlank } from '../editor/open-document.ts';
-import { useMediaQuery, WIDE_SCREEN } from '../media.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { useTheme } from '../theme.ts';
 import { Button } from './Button.tsx';
@@ -19,7 +17,6 @@ import { TemplatesMenu } from './TemplatesMenu.tsx';
 export function Header() {
   const strings = useStrings();
   const [theme, toggleTheme] = useTheme();
-  const wide = useMediaQuery(WIDE_SCREEN);
   const themeLabel = theme === 'dark' ? strings.header.themeToLight : strings.header.themeToDark;
   return (
     <header className="relative z-30 flex h-13 shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4">
@@ -30,19 +27,10 @@ export function Header() {
         </h1>
         <p className="hidden truncate text-sm text-muted md:block">{strings.tagline}</p>
       </div>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={strings.header.newDiagram}
-          title={strings.header.newDiagram}
-          onClick={() => openBlank(wide ? 'LR' : 'TB')}
-        >
-          <Plus size={18} aria-hidden="true" />
-        </Button>
+      <div className="flex items-center gap-1 max-md:gap-0.5">
         <TemplatesMenu />
         <HistoryControls />
-        <span aria-hidden="true" className="mx-1 h-5 w-px bg-line" />
+        <span aria-hidden="true" className="mx-1 h-5 w-px bg-line max-md:hidden" />
         <ShareMenu />
         <LanguageToggle />
         <Button

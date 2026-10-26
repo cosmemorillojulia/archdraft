@@ -13,6 +13,7 @@ export function HistoryControls() {
       <Button
         variant="ghost"
         size="icon"
+        className="max-md:size-7"
         aria-label={strings.header.undo}
         title={strings.header.undo}
         aria-keyshortcuts="Control+Z Meta+Z"
@@ -24,6 +25,7 @@ export function HistoryControls() {
       <Button
         variant="ghost"
         size="icon"
+        className="max-md:size-7"
         aria-label={strings.header.redo}
         title={strings.header.redo}
         aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y"

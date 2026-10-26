@@ -274,7 +274,7 @@ Al pasar el ratón por un componente, este crece un 4 % y se perfila con su colo
 
 ### Diagrama en blanco
 
-El botón + de la cabecera (`openBlank`, en `editor/open-document.ts`) abre un diagrama vacío titulado «Diagrama sin título» en el idioma de la interfaz, con la dirección que corresponde a la pantalla. Es un paso del historial: deshacer devuelve el diagrama anterior. Descarta una plantilla que aún se esté disponiendo, para que no sustituya al diagrama en blanco al terminar.
+La entrada «Diagrama en blanco» del menú + de la cabecera, que también reúne las plantillas (`openBlank`, en `editor/open-document.ts`) abre un diagrama vacío titulado «Diagrama sin título» en el idioma de la interfaz, con la dirección que corresponde a la pantalla. Es un paso del historial: deshacer devuelve el diagrama anterior. Descarta una plantilla que aún se esté disponiendo, para que no sustituya al diagrama en blanco al terminar.
 
 ### Cambio de plantilla
 

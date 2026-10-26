@@ -316,7 +316,7 @@ describe('language switch', () => {
     localeStore.getState().setLocale('es');
     render(<App />);
     await diagramNamed(localizedTemplate('three-tier-web', 'es').title);
-    await user.click(screen.getByRole('button', { name: es.prompt.templates }));
+    await user.click(screen.getByRole('button', { name: es.header.new }));
     await user.click(
       screen.getByRole('menuitemradio', { name: es.prompt.templateNames['rag-chatbot'] }),
     );

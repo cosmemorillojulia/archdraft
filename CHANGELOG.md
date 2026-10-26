@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@archdraft/web`: the header + button is a menu with the blank diagram and the templates; on phones the buttons are closer together so the title no longer covers them.
+
 - `@archdraft/web`: text put over a box is fixed to it (`attachedTo`): it moves, is copied and deleted with the box and can be detached from the inspector.
 
 - `@archdraft/web`: shapes are born without a name, there is a Text kind to write anywhere, every box has bring to front, bring forward, send backward and send to back in the inspector, Ctrl, Cmd or Shift with a click chooses several boxes to move or delete together, and the name and the cloud of the diagram are edited in its card (the name gives the exported file names).

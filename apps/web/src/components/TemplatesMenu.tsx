@@ -6,14 +6,14 @@ import {
   ChevronDown,
   CloudCog,
   Layers,
-  LayoutTemplate,
+  Plus,
   type LucideIcon,
   Newspaper,
   Workflow,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
-import { openTemplate } from '../editor/open-document.ts';
+import { openBlank, openTemplate } from '../editor/open-document.ts';
 import { useEditor } from '../editor/store.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { useMediaQuery, WIDE_SCREEN } from '../media.ts';
@@ -64,7 +64,7 @@ export function TemplatesMenu() {
   // Opening puts the focus on the checked template, or on the first.
   useEffect(() => {
     if (!open) return;
-    const items = menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]');
+    const items = menuRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]');
     const checked = menuRef.current?.querySelector<HTMLElement>('[aria-checked="true"]');
     (checked ?? items?.[0])?.focus();
   }, [open]);
@@ -76,9 +76,7 @@ export function TemplatesMenu() {
       close(true);
       return;
     }
-    const items = [
-      ...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? []),
-    ];
+    const items = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])];
     const at = items.indexOf(globalThis.document.activeElement as HTMLElement);
     const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
     if (step !== 0) {
@@ -99,10 +97,10 @@ export function TemplatesMenu() {
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((current) => !current)}
-        className="max-md:size-8 max-md:px-0"
+        className="max-md:size-7 max-md:px-0"
       >
-        <LayoutTemplate size={16} aria-hidden="true" />
-        <span className="max-md:sr-only">{strings.prompt.templates}</span>
+        <Plus size={17} aria-hidden="true" />
+        <span className="max-md:sr-only">{strings.header.new}</span>
         <ChevronDown
           size={14}
           aria-hidden="true"
@@ -115,7 +113,7 @@ export function TemplatesMenu() {
             ref={menuRef}
             id={menuId}
             role="menu"
-            aria-label={strings.prompt.templates}
+            aria-label={strings.header.new}
             onKeyDown={onKeyDown}
             initial={{ opacity: 0, y: -6, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -129,6 +127,20 @@ export function TemplatesMenu() {
             style={{ transformOrigin: 'top left' }}
             className="floating absolute top-full left-0 z-50 mt-2 w-60 rounded-panel p-1.5 max-md:fixed max-md:top-14 max-md:left-3"
           >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                openBlank(wide ? 'LR' : 'TB');
+                close(true);
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors duration-150 outline-none hover:bg-ink/6 focus-visible:bg-ink/6"
+            >
+              <Plus size={16} aria-hidden="true" className="shrink-0" />
+              {strings.header.newDiagram}
+            </button>
+            <div role="separator" className="mx-2 my-1.5 h-px bg-line" />
+            <p className="px-2.5 pb-1 text-xs font-medium text-muted">{strings.prompt.templates}</p>
             {TEMPLATE_IDS.map((id) => {
               const Icon = TEMPLATE_ICONS[id];
               const active = id === templateId;
