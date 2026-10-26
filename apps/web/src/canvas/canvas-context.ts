@@ -23,6 +23,8 @@ export interface CanvasState {
   /** Whether everything else fades: only while the pointer rests on a component. */
   dimOthers: boolean;
   selection: Selection | null;
+  /** Node whose name is being edited in its own box. */
+  renamingId: string | null;
   /** Container that the node being dragged would move into. */
   dropTargetId: string | null;
   /** True while the diagram builds in; elements added later appear without delay. */
@@ -43,6 +45,7 @@ export const CanvasContext = createContext<CanvasState>({
   edges: new Set(),
   dimOthers: false,
   selection: null,
+  renamingId: null,
   dropTargetId: null,
   building: false,
   particles: true,

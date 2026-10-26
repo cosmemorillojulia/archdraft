@@ -27,6 +27,7 @@ import {
   uniqueLabel,
   updateEdge,
   updateNode,
+  drawnSize,
 } from '../src/editor/operations.ts';
 import { en as strings } from '../src/i18n/en.ts';
 
@@ -433,5 +434,20 @@ describe('updates', () => {
       target: 'db',
       mode: 'async',
     });
+  });
+});
+
+describe('drawnSize', () => {
+  it('keeps the size dragged, rounded', () => {
+    expect(drawnSize('box', { width: 200.4, height: 159.6 })).toEqual({ width: 200, height: 160 });
+  });
+
+  it('never goes below the smallest size of the kind', () => {
+    expect(drawnSize('box', { width: 3, height: 10 })).toEqual({ width: 40, height: 40 });
+    expect(drawnSize('service', { width: 20, height: 20 })).toEqual({ width: 132, height: 52 });
+  });
+
+  it('makes a circle as wide as it is tall', () => {
+    expect(drawnSize('circle', { width: 120, height: 60 })).toEqual({ width: 120, height: 120 });
   });
 });

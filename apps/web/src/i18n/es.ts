@@ -291,6 +291,12 @@ export const es: Strings = {
     disabledNote: 'Las reglas desactivadas siguen así en este navegador.',
   },
   components: {
+    discard: 'Suelta aquí para descartar',
+    carryHint: 'Haz clic en el diagrama para colocarlo. Esc cancela.',
+    carryShapeHint:
+      'Haz clic en el diagrama para colocarlo, o arrastra para dibujarla del tamaño que quieras. Esc cancela.',
+    carrying: (label: string) =>
+      `Colocando ${label}. Haz clic en el diagrama para colocarlo, o pulsa Escape para cancelar.`,
     title: 'Componentes',
     open: 'Ver componentes',
     close: 'Ocultar componentes',
@@ -350,6 +356,7 @@ export const es: Strings = {
       out: 'Alejar',
       fit: 'Ajustar el diagrama a la pantalla',
     },
+    rename: 'Nombre',
     connecting: 'Elige un componente para conectar',
     cancelConnecting: 'Cancelar',
     dismiss: 'Cerrar',

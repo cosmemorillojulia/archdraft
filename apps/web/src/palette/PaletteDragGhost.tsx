@@ -1,4 +1,11 @@
-import { defaultSizeOf, getNodeDefinition, isContainerKind, isShapeKind } from '@archdraft/core';
+import {
+  defaultSizeOf,
+  getNodeDefinition,
+  isContainerKind,
+  isShapeKind,
+  type NodeKind,
+  type Point,
+} from '@archdraft/core';
 import { useReactFlow } from '@xyflow/react';
 import { AnimatePresence, m } from 'motion/react';
 import { createPortal } from 'react-dom';
@@ -19,6 +26,9 @@ export function PaletteDragGhost() {
 
   return createPortal(
     <AnimatePresence>
+      {drag?.drawFrom !== null && drag?.drawFrom !== undefined && (
+        <Drawing key="drawing" kind={drag.kind} from={drag.drawFrom} to={drag.point} />
+      )}
       {drag && (
         <div
           key="ghost"
@@ -27,12 +37,14 @@ export function PaletteDragGhost() {
           className="pointer-events-none fixed top-0 left-0 z-50"
           style={{ transform: `translate(${drag.point.x}px, ${drag.point.y}px)` }}
         >
-          <Ghost
-            kind={drag.kind}
-            label={strings.kinds[drag.kind].label}
-            zoom={flow.getZoom()}
-            faded={!drag.overCanvas}
-          />
+          {drag.drawFrom === null ? (
+            <Ghost
+              kind={drag.kind}
+              label={strings.kinds[drag.kind].label}
+              zoom={flow.getZoom()}
+              faded={!drag.overCanvas || drag.overDiscard}
+            />
+          ) : null}
         </div>
       )}
     </AnimatePresence>,
@@ -91,5 +103,43 @@ function Ghost({
         <span className="truncate text-[13px] font-semibold">{label}</span>
       </div>
     </m.div>
+  );
+}
+
+/** The outline of a shape being drawn on the diagram, from where the press started to the pointer. */
+function Drawing({ kind, from, to }: { kind: NodeKind; from: Point; to: Point }) {
+  const left = Math.min(from.x, to.x);
+  const top = Math.min(from.y, to.y);
+  const width = Math.abs(to.x - from.x);
+  const height = Math.abs(to.y - from.y);
+  return (
+    <div
+      aria-hidden="true"
+      data-palette-drawing
+      className="pointer-events-none fixed z-50"
+      style={{ left, top, width, height }}
+    >
+      {kind === 'diamond' ? (
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="h-full w-full overflow-visible"
+        >
+          <path
+            d="M50 0 L100 50 L50 100 L0 50 Z"
+            vectorEffect="non-scaling-stroke"
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+            className="fill-accent/10 stroke-accent"
+          />
+        </svg>
+      ) : (
+        <div
+          className={`h-full w-full border-[1.5px] border-accent bg-accent/10 ${
+            kind === 'circle' ? 'rounded-full' : 'rounded-md'
+          }`}
+        />
+      )}
+    </div>
   );
 }

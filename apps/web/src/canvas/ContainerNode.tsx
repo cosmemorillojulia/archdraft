@@ -6,6 +6,7 @@ import { EASE_OUT } from '../motion.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import { groupTint } from './appearance.ts';
 import type { ContainerFlowNode } from './flow.ts';
+import { NameEditor } from './NameEditor.tsx';
 import { ResizeHandles } from './ResizeHandles.tsx';
 
 /** Extra tint of the group a dragged node would move into. */
@@ -45,7 +46,15 @@ export const ContainerNode = memo(function ContainerNode({
       >
         <div className="flex items-center gap-1.5 px-3.5 pt-3 text-xs font-semibold text-muted">
           <Icon size={14} aria-hidden="true" className="shrink-0" />
-          <span className="truncate">{node.label}</span>
+          {canvas.renamingId === id ? (
+            <NameEditor
+              id={id}
+              value={node.label}
+              className="min-w-0 flex-1 px-1 text-xs font-semibold"
+            />
+          ) : (
+            <span className="truncate">{node.label}</span>
+          )}
         </div>
       </m.div>
       <ResizeHandles id={id} kind={node.kind} visible={selected} />

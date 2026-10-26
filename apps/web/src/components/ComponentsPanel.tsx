@@ -11,7 +11,7 @@ import { AnimatePresence, m, useDragControls } from 'motion/react';
 import { type KeyboardEvent, type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { KIND_ICONS } from '../icons.ts';
 import { EASE_OUT, SPRING_POP, SPRING_SLIDE } from '../motion.ts';
-import { pressTile, takeDragClick, usePaletteDrag } from '../palette/palette-drag.ts';
+import { carryTile, pressTile, takeDragClick, usePaletteDrag } from '../palette/palette-drag.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
@@ -42,8 +42,11 @@ interface PaletteToggleProps {
 interface PaletteActions {
   /** Adds a component or group of this kind at the centre of the view. */
   onAdd: (kind: NodeKind) => void;
-  /** Adds one where a tile dragged onto the diagram is let go, in window coordinates. */
-  onDrop: (kind: NodeKind, point: Point) => void;
+  /**
+   * Adds one where a tile dragged onto the diagram is let go, in window coordinates; a shape drawn
+   * on the diagram also gets the corner it was dragged to.
+   */
+  onDrop: (kind: NodeKind, point: Point, to?: Point) => void;
   /** Whether a point of the window is on the diagram, not on a panel above it. */
   isOverCanvas: (point: Point) => boolean;
 }
@@ -80,6 +83,7 @@ export function ComponentsPanel({
             columns={3}
             onClose={() => onOpenChange(false)}
             closeIcon="panel"
+            carry
             onAdd={onAdd}
             onDrop={onDrop}
             isOverCanvas={isOverCanvas}
@@ -235,6 +239,8 @@ interface PaletteProps extends PaletteActions {
   closeIcon: 'panel' | 'x';
   /** Called when a tile starts being dragged. */
   onDragStart?: () => void;
+  /** Whether a click with the mouse sticks a tile to the pointer, instead of adding it at once. */
+  carry?: boolean;
   hint: string;
 }
 
@@ -247,6 +253,7 @@ function Palette({
   onDrop,
   isOverCanvas,
   onDragStart,
+  carry = false,
   hint,
 }: PaletteProps) {
   const strings = useStrings();
@@ -339,6 +346,7 @@ function Palette({
                       onAdd={onAdd}
                       onDrop={onDrop}
                       isOverCanvas={isOverCanvas}
+                      carry={carry}
                       {...(onDragStart ? { onDragStart } : {})}
                     />
                   ))}
@@ -356,12 +364,16 @@ interface PaletteTileProps extends PaletteActions {
   definition: NodeDefinition;
   delay: number;
   onDragStart?: () => void;
+  carry?: boolean;
 }
 
 /**
- * A kind of node. Clicking or tapping adds it at the centre of the view;
- * dragging it (with a finger, after holding it a moment) places it on the
- * diagram where it is let go (palette-drag.ts).
+ * A kind of node. Dragging it (with a finger, after holding it a moment)
+ * places it on the diagram where it is let go. In the panel beside the
+ * diagram, a click with the mouse sticks it to the pointer until it is
+ * placed with another click (a shape can be drawn at the size dragged) or
+ * thrown away; in the sheet, a tap, or the keyboard, adds it at the centre
+ * of the view (palette-drag.ts).
  */
 function PaletteTile({
   definition,
@@ -370,10 +382,13 @@ function PaletteTile({
   onDrop,
   isOverCanvas,
   onDragStart,
+  carry = false,
 }: PaletteTileProps) {
   const strings = useStrings();
   const Icon = KIND_ICONS[definition.kind];
   const text = strings.kinds[definition.kind];
+  // How the last press arrived: only a mouse or a pen can carry the tile around by itself.
+  const pointerType = useRef('mouse');
   return (
     <m.li
       layout
@@ -388,6 +403,7 @@ function PaletteTile({
         title={text.description}
         aria-label={strings.components.add(text.label)}
         onPointerDown={(event) => {
+          pointerType.current = event.pointerType;
           if (event.button !== 0) return;
           pressTile(definition.kind, event, {
             onDrop,
@@ -395,8 +411,19 @@ function PaletteTile({
             ...(onDragStart ? { onStart: onDragStart } : {}),
           });
         }}
-        onClick={() => {
-          if (!takeDragClick()) onAdd(definition.kind);
+        onClick={(event) => {
+          if (takeDragClick()) return;
+          // Pressing Enter or Space on a tile (a click without a pointer) adds it at the centre.
+          const withPointer = event.detail > 0 && pointerType.current !== 'touch';
+          if (carry && withPointer) {
+            carryTile(
+              definition.kind,
+              { x: event.clientX, y: event.clientY },
+              { onDrop, isOverCanvas },
+            );
+          } else {
+            onAdd(definition.kind);
+          }
         }}
         // A long press picks the tile up; it must not open the menu or select text.
         onContextMenu={(event) => event.preventDefault()}

@@ -1,4 +1,4 @@
-import type { NodeKind, Point } from '@archdraft/core';
+import { isShapeKind, type NodeKind, type Point } from '@archdraft/core';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 
@@ -8,6 +8,9 @@ export const DRAG_DISTANCE = 5;
 export const HOLD_MS = 280;
 export const HOLD_TOLERANCE = 10;
 
+/** Pixels a press on the diagram moves before a shape is drawn to the size dragged, not placed. */
+export const DRAW_DISTANCE = 6;
+
 /** A palette tile being carried to the diagram. */
 export interface PaletteDrag {
   readonly kind: NodeKind;
@@ -15,6 +18,36 @@ export interface PaletteDrag {
   readonly point: Point;
   /** Whether letting go here adds the node: the pointer is over the diagram, not over a panel. */
   readonly overCanvas: boolean;
+  /** Whether the pointer is over the box that throws the node away. */
+  readonly overDiscard: boolean;
+  /** Held down from the tile (`drag`), or stuck to the pointer after a click on it (`carry`). */
+  readonly mode: 'drag' | 'carry';
+  /** Where a shape started to be drawn on the diagram, if it has. */
+  readonly drawFrom: Point | null;
+}
+
+/**
+ * The corner a shape is drawn to. A circle stays a circle: it takes the
+ * longer side of what was dragged, in the direction of the pointer.
+ */
+export function drawnCorner(kind: NodeKind, from: Point, to: Point): Point {
+  if (kind !== 'circle') return to;
+  const side = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
+  return { x: from.x + (to.x < from.x ? -side : side), y: from.y + (to.y < from.y ? -side : side) };
+}
+
+/** Whether a point of the window is over the box that discards what is being carried. */
+export function isOverDiscard(point: Point): boolean {
+  const element = document.elementFromPoint(point.x, point.y);
+  return (element?.closest('[data-discard-drop]') ?? null) !== null;
+}
+
+/** Ends the tile stuck to the pointer, if there is one. */
+let stopCarrying: (() => void) | null = null;
+
+/** Drops what is being carried without adding it. */
+export function discardCarried(): void {
+  stopCarrying?.();
 }
 
 interface PaletteDragState {
@@ -30,8 +63,11 @@ export function usePaletteDrag<T>(selector: (state: PaletteDragState) => T): T {
 export interface PressOptions {
   /** Called once the press becomes a drag; on phones, the sheet makes way for the diagram. */
   onStart?: () => void;
-  /** Where the node is to be added, in window coordinates. */
-  onDrop: (kind: NodeKind, point: Point) => void;
+  /**
+   * Where the node is to be added, in window coordinates; for a shape drawn on the diagram, also
+   * the opposite corner it was dragged to.
+   */
+  onDrop: (kind: NodeKind, point: Point, to?: Point) => void;
   isOverCanvas: (point: Point) => boolean;
 }
 
@@ -61,6 +97,7 @@ export function pressTile(
   press: { pointerId: number; pointerType: string; clientX: number; clientY: number },
   { onStart, onDrop, isOverCanvas }: PressOptions,
 ): void {
+  stopCarrying?.();
   const { pointerId, pointerType, clientX, clientY } = press;
   const touch = pointerType === 'touch';
   const start = { x: clientX, y: clientY };
@@ -68,7 +105,16 @@ export function pressTile(
   let dragging = false;
 
   const show = (point: Point) =>
-    paletteDragStore.setState({ drag: { kind, point, overCanvas: isOverCanvas(point) } });
+    paletteDragStore.setState({
+      drag: {
+        kind,
+        point,
+        overCanvas: isOverCanvas(point),
+        overDiscard: isOverDiscard(point),
+        mode: 'drag',
+        drawFrom: null,
+      },
+    });
 
   const begin = () => {
     dragging = true;
@@ -102,7 +148,7 @@ export function pressTile(
         dragJustEnded = false;
       }, 0);
       const point = { x: event.clientX, y: event.clientY };
-      if (isOverCanvas(point)) onDrop(kind, point);
+      if (isOverCanvas(point) && !isOverDiscard(point)) onDrop(kind, point);
     }
     stop();
   };
@@ -133,4 +179,106 @@ export function pressTile(
   window.addEventListener('pointercancel', stop);
   window.addEventListener('keydown', onKey);
   window.addEventListener('touchmove', onTouchMove, { passive: false });
+}
+
+/**
+ * A click on a tile with a mouse or a pen sticks the node to the pointer
+ * until it is placed: a click on the diagram adds it there, and a shape can
+ * instead be drawn at the size dragged, as in Excalidraw. The box at the top
+ * (`data-discard-drop`), Escape or the right button throw it away. The
+ * listeners live on the window, and the press that places the node is not
+ * passed on, so it neither pans nor selects.
+ */
+export function carryTile(
+  kind: NodeKind,
+  start: Point,
+  { onDrop, isOverCanvas }: Pick<PressOptions, 'onDrop' | 'isOverCanvas'>,
+): void {
+  stopCarrying?.();
+  const shape = isShapeKind(kind);
+  let last = start;
+  let pointerId: number | null = null;
+  let drawFrom: Point | null = null;
+
+  const show = () => {
+    const point = drawFrom === null ? last : drawnCorner(kind, drawFrom, last);
+    paletteDragStore.setState({
+      drag: {
+        kind,
+        point,
+        overCanvas: isOverCanvas(last),
+        overDiscard: isOverDiscard(last),
+        mode: 'carry',
+        drawFrom,
+      },
+    });
+  };
+
+  const onMove = (event: PointerEvent) => {
+    last = { x: event.clientX, y: event.clientY };
+    show();
+  };
+
+  const onDown = (event: PointerEvent) => {
+    if (event.button !== 0) {
+      event.preventDefault();
+      stop();
+      return;
+    }
+    const point = { x: event.clientX, y: event.clientY };
+    // Clicks on the box that discards, or on a panel, are for those; a panel may hold another tile.
+    if (!isOverCanvas(point) || isOverDiscard(point)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    pointerId = event.pointerId;
+    last = point;
+    window.addEventListener('click', swallow, true);
+    if (shape) drawFrom = point;
+    show();
+  };
+
+  const onUp = (event: PointerEvent) => {
+    if (event.pointerId !== pointerId) return;
+    const point = { x: event.clientX, y: event.clientY };
+    const from = drawFrom ?? point;
+    const drawn =
+      drawFrom !== null && Math.hypot(point.x - from.x, point.y - from.y) > DRAW_DISTANCE;
+    if (isOverCanvas(point) && !isOverDiscard(point)) {
+      if (drawn) onDrop(kind, from, drawnCorner(kind, from, point));
+      else onDrop(kind, point);
+    }
+    stop();
+  };
+
+  const onKey = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') stop();
+  };
+
+  /** The click that follows the press placing the node must not select what is under it. */
+  const swallow = (event: Event) => {
+    event.stopPropagation();
+    event.preventDefault();
+  };
+
+  function stop() {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerdown', onDown, true);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', stop);
+    window.removeEventListener('keydown', onKey);
+    window.removeEventListener('contextmenu', stop);
+    // The click, if any, comes right after the release.
+    setTimeout(() => window.removeEventListener('click', swallow, true), 0);
+    if (stopCarrying === stop) stopCarrying = null;
+    paletteDragStore.setState({ drag: null });
+  }
+
+  stopCarrying = stop;
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerdown', onDown, true);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', stop);
+  window.addEventListener('keydown', onKey);
+  window.addEventListener('contextmenu', stop);
+  show();
 }

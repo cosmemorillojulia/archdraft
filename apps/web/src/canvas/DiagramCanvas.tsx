@@ -109,6 +109,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const strings = useStrings();
   const { document: diagram, direction } = snapshot;
   const selection = useEditor((state) => state.selection);
+  const renamingId = useEditor((state) => state.renaming);
   const inspectorExpanded = useEditor(isInspectorExpanded);
   const particles = usePreferences((state) => state.flowAnimation);
   const findings = useFindings();
@@ -214,7 +215,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const busyId = draggingId ?? resizing?.id ?? null;
   const canvas = useMemo(() => {
     const hovered = busyId === null ? hoverId : null;
-    const shared = { selection, dropTargetId, building, particles, issues, resize };
+    const shared = { selection, renamingId, dropTargetId, building, particles, issues, resize };
     if (hovered === null && activeFinding) {
       const nodes = new Set(activeFinding.nodeIds);
       return {
@@ -244,6 +245,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     hoverId,
     issues,
     particles,
+    renamingId,
     resize,
     selectedNodeId,
     selection,
@@ -416,6 +418,9 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     else if (editor.connectingFrom === node.id) editor.cancelConnection();
     else editor.connect(editor.connectingFrom, node.id);
   });
+  const onNodeDoubleClick = useStableHandler((_event: unknown, node: ArchitectureFlowNode) =>
+    editorStore.getState().startRename(node.id),
+  );
   const onEdgeClick = useStableHandler((_event: unknown, edge: ArchitectureFlowEdge) => {
     reviewStore.getState().setOpen(false);
     editorStore.getState().select({ type: 'edge', id: edge.id });
@@ -491,6 +496,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
           onNodeClick={onNodeClick}
+          onNodeDoubleClick={onNodeDoubleClick}
+          zoomOnDoubleClick={false}
           onEdgeClick={onEdgeClick}
           onPaneClick={onPaneClick}
           className="archdraft-flow"

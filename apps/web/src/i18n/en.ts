@@ -117,6 +117,12 @@ export const en = {
     disabledNote: 'Turned off rules stay off in this browser.',
   },
   components: {
+    discard: 'Drop here to discard',
+    carryHint: 'Click on the diagram to place it. Esc cancels.',
+    carryShapeHint:
+      'Click on the diagram to place it, or drag to draw it at the size you want. Esc cancels.',
+    carrying: (label: string) =>
+      `Placing ${label}. Click on the diagram to place it, or press Escape to cancel.`,
     title: 'Components',
     open: 'Show components',
     close: 'Hide components',
@@ -176,6 +182,7 @@ export const en = {
       out: 'Zoom out',
       fit: 'Fit diagram to screen',
     },
+    rename: 'Name',
     connecting: 'Choose a component to connect',
     cancelConnecting: 'Cancel',
     dismiss: 'Dismiss',

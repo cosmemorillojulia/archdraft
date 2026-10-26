@@ -7,6 +7,7 @@ import { SEVERITY_COLOR } from '../review/findings.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import { ConnectionHandles } from './ConnectionHandles.tsx';
+import { NameEditor } from './NameEditor.tsx';
 import type { ComponentFlowNode } from './flow.ts';
 import { ResizeHandles } from './ResizeHandles.tsx';
 
@@ -68,9 +69,17 @@ export const ComponentNode = memo(function ComponentNode({
           </span>
           <span className="min-w-0 flex-1">
             {/* Long names, frequent in Spanish, take a second line instead of being cut. */}
-            <span className="line-clamp-2 text-[13px] leading-tight font-semibold break-words">
-              {node.label}
-            </span>
+            {canvas.renamingId === id ? (
+              <NameEditor
+                id={id}
+                value={node.label}
+                className="w-full px-1 text-[13px] leading-tight font-semibold"
+              />
+            ) : (
+              <span className="line-clamp-2 text-[13px] leading-tight font-semibold break-words">
+                {node.label}
+              </span>
+            )}
             <span className="block truncate text-[11px] leading-tight text-muted">{service}</span>
           </span>
           {issue !== undefined && (

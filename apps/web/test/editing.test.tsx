@@ -1,4 +1,4 @@
-import { ARCHITECTURE_TEMPLATES } from '@archdraft/core';
+import { ARCHITECTURE_TEMPLATES, defaultSizeOf } from '@archdraft/core';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -175,6 +175,77 @@ describe('editing on wide screens', () => {
     expect(await screen.findByRole('region', { name: 'Load balancer' })).toBeInTheDocument();
   });
 
+  describe('renaming in the box', () => {
+    const open = async () => {
+      render(<App />);
+      const canvas = await diagram();
+      fireEvent.doubleClick(flowNode(canvas, 'Web application'));
+      const field = await within(canvas).findByRole('textbox', { name: strings.canvas.rename });
+      return { canvas, field };
+    };
+    const history = () => editorStore.getState().past.length;
+
+    it('opens a field with the name selected on double click, and keeps what is typed with Enter', async () => {
+      const user = userEvent.setup();
+      const { canvas, field } = await open();
+      expect(field).toHaveValue('Web application');
+      expect(field).toHaveFocus();
+      const before = history();
+      await user.keyboard('Storefront{Enter}');
+      expect(within(canvas).getByText('Storefront')).toBeInTheDocument();
+      expect(within(canvas).queryByRole('textbox', { name: strings.canvas.rename })).toBeNull();
+      expect(history()).toBe(before + 1);
+    });
+
+    it('keeps the name when the field loses focus', async () => {
+      const user = userEvent.setup();
+      const { canvas } = await open();
+      await user.keyboard('Gateway');
+      await user.click(document.body);
+      expect(within(canvas).getByText('Gateway')).toBeInTheDocument();
+    });
+
+    it('drops what was typed with Escape and ignores an empty name', async () => {
+      const user = userEvent.setup();
+      const { canvas } = await open();
+      const before = history();
+      await user.keyboard('Something else{Escape}');
+      expect(within(canvas).getByText('Web application')).toBeInTheDocument();
+      expect(history()).toBe(before);
+
+      fireEvent.doubleClick(flowNode(canvas, 'Web application'));
+      await within(canvas).findByRole('textbox', { name: strings.canvas.rename });
+      await user.keyboard('{Backspace}{Enter}');
+      expect(within(canvas).getByText('Web application')).toBeInTheDocument();
+      expect(history()).toBe(before);
+    });
+
+    it('does not take the keys for shortcuts: Delete types instead of deleting the node', async () => {
+      const user = userEvent.setup();
+      const { canvas } = await open();
+      await user.keyboard('{Delete}{Backspace}');
+      expect(
+        editorStore.getState().current?.document.graph.nodes.map((node) => node.label),
+      ).toContain('Web application');
+      expect(canvas.querySelector('input')).not.toBeNull();
+    });
+
+    it('also opens with Enter on the selected node, and F2', async () => {
+      render(<App />);
+      const canvas = await diagram();
+      const node = flowNode(canvas, 'Load balancer');
+      node.focus();
+      // Not selected yet: Enter only selects, as before.
+      fireEvent.keyDown(node, { key: 'Enter' });
+      await screen.findByRole('region', { name: 'Load balancer' });
+      expect(within(canvas).queryByRole('textbox', { name: strings.canvas.rename })).toBeNull();
+      fireEvent.keyDown(node, { key: 'F2' });
+      expect(
+        await within(canvas).findByRole('textbox', { name: strings.canvas.rename }),
+      ).toHaveValue('Load balancer');
+    });
+  });
+
   it('deletes the selection with the keyboard, and undoes and redoes it', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -273,6 +344,155 @@ describe('editing on wide screens', () => {
     fireEvent.pointerUp(window, { pointerId: 2, clientX: 60, clientY: 120 });
     expect(nodeIds()).toEqual(before);
   });
+  describe('placing a tile stuck to the pointer', () => {
+    const discardBox = () => document.querySelector<HTMLElement>('[data-discard-drop]');
+    const layoutOf = (id: string) => editorStore.getState().current?.document.layout.sizes[id];
+
+    /** Opens the palette and clicks the tile of this kind with the mouse. */
+    async function pickUp(label: string, point = { x: 40, y: 200 }) {
+      const user = userEvent.setup();
+      render(<App />);
+      const canvas = await diagram();
+      const pane = canvas.querySelector('.react-flow__pane');
+      pointAt(pane);
+      await user.click(screen.getByRole('button', { name: strings.components.open }));
+      const tile = await screen.findByRole('button', { name: strings.components.add(label) });
+      fireEvent.pointerDown(tile, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        clientX: point.x,
+        clientY: point.y,
+      });
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: point.x, clientY: point.y });
+      fireEvent.click(tile, { detail: 1, clientX: point.x, clientY: point.y });
+      return { canvas, pane, tile };
+    }
+
+    const press = (point: { x: number; y: number }, type: 'Down' | 'Up' | 'Move') =>
+      type === 'Move'
+        ? fireEvent.pointerMove(window, { pointerId: 2, clientX: point.x, clientY: point.y })
+        : fireEvent[`pointer${type}`](window, {
+            pointerId: 2,
+            pointerType: 'mouse',
+            button: 0,
+            clientX: point.x,
+            clientY: point.y,
+          });
+
+    it('sticks the component to the pointer, with a box to discard it, and places it with a click', async () => {
+      const { canvas } = await pickUp('Cache');
+      expect(await waitFor(() => ghost())).toHaveTextContent('Cache');
+      expect(discardBox()).not.toBeNull();
+      expect(nodeIds()).not.toContain('cache-2');
+
+      press({ x: 500, y: 300 }, 'Move');
+      press({ x: 500, y: 300 }, 'Down');
+      press({ x: 500, y: 300 }, 'Up');
+      expect(await within(canvas).findByText('Cache')).toBeInTheDocument();
+      expect(nodeIds()?.filter((id) => id.startsWith('cache'))).toEqual(['cache', 'cache-2']);
+      await waitFor(() => expect(ghost()).toBeNull());
+      expect(discardBox()).toBeNull();
+      // Placed once: another click on the diagram adds nothing.
+      press({ x: 600, y: 300 }, 'Down');
+      press({ x: 600, y: 300 }, 'Up');
+      expect(nodeIds()?.filter((id) => id.startsWith('cache'))).toEqual(['cache', 'cache-2']);
+    });
+
+    it('is thrown away with Escape, the discard box, or the right button', async () => {
+      await pickUp('Cache');
+      const before = nodeIds();
+      fireEvent.keyDown(window, { key: 'Escape' });
+      await waitFor(() => expect(ghost()).toBeNull());
+      expect(nodeIds()).toEqual(before);
+
+      const tile = screen.getByRole('button', { name: strings.components.add('Cache') });
+      fireEvent.click(tile, { detail: 1, clientX: 40, clientY: 200 });
+      await waitFor(() => expect(ghost()).not.toBeNull());
+      fireEvent.click(discardBox() as HTMLElement);
+      await waitFor(() => expect(ghost()).toBeNull());
+
+      fireEvent.click(tile, { detail: 1, clientX: 40, clientY: 200 });
+      await waitFor(() => expect(ghost()).not.toBeNull());
+      fireEvent.pointerDown(window, { pointerId: 3, pointerType: 'mouse', button: 2 });
+      await waitFor(() => expect(ghost()).toBeNull());
+      expect(nodeIds()).toEqual(before);
+    });
+
+    it('adds nothing when the click is on a panel, and keeps the tile stuck', async () => {
+      const { tile } = await pickUp('Cache');
+      const before = nodeIds();
+      pointAt(tile);
+      press({ x: 40, y: 200 }, 'Down');
+      press({ x: 40, y: 200 }, 'Up');
+      expect(nodeIds()).toEqual(before);
+      expect(ghost()).not.toBeNull();
+    });
+
+    it('is thrown away when a dragged tile is let go over the discard box', async () => {
+      const { tile } = await pickUp('Cache');
+      fireEvent.keyDown(window, { key: 'Escape' });
+      await waitFor(() => expect(ghost()).toBeNull());
+      const before = nodeIds();
+      fireEvent.pointerDown(tile, {
+        pointerId: 5,
+        pointerType: 'mouse',
+        button: 0,
+        clientX: 20,
+        clientY: 90,
+      });
+      fireEvent.pointerMove(window, { pointerId: 5, clientX: 400, clientY: 70 });
+      await waitFor(() => expect(discardBox()).not.toBeNull());
+      pointAt(discardBox());
+      fireEvent.pointerMove(window, { pointerId: 5, clientX: 410, clientY: 72 });
+      fireEvent.pointerUp(window, { pointerId: 5, clientX: 410, clientY: 72 });
+      expect(nodeIds()).toEqual(before);
+    });
+
+    it('adds a tile at the centre when it is activated with the keyboard', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await diagram();
+      await user.click(screen.getByRole('button', { name: strings.components.open }));
+      const tile = await screen.findByRole('button', { name: strings.components.add('Cache') });
+      fireEvent.click(tile, { detail: 0 });
+      expect(nodeIds()).toContain('cache-2');
+      expect(ghost()).toBeNull();
+    });
+
+    it('draws a shape at the size dragged', async () => {
+      await pickUp('Box');
+      press({ x: 100, y: 100 }, 'Down');
+      press({ x: 300, y: 260 }, 'Move');
+      expect(document.querySelector('[data-palette-drawing]')).not.toBeNull();
+      press({ x: 300, y: 260 }, 'Up');
+      await waitFor(() => expect(nodeIds()).toContain('box'));
+      const size = layoutOf('box');
+      expect(size).toBeDefined();
+      // 200 × 160 on the screen, in diagram pixels at whatever zoom the view has.
+      expect((size?.width ?? 0) / (size?.height ?? 1)).toBeCloseTo(1.25, 1);
+      expect(document.querySelector('[data-palette-drawing]')).toBeNull();
+    });
+
+    it('draws a circle round, and places a shape of the usual size when the press does not move', async () => {
+      await pickUp('Circle');
+      press({ x: 100, y: 100 }, 'Down');
+      press({ x: 360, y: 200 }, 'Up');
+      await waitFor(() => expect(nodeIds()).toContain('circle'));
+      expect(layoutOf('circle')?.width).toBe(layoutOf('circle')?.height);
+
+      fireEvent.click(screen.getByRole('button', { name: strings.components.add('Diamond') }), {
+        detail: 1,
+        clientX: 40,
+        clientY: 200,
+      });
+      press({ x: 200, y: 200 }, 'Down');
+      press({ x: 201, y: 201 }, 'Up');
+      await waitFor(() => expect(nodeIds()).toContain('diamond'));
+      expect(layoutOf('diamond')).toEqual(defaultSizeOf('diamond'));
+    });
+  });
+
   it('explains why an edit was not made', async () => {
     const user = userEvent.setup();
     render(<App />);

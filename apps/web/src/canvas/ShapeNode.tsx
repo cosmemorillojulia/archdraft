@@ -5,6 +5,7 @@ import { SPRING_POP } from '../motion.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import type { ShapeFlowNode } from './flow.ts';
 import { ConnectionHandles } from './ConnectionHandles.tsx';
+import { NameEditor } from './NameEditor.tsx';
 import { ResizeHandles } from './ResizeHandles.tsx';
 
 /**
@@ -77,13 +78,27 @@ export const ShapeNode = memo(function ShapeNode({
               />
             </svg>
           )}
-          <span
-            className={`relative line-clamp-3 text-center text-[13px] leading-snug font-medium break-words ${
-              kind === 'diamond' ? 'max-w-[62%]' : kind === 'circle' ? 'max-w-[74%]' : 'max-w-[88%]'
-            }`}
-          >
-            {node.label}
-          </span>
+          {canvas.renamingId === id ? (
+            <NameEditor
+              id={id}
+              value={node.label}
+              className={`relative px-1 text-center text-[13px] font-medium ${
+                kind === 'diamond' ? 'w-[62%]' : kind === 'circle' ? 'w-[74%]' : 'w-[88%]'
+              }`}
+            />
+          ) : (
+            <span
+              className={`relative line-clamp-3 text-center text-[13px] leading-snug font-medium break-words ${
+                kind === 'diamond'
+                  ? 'max-w-[62%]'
+                  : kind === 'circle'
+                    ? 'max-w-[74%]'
+                    : 'max-w-[88%]'
+              }`}
+            >
+              {node.label}
+            </span>
+          )}
         </div>
       </m.div>
       {/* After the figure, so its corner handles are above it. */}
