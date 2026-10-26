@@ -252,6 +252,8 @@ export const es: Strings = {
     themeToDark: 'Cambiar al tema oscuro',
     themeToLight: 'Cambiar al tema claro',
     language: { code: 'ES', label: 'ES, cambiar a inglés', hint: 'Cambiar a inglés' },
+    newDiagram: 'Nuevo diagrama',
+    newDiagramTitle: 'Diagrama sin título',
     undo: 'Deshacer',
     redo: 'Rehacer',
   },

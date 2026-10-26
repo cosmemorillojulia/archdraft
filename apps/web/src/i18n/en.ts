@@ -74,6 +74,8 @@ export const en = {
     themeToLight: 'Switch to light theme',
     /** The language switch: the code of the current language, and what pressing it does. */
     language: { code: 'EN', label: 'EN, switch to Spanish', hint: 'Switch to Spanish' },
+    newDiagram: 'New diagram',
+    newDiagramTitle: 'Untitled diagram',
     undo: 'Undo',
     redo: 'Redo',
   },

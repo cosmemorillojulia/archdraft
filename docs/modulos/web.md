@@ -263,6 +263,10 @@ Los botones de zoom y el de la animación del flujo forman un grupo llamado «Vi
 
 Al pasar el ratón por un componente, este crece un 4 % y se perfila con su color, sus conexiones se vuelven del color de acento con su etiqueta y el resto se atenúa. Un componente seleccionado (al tocarlo en una pantalla táctil, por ejemplo) resalta también sus conexiones, pero no atenúa el resto, que sigue siendo editable. El tipo de puntero se recuerda en cada `pointerdown`, porque React Flow notifica el hover con eventos de ratón también en pantallas táctiles. Este estado, la selección y el grupo de destino de un arrastre viven en un contexto (`CanvasContext`) para no recalcular los nodos. Las etiquetas se pintan en la capa de etiquetas de React Flow, que se sube por encima de los nodos porque los grupos opacos las taparían.
 
+### Diagrama en blanco
+
+El botón + de la cabecera (`openBlank`, en `editor/open-document.ts`) abre un diagrama vacío titulado «Diagrama sin título» en el idioma de la interfaz, con la dirección que corresponde a la pantalla. Es un paso del historial: deshacer devuelve el diagrama anterior. Descarta una plantilla que aún se esté disponiendo, para que no sustituya al diagrama en blanco al terminar.
+
 ### Cambio de plantilla
 
 La plantilla elegida en el menú de la cabecera (`TemplatesMenu`: botón «Plantillas» con un menú `role="menu"` de seis `menuitemradio`, flechas, Inicio y Fin, Escape devuelve el foco al botón) se marca en cuanto se pulsa (`opening` en el store). El diagrama anterior se mantiene hasta que la nueva disposición está lista; entonces sale con un fundido y el nuevo lienzo se monta y se construye (`AnimatePresence` en modo `wait`, con la clave del documento). Si se eligen varias plantillas seguidas, solo se abre la última. Si la disposición falla, un aviso lo dice y el error va a la consola. Abrir una plantilla es un paso del historial: deshacer devuelve el diagrama anterior, con lo editado.

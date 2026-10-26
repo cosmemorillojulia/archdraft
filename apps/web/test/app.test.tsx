@@ -119,6 +119,22 @@ describe('App', () => {
     ).toHaveAttribute('aria-checked', 'true');
   });
 
+  it('opens an empty diagram from the plus button, and undo brings the previous one back', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const title = ARCHITECTURE_TEMPLATES['three-tier-web'].title;
+    await diagramOf(title);
+    await user.click(screen.getByRole('button', { name: strings.header.newDiagram }));
+    expect(
+      await screen.findByRole('group', {
+        name: strings.canvas.diagramLabel(strings.header.newDiagramTitle),
+      }),
+    ).toBeInTheDocument();
+    expect(document.querySelectorAll('.react-flow__node')).toHaveLength(0);
+    await user.click(screen.getByRole('button', { name: strings.header.undo }));
+    expect(await diagramOf(title)).toBeInTheDocument();
+  });
+
   it('closes the templates menu with Escape and returns the focus to its button', async () => {
     const user = userEvent.setup();
     render(<App />);

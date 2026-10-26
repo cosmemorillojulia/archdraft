@@ -1,5 +1,7 @@
 import {
   type ArchitectureGraph,
+  createEmptyGraph,
+  createEmptyLayout,
   type DiagramDocument,
   type DiagramLayout,
   importDocument,
@@ -44,6 +46,19 @@ export async function openTemplate(
       store.getState().notify(currentStrings().canvas.layoutFailed);
     }
   }
+}
+
+/** Opens an empty diagram, titled in the language of the interface. Undo returns to the previous one. */
+export function openBlank(direction: LayoutDirection, store = editorStore): void {
+  // A template still being laid out must not replace the blank diagram when it finishes.
+  latestRequest++;
+  store.getState().load(
+    {
+      graph: createEmptyGraph(currentStrings().header.newDiagramTitle),
+      layout: createEmptyLayout(),
+    },
+    { direction, templateId: null },
+  );
 }
 
 /**

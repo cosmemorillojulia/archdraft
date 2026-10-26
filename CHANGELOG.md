@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@archdraft/web`: a + button in the header opens an empty diagram (`openBlank`); undo brings the previous diagram back.
+
 - Monorepo with pnpm workspaces, strict TypeScript, type-aware ESLint, Prettier and Vitest.
 - Continuous integration on GitHub Actions and Dependabot configuration.
 - `@archdraft/core`: diagram schema (Zod), component catalog with AWS, Google Cloud and Azure mappings, graph index and traversal utilities, structural validation and JSON Schema generation.
