@@ -41,8 +41,40 @@ describe('App', () => {
     expect(card).toHaveTextContent(
       `${graph.edges.length}${strings.card.connections(graph.edges.length)}`,
     );
-    expect(within(card).getByRole('combobox', { name: strings.card.provider })).toHaveValue('aws');
+    expect(
+      within(card).getByRole('button', {
+        name: `${strings.card.provider}: ${strings.providers.aws}`,
+      }),
+    ).toBeInTheDocument();
     expect(within(card).getByRole('status')).toHaveTextContent(strings.review.clean);
+  });
+
+  it('changes the cloud of the diagram from the menu of its chip', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const graph = ARCHITECTURE_TEMPLATES['three-tier-web'];
+    const card = await screen.findByRole('region', { name: graph.title });
+    const chip = within(card).getByRole('button', {
+      name: `${strings.card.provider}: ${strings.providers.aws}`,
+    });
+    await user.click(chip);
+
+    const menu = screen.getByRole('menu', { name: strings.card.provider });
+    const options = within(menu).getAllByRole('menuitemradio');
+    expect(options.map((option) => option.textContent)).toEqual([
+      strings.providers.generic,
+      strings.providers.aws,
+      strings.providers.gcp,
+      strings.providers.azure,
+    ]);
+    const aws = within(menu).getByRole('menuitemradio', { name: strings.providers.aws });
+    expect(aws).toHaveAttribute('aria-checked', 'true');
+    expect(aws).toHaveFocus();
+
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(chip).toHaveAccessibleName(`${strings.card.provider}: ${strings.providers.gcp}`);
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    expect(chip).toHaveFocus();
   });
 
   it('keeps the description of the diagram folded until it is asked for', async () => {

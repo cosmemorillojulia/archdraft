@@ -199,7 +199,7 @@ function Editor() {
             </aside>
           )}
 
-          <div className="pointer-events-none absolute inset-x-3 top-3 bottom-24 z-10 flex flex-col items-end gap-3 md:bottom-46 md:left-auto md:w-96 lg:w-120">
+          <div className="pointer-events-none absolute inset-x-3 top-3 bottom-24 z-10 flex flex-col items-end gap-3 md:bottom-46 md:left-auto md:w-80">
             {graph && <DiagramCard graph={graph} />}
             {wide && <PanelSlot placement="side" />}
           </div>
@@ -227,7 +227,7 @@ function Editor() {
                     />
                   </div>
                 )}
-                <div className="pointer-events-none flex justify-center px-3 pb-4 md:px-78">
+                <div className="pointer-events-none flex justify-center px-3 pb-4 md:justify-end md:pr-83 md:pl-78">
                   <PromptDock />
                 </div>
               </m.div>
