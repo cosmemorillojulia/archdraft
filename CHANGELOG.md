@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@archdraft/web`: the diagram card is wider than tall, in two rows: the title, an arrow that unfolds the description and the cloud chip, fitted to its name with the text centred; then the counts and the design review.
+
 - `@archdraft/web`: the header + button is a menu with the blank diagram and the templates; on phones the buttons are closer together so the title no longer covers them.
 
 - `@archdraft/web`: text put over a box is fixed to it (`attachedTo`): it moves, is copied and deleted with the box and can be detached from the inspector.

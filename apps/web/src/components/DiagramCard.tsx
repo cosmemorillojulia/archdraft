@@ -9,6 +9,7 @@ import {
 import {
   Boxes,
   Cable,
+  ChevronDown,
   ChevronRight,
   CircleCheck,
   Info,
@@ -41,50 +42,24 @@ export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
     <m.section
       layout
       aria-labelledby={headingId}
-      className="floating pointer-events-auto w-full shrink-0 overflow-hidden rounded-panel px-4 py-3 md:w-80"
+      className="floating pointer-events-auto w-full shrink-0 overflow-hidden rounded-panel px-4 py-2.5"
       transition={{ layout: { duration: 0.35, ease: EASE_OUT } }}
     >
       <AnimatePresence mode="popLayout" initial={false}>
         <m.div
-          // A new diagram slides in; renaming the one that is open does not.
+          // A new diagram slides in, with its description folded; renaming
+          // the one that is open does not.
           key={openedKey}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3, ease: EASE_OUT }}
         >
-          <div className="flex items-start justify-between gap-3">
-            <h2 id={headingId} className="min-w-0 flex-1 leading-snug font-semibold">
-              <TitleField title={graph.title} />
-            </h2>
-            <label className="relative shrink-0">
-              <span className="sr-only">{strings.card.provider}</span>
-              <select
-                value={graph.provider}
-                onChange={(event) =>
-                  editorStore
-                    .getState()
-                    .updateDiagram({ provider: event.target.value as CloudProvider })
-                }
-                className="cursor-pointer appearance-none rounded-full bg-surface-muted px-2.5 py-0.5 text-xs text-muted transition-colors outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                {CLOUD_PROVIDERS.map((provider) => (
-                  <option key={provider} value={provider}>
-                    {strings.providers[provider]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {graph.description !== undefined && (
-            <p className="mt-1 hidden text-xs leading-relaxed text-muted md:line-clamp-2">
-              {graph.description}
-            </p>
-          )}
+          <CardHeading graph={graph} headingId={headingId} />
         </m.div>
       </AnimatePresence>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
         <span className="inline-flex items-center gap-1.5">
           <Boxes size={14} aria-hidden="true" />
           <Count value={components} />
@@ -105,6 +80,90 @@ export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
         <ReviewStatus />
       </div>
     </m.section>
+  );
+}
+
+/**
+ * One line with the name, the button that unfolds the description and the
+ * cloud of the diagram, over the description while it is unfolded.
+ */
+function CardHeading({ graph, headingId }: { graph: ArchitectureGraph; headingId: string }) {
+  const strings = useStrings();
+  const descriptionId = useId();
+  const [expanded, setExpanded] = useState(false);
+  const toggleLabel = expanded ? strings.card.hideDescription : strings.card.showDescription;
+
+  return (
+    <>
+      <div className="flex h-7 items-center gap-1">
+        <h2
+          id={headingId}
+          className="-ml-1 min-w-0 truncate leading-snug font-semibold has-[input]:flex-1"
+        >
+          <TitleField title={graph.title} />
+        </h2>
+        {graph.description !== undefined && (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={descriptionId}
+            aria-label={toggleLabel}
+            title={toggleLabel}
+            onClick={() => setExpanded(!expanded)}
+            className="grid size-6 shrink-0 place-items-center rounded-md text-muted transition-colors hover:bg-surface-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <ChevronDown
+              size={16}
+              aria-hidden="true"
+              className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            />
+          </button>
+        )}
+        <ProviderChip provider={graph.provider} />
+      </div>
+      <AnimatePresence initial={false}>
+        {expanded && graph.description !== undefined && (
+          <m.div
+            id={descriptionId}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: EASE_OUT }}
+            className="overflow-hidden"
+          >
+            <p className="pt-1.5 text-xs leading-relaxed text-muted">{graph.description}</p>
+          </m.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/**
+ * The cloud of the diagram as a chip that fits its own name. A transparent
+ * select over it does the choosing, so the browser keeps its native list
+ * while the chip keeps its shape, whichever name is longest.
+ */
+function ProviderChip({ provider }: { provider: CloudProvider }) {
+  const strings = useStrings();
+  return (
+    <label className="relative ml-auto inline-flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-surface-muted px-3 text-xs leading-none font-medium text-muted transition-colors hover:border-(--group-line) hover:text-ink has-focus-visible:outline-2 has-focus-visible:outline-accent">
+      <span aria-hidden="true">{strings.providers[provider]}</span>
+      <select
+        aria-label={strings.card.provider}
+        value={provider}
+        onChange={(event) =>
+          editorStore.getState().updateDiagram({ provider: event.target.value as CloudProvider })
+        }
+        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
+      >
+        {CLOUD_PROVIDERS.map((option) => (
+          <option key={option} value={option}>
+            {strings.providers[option]}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -139,7 +198,7 @@ function TitleField({ title }: { title: string }) {
         title={strings.card.rename}
         aria-label={`${strings.card.rename}: ${title}`}
         onClick={() => setEditing(true)}
-        className="-mx-1 max-w-full cursor-text rounded-md px-1 text-left break-words transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-accent"
+        className="block max-w-full cursor-text truncate rounded-md px-1 text-left transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-accent"
       >
         {title}
       </button>
@@ -158,7 +217,7 @@ function TitleField({ title }: { title: string }) {
         if (event.key === 'Enter') finish(true);
         else if (event.key === 'Escape') finish(false);
       }}
-      className="-mx-1 w-full rounded-md bg-surface-muted px-1 font-semibold outline-2 outline-accent"
+      className="w-full rounded-md bg-surface-muted px-1 font-semibold outline-2 outline-accent"
     />
   );
 }

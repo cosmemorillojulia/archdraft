@@ -86,6 +86,8 @@ export const en = {
     shapes: (count: number) => (count === 1 ? 'shape' : 'shapes'),
     rename: 'Diagram name',
     provider: 'Cloud',
+    showDescription: 'Show description',
+    hideDescription: 'Hide description',
   },
   providers: {
     generic: 'Any cloud',

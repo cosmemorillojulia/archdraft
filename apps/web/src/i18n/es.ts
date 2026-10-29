@@ -268,6 +268,8 @@ export const es: Strings = {
     shapes: (count: number) => (count === 1 ? 'figura' : 'figuras'),
     rename: 'Nombre del diagrama',
     provider: 'Nube',
+    showDescription: 'Ver descripción',
+    hideDescription: 'Ocultar descripción',
   },
   providers: {
     generic: 'Cualquier nube',
