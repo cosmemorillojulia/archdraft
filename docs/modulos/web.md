@@ -188,7 +188,7 @@ Animaciones del recorrido:
 | `EditorNotice`    | Avisos arriba en el centro: por qué no se hizo una edición (`role="alert"`) y la conexión pendiente desde el inspector, con su botón para cancelar                                                                                                                                                                                                              |
 | `Button`          | Variantes `primary`, `secondary`, `ghost` y `danger`; tamaños `default` e `icon`. Los tamaños son variantes con nombre porque dos utilidades de Tailwind sobre la misma propiedad no se anulan por su orden en `class`                                                                                                                                          |
 
-En pantallas estrechas la cabecera oculta la descripción, la tarjeta ocupa el ancho (la descripción sigue plegada hasta que se pide) y el menú de plantillas pasa a ser un icono. La columna derecha mide 24 rem entre 768 y 1023 px y 30 rem desde 1024 px, para que la tarjeta quede más ancha que alta sin chocar con la paleta.
+En pantallas estrechas la cabecera oculta la descripción, la tarjeta ocupa el ancho (la descripción sigue plegada hasta que se pide) y el menú de plantillas pasa a ser un icono. La columna derecha mide 20 rem; solo la tarjeta del diagrama se sale de ella hacia la izquierda (24 rem entre 768 y 1023 px y 30 rem desde 1024 px), para quedar más ancha que alta sin chocar con la paleta.
 
 ### Paleta en escritorio y en móvil
 
@@ -227,7 +227,7 @@ La versión empaquetada de elkjs, al ejecutarse en un contexto con `self` y sin 
 
 ### Distribución en escritorio
 
-Los paneles flotantes se reparten el espacio sin dejar huecos junto a la barra de descripción: la paleta de componentes llega de arriba abajo en el lado izquierdo; a la derecha, la tarjeta del diagrama y el inspector (o la revisión) ocupan la columna hasta el grupo de zoom y minimapa, que está en la esquina inferior derecha; y la barra de descripción se queda entre ambos con un ancho máximo de 48 rem, que se estrecha en pantallas pequeñas. En alturas pequeñas, como 626 px, el inspector queda unos 40 px más bajo que antes y se desplaza por dentro.
+Los paneles flotantes se reparten el espacio sin dejar huecos junto a la barra de descripción: la paleta de componentes llega de arriba abajo en el lado izquierdo; a la derecha, la tarjeta del diagrama y el inspector (o la revisión) ocupan la columna hasta el grupo de zoom y minimapa, que está en la esquina inferior derecha; y la barra de descripción se queda entre ambos con un ancho máximo de 48 rem, que se estrecha en pantallas pequeñas. En escritorio la barra se pega a la derecha, de modo que su borde derecho coincide con el borde izquierdo del inspector y de la revisión en cualquier ancho; solo la tarjeta del diagrama lo sobrepasa. En alturas pequeñas, como 626 px, el inspector queda unos 40 px más bajo que antes y se desplaza por dentro.
 
 ### Zoom y desplazamiento
 
