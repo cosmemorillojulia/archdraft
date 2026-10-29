@@ -11,6 +11,7 @@ import {
   Cable,
   ChevronDown,
   ChevronRight,
+  Check,
   CircleCheck,
   Info,
   OctagonAlert,
@@ -18,12 +19,14 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { type CSSProperties, useEffect, useId, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { editorStore, useEditor } from '../editor/store.ts';
 import { EASE_OUT } from '../motion.ts';
 import { SEVERITY_COLOR, useFindings, worstSeverity } from '../review/findings.ts';
 import { reviewStore, useReview } from '../review/review-store.ts';
 import { useStrings } from '../i18n/locale.ts';
+import { MENU_ITEM, MENU_MOTION, useMenu } from './menu.ts';
 
 /**
  * Floating summary of the current diagram: what it is, its size and its
@@ -42,7 +45,7 @@ export function DiagramCard({ graph }: { graph: ArchitectureGraph }) {
     <m.section
       layout
       aria-labelledby={headingId}
-      className="floating pointer-events-auto w-full shrink-0 overflow-hidden rounded-panel px-4 py-2.5"
+      className="floating pointer-events-auto w-full shrink-0 overflow-hidden rounded-panel px-4 py-2.5 md:w-96 lg:w-120"
       transition={{ layout: { duration: 0.35, ease: EASE_OUT } }}
     >
       <AnimatePresence mode="popLayout" initial={false}>
@@ -140,30 +143,71 @@ function CardHeading({ graph, headingId }: { graph: ArchitectureGraph; headingId
 }
 
 /**
- * The cloud of the diagram as a chip that fits its own name. A transparent
- * select over it does the choosing, so the browser keeps its native list
- * while the chip keeps its shape, whichever name is longest.
+ * The cloud of the diagram as a chip that fits its own name, with the text
+ * centred, and a menu to change it. The card clips what overflows it, so the
+ * menu is drawn on the page, under the right edge of the chip.
  */
 function ProviderChip({ provider }: { provider: CloudProvider }) {
   const strings = useStrings();
+  const { open, close, buttonRef, buttonProps, menuProps } = useMenu();
+  const [anchor, setAnchor] = useState({ top: 0, right: 0 });
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const chip = buttonRef.current?.getBoundingClientRect();
+      if (chip) setAnchor({ top: chip.bottom + 6, right: window.innerWidth - chip.right });
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [open, buttonRef]);
+
   return (
-    <label className="relative ml-auto inline-flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-surface-muted px-3 text-xs leading-none font-medium text-muted transition-colors hover:border-(--group-line) hover:text-ink has-focus-visible:outline-2 has-focus-visible:outline-accent">
-      <span aria-hidden="true">{strings.providers[provider]}</span>
-      <select
-        aria-label={strings.card.provider}
-        value={provider}
-        onChange={(event) =>
-          editorStore.getState().updateDiagram({ provider: event.target.value as CloudProvider })
-        }
-        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
+    <>
+      <button
+        type="button"
+        {...buttonProps}
+        aria-label={`${strings.card.provider}: ${strings.providers[provider]}`}
+        className="ml-auto inline-flex h-6 shrink-0 items-center justify-center rounded-full border border-line bg-surface-muted px-3 text-xs leading-none font-medium text-muted transition-colors hover:border-(--group-line) hover:text-ink focus-visible:outline-2 focus-visible:outline-accent aria-expanded:border-(--group-line) aria-expanded:text-ink"
       >
-        {CLOUD_PROVIDERS.map((option) => (
-          <option key={option} value={option}>
-            {strings.providers[option]}
-          </option>
-        ))}
-      </select>
-    </label>
+        {strings.providers[provider]}
+      </button>
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            <m.div
+              {...menuProps}
+              {...MENU_MOTION}
+              aria-label={strings.card.provider}
+              style={{ ...anchor, transformOrigin: 'top right' }}
+              className="floating fixed z-50 w-44 rounded-panel p-1.5"
+            >
+              {CLOUD_PROVIDERS.map((option) => {
+                const active = option === provider;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={active}
+                    onClick={() => {
+                      if (!active) editorStore.getState().updateDiagram({ provider: option });
+                      close(true);
+                    }}
+                    className={`${MENU_ITEM} aria-checked:font-semibold aria-checked:text-accent`}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{strings.providers[option]}</span>
+                    {active && <Check size={15} aria-hidden="true" className="shrink-0" />}
+                  </button>
+                );
+              })}
+            </m.div>
+          )}
+        </AnimatePresence>,
+        globalThis.document.body,
+      )}
+    </>
   );
 }
 
