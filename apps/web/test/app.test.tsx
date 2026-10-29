@@ -41,8 +41,27 @@ describe('App', () => {
     expect(card).toHaveTextContent(
       `${graph.edges.length}${strings.card.connections(graph.edges.length)}`,
     );
-    expect(within(card).getByText(strings.providers.aws)).toBeInTheDocument();
+    expect(within(card).getByRole('combobox', { name: strings.card.provider })).toHaveValue('aws');
     expect(within(card).getByRole('status')).toHaveTextContent(strings.review.clean);
+  });
+
+  it('keeps the description of the diagram folded until it is asked for', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const graph = ARCHITECTURE_TEMPLATES['three-tier-web'];
+    const card = await screen.findByRole('region', { name: graph.title });
+    const description = graph.description ?? '';
+    expect(card).not.toHaveTextContent(description);
+
+    const toggle = within(card).getByRole('button', { name: strings.card.showDescription });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
+    expect(card).toHaveTextContent(description);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAccessibleName(strings.card.hideDescription);
+
+    await user.click(toggle);
+    await waitFor(() => expect(card).not.toHaveTextContent(description));
   });
 
   it('draws every component of the diagram', async () => {

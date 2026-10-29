@@ -199,7 +199,7 @@ function Editor() {
             </aside>
           )}
 
-          <div className="pointer-events-none absolute inset-x-3 top-3 bottom-24 z-10 flex flex-col items-end gap-3 md:bottom-46 md:left-auto md:w-80">
+          <div className="pointer-events-none absolute inset-x-3 top-3 bottom-24 z-10 flex flex-col items-end gap-3 md:bottom-46 md:left-auto md:w-96 lg:w-120">
             {graph && <DiagramCard graph={graph} />}
             {wide && <PanelSlot placement="side" />}
           </div>
