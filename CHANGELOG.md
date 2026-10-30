@@ -8,6 +8,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - `@archdraft/core`, `@archdraft/web`: connections can be drawn as curves or with right angles. A button in the view controls switches the whole diagram, and a selected connection has its own Line field (Auto, Curved or Square) in the inspector. The choice lives in the layout (`edgeStyle`, `edgeStyles`, `ownEdgeStyle`, `resolveEdgeStyle`), so it is saved, shared, undone and exported to SVG and PNG; diagrams without it stay curved.
 
+- `@archdraft/core`, `@archdraft/web`: a selected connection shows dots to route it by hand, in curves and in right angles. The dots at its ends can be dragged to any side of their node, and the one in the middle bends a curve through it or moves the segment that crosses the middle of a right-angled line. A Restore the automatic route button in the inspector takes it all back. The route lives in the layout (`edgeRoutes`, `ownEdgeRoute`), so it is saved, shared, undone and exported to SVG and PNG; connections nobody routed are drawn as before.
+
 - `@archdraft/web`: the diagram card is wider than tall, in two rows: the title, an arrow that unfolds the description and the cloud chip, fitted to its name with the text centred; then the counts and the design review.
 - `@archdraft/web`: the cloud chip opens a menu in the style of the editor instead of the native list of the browser; the inspector and the review keep the width of their column and the description bar ends where they start, so only the diagram card is wider.
 

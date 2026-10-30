@@ -187,6 +187,11 @@ export const en = {
       toSquare: 'Draw connections with right angles',
       toCurved: 'Draw connections as curves',
     },
+    edgeHandles: {
+      source: 'Move where the connection leaves: drag it to another side',
+      target: 'Move where the connection arrives: drag it to another side',
+      bend: 'Move the middle of the connection',
+    },
     zoom: {
       label: 'View',
       in: 'Zoom in',
@@ -317,6 +322,8 @@ export const en = {
     edgeStyles: { auto: 'Auto', curved: 'Curved', square: 'Square' },
     edgeStyleFollows: (style: 'curved' | 'square') =>
       style === 'curved' ? 'Follows the diagram: curved.' : 'Follows the diagram: right angles.',
+    edgeRouteHint: 'Drag the dots on the connection to change its sides or move its middle.',
+    edgeRouteReset: 'Restore the automatic route',
     connect: 'Connect',
     duplicate: 'Duplicate',
     delete: 'Delete',

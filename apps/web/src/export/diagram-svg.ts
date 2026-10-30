@@ -11,11 +11,12 @@ import {
   isShapeKind,
   type NodeCategory,
   type NodeKind,
+  type EdgeRoute,
+  ownEdgeRoute,
   resolveEdgeMode,
   resolveEdgeStyle,
 } from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
-import { Position } from '@xyflow/react';
 import { groupTint } from '../canvas/appearance.ts';
 import { connectionPath } from '../canvas/edge-path.ts';
 import {
@@ -283,38 +284,35 @@ function shape(node: ArchNode, box: Box, options: DrawingOptions): string {
   ].join('');
 }
 
-/** React Flow's name for each side, which its path helper expects. */
-const POSITIONS = {
-  left: Position.Left,
-  right: Position.Right,
-  top: Position.Top,
-  bottom: Position.Bottom,
-} as const;
-
 const overlaps = (a: Box, b: Box) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 function connection(
   edge: ArchEdge,
   style: EdgeStyle,
+  route: EdgeRoute | undefined,
   source: Box,
   target: Box,
   obstacles: readonly Box[],
   options: DrawingOptions,
 ): { line: string; label: string } {
   const { palette, measure, direction } = options;
-  const sides = edgeSides(source, target, direction);
+  const sides = edgeSides(source, target, direction, route);
   const from = sidePoint(source, sides.source);
   const to = sidePoint(target, sides.target);
   const arrow = arrowhead(to.x, to.y, sides.target);
-  const [path, labelX, labelY] = connectionPath(style, {
-    sourceX: from.x,
-    sourceY: from.y,
-    targetX: arrow.base.x,
-    targetY: arrow.base.y,
-    sourcePosition: POSITIONS[sides.source],
-    targetPosition: POSITIONS[sides.target],
-  });
+  const { path, labelX, labelY } = connectionPath(
+    style,
+    {
+      sourceX: from.x,
+      sourceY: from.y,
+      targetX: arrow.base.x,
+      targetY: arrow.base.y,
+      sourcePosition: sides.source,
+      targetPosition: sides.target,
+    },
+    route?.bend,
+  );
   const dashed = resolveEdgeMode(edge) === 'async' ? ' stroke-dasharray="5 5"' : '';
   const line =
     `<path d="${path}" fill="none" stroke="${palette.edge}" stroke-width="1.5"${dashed}/>` +
@@ -369,7 +367,9 @@ export function diagramToSvg(document: DiagramDocument, options: DrawingOptions)
     const target = boxes.get(edge.target);
     if (!source || !target) return [];
     const style = resolveEdgeStyle(layout, edge.id);
-    return [connection(edge, style, source, target, obstacles, options)];
+    return [
+      connection(edge, style, ownEdgeRoute(layout, edge.id), source, target, obstacles, options),
+    ];
   });
   const behind = ordered.filter((node) => isContainerKind(node.kind)).map(draw);
   const inFront = ordered.filter((node) => !isContainerKind(node.kind)).map(draw);

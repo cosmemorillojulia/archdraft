@@ -2,6 +2,7 @@ import {
   type DiagramDocument,
   type DiagramLayout,
   DiagramLayoutSchema,
+  EdgeRouteSchema,
   layoutEntry,
 } from '../document.ts';
 import { migrateDocument } from '../migrations.ts';
@@ -25,6 +26,7 @@ const GRAPH_KEYS = Object.keys(ArchitectureGraphSchema.shape);
 const NODE_KEYS = Object.keys(ArchNodeSchema.shape);
 const EDGE_KEYS = Object.keys(ArchEdgeSchema.shape);
 const ATTRIBUTE_KEYS = Object.keys(NodeAttributesSchema.shape);
+const ROUTE_KEYS = Object.keys(EdgeRouteSchema.shape);
 
 /** Pretty printed JSON with a fixed key order. Keys outside the schema are dropped. */
 export function toJson(graph: ArchitectureGraph): string {
@@ -69,11 +71,19 @@ function entriesOf<T>(
 /** The layout limited to the nodes and edges of `graph`, in the order of the graph. */
 function layoutOf(graph: ArchitectureGraph, layout: DiagramLayout): DiagramLayout {
   const edgeStyles = entriesOf(layout.edgeStyles ?? {}, graph.edges);
+  // Written in the order of the schema, whatever the order they were set in; a route that says nothing is left out.
+  const edgeRoutes = Object.fromEntries(
+    Object.entries(entriesOf(layout.edgeRoutes ?? {}, graph.edges)).flatMap(([id, route]) => {
+      const ordered = pickInOrder(route, ROUTE_KEYS);
+      return Object.keys(ordered).length === 0 ? [] : [[id, ordered]];
+    }),
+  );
   return {
     positions: entriesOf(layout.positions, graph.nodes),
     sizes: entriesOf(layout.sizes, graph.nodes),
     ...(layout.edgeStyle === undefined ? {} : { edgeStyle: layout.edgeStyle }),
     ...(Object.keys(edgeStyles).length === 0 ? {} : { edgeStyles }),
+    ...(Object.keys(edgeRoutes).length === 0 ? {} : { edgeRoutes }),
   };
 }
 
@@ -118,7 +128,7 @@ export type DocumentImportResult =
       readonly graph: ArchitectureGraph;
       /**
        * Positions and sizes, limited to the nodes of the graph, and edge
-       * styles, limited to its edges; it can miss some of them. Null when the
+       * styles and routes, limited to its edges; it can miss some of them. Null when the
        * text is a bare graph without a layout.
        */
       readonly layout: DiagramLayout | null;

@@ -1,12 +1,13 @@
 import { Handle, Position } from '@xyflow/react';
 
 /**
- * The four connection points of a node: edges arrive at the left and the top
- * and leave by the right and the bottom. Arriving points are invisible, and
- * the two leaving ones show a dot on hover or when the node is selected, to
- * drag a new connection from. They stay outside the animated card of the
- * node: React Flow measures where they are when the node mounts, and
- * measuring them mid-entrance, scaled down, made edges end inside the node.
+ * The connection points of a node. A connection can leave from and arrive at any side, so each
+ * side has a point for both. By default edges arrive at the left and the top and leave by the
+ * right and the bottom: of these, the arriving points are invisible, and the two leaving ones
+ * show a dot on hover or when the node is selected, to drag a new connection from. The other
+ * four are there for the connections whose sides were chosen by hand, and are invisible too.
+ * They stay outside the animated card of the node: React Flow measures where they are when the
+ * node mounts, and measuring them mid-entrance, scaled down, made edges end inside the node.
  * The ids are the names of the sides, which edges refer to.
  */
 export function ConnectionHandles({
@@ -18,6 +19,34 @@ export function ConnectionHandles({
 }) {
   return (
     <>
+      <Handle
+        id="left"
+        type="source"
+        position={Position.Left}
+        isConnectable={false}
+        className="flow-handle pointer-events-none"
+      />
+      <Handle
+        id="top"
+        type="source"
+        position={Position.Top}
+        isConnectable={false}
+        className="flow-handle pointer-events-none"
+      />
+      <Handle
+        id="right"
+        type="target"
+        position={Position.Right}
+        isConnectable={false}
+        className="flow-handle pointer-events-none"
+      />
+      <Handle
+        id="bottom"
+        type="target"
+        position={Position.Bottom}
+        isConnectable={false}
+        className="flow-handle pointer-events-none"
+      />
       <Handle
         id="left"
         type="target"

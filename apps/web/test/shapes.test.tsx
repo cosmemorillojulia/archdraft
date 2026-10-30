@@ -149,7 +149,7 @@ describe('edge style', () => {
 });
 
 describe('connections', () => {
-  it('arrive at the left and the top of every node and leave by the right and the bottom', async () => {
+  it('have a point to leave from and a point to arrive at on every side of every node', async () => {
     const diagram = await openFlowchart();
     await waitFor(() =>
       expect(
@@ -163,8 +163,12 @@ describe('connections', () => {
       );
       expect(handles.sort()).toEqual([
         'source:bottom',
+        'source:left',
         'source:right',
+        'source:top',
+        'target:bottom',
         'target:left',
+        'target:right',
         'target:top',
       ]);
     }

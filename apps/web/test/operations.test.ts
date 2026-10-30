@@ -28,6 +28,7 @@ import {
   remove,
   resizeNode,
   setDefaultEdgeStyle,
+  setEdgeRoute,
   setEdgeStyle,
   subtreeOf,
   uniqueId,
@@ -698,6 +699,121 @@ describe('edge styles', () => {
       'api-worker': 'square',
       'api-db': 'square',
       'api-2-worker-2': 'square',
+    });
+  });
+});
+
+describe('edge routes', () => {
+  it('fix the side of one end of a connection, and keep the other automatic', () => {
+    const routed = edited(setEdgeRoute(document, 'api-db', { source: 'top' }));
+    expect(routed.layout.edgeRoutes).toEqual({ 'api-db': { source: 'top' } });
+    expect(routed.graph).toBe(document.graph);
+  });
+
+  it('keep what was set when something else is set, in the order of the schema', () => {
+    const first = edited(setEdgeRoute(document, 'api-db', { bend: { x: 5, y: 0 } }));
+    const second = edited(setEdgeRoute(first, 'api-db', { target: 'bottom' }));
+    const third = edited(setEdgeRoute(second, 'api-db', { source: 'left' }));
+    expect(third.layout.edgeRoutes?.['api-db']).toEqual({
+      source: 'left',
+      target: 'bottom',
+      bend: { x: 5, y: 0 },
+    });
+    expect(Object.keys(third.layout.edgeRoutes?.['api-db'] ?? {})).toEqual([
+      'source',
+      'target',
+      'bend',
+    ]);
+  });
+
+  it('give a field back to automatic with undefined, and drop a route that says nothing', () => {
+    const routed = edited(
+      setEdgeRoute(document, 'api-db', { source: 'top', bend: { x: 5, y: 0 } }),
+    );
+    const sides = edited(setEdgeRoute(routed, 'api-db', { bend: undefined }));
+    expect(sides.layout.edgeRoutes).toEqual({ 'api-db': { source: 'top' } });
+    const automatic = edited(setEdgeRoute(sides, 'api-db', { source: undefined }));
+    expect(automatic.layout).toEqual(document.layout);
+    expect(automatic.layout).not.toHaveProperty('edgeRoutes');
+  });
+
+  it('store a bend that did not move as nothing', () => {
+    expect(setEdgeRoute(document, 'api-db', { bend: { x: 0, y: 0 } })).toEqual({
+      ok: true,
+      document,
+    });
+    const bent = edited(setEdgeRoute(document, 'api-db', { bend: { x: 3, y: 4 } }));
+    expect(edited(setEdgeRoute(bent, 'api-db', { bend: { x: 0, y: 0 } })).layout).toEqual(
+      document.layout,
+    );
+  });
+
+  it('are all taken back with null', () => {
+    const routed = edited(
+      setEdgeRoute(document, 'api-db', { source: 'top', target: 'right', bend: { x: 5, y: 1 } }),
+    );
+    expect(edited(setEdgeRoute(routed, 'api-db', null)).layout).toEqual(document.layout);
+    expect(setEdgeRoute(document, 'api-db', null)).toEqual({ ok: true, document });
+  });
+
+  it('change nothing for a connection that does not exist or already has that route', () => {
+    expect(setEdgeRoute(document, 'ghost', { source: 'top' })).toEqual({ ok: true, document });
+    const routed = edited(setEdgeRoute(document, 'api-db', { source: 'top' }));
+    expect(setEdgeRoute(routed, 'api-db', { source: 'top' })).toEqual({
+      ok: true,
+      document: routed,
+    });
+  });
+
+  it('survive the other edits of the layout', () => {
+    const routed = edited(setEdgeRoute(document, 'api-db', { target: 'bottom' }));
+    const kept = { edgeRoutes: { 'api-db': { target: 'bottom' } } };
+    expect(edited(addNode(routed, 'cache', { x: 100, y: 600 })).layout).toMatchObject(kept);
+    expect(edited(moveNode(routed, 'api', { x: 80, y: 90 })).layout).toMatchObject(kept);
+    expect(
+      edited(resizeNode(routed, 'db', { x: 1000, y: 100, width: 240, height: 100 })).layout,
+    ).toMatchObject(kept);
+    expect(edited(setEdgeStyle(routed, 'api-db', 'square')).layout).toMatchObject(kept);
+    expect(edited(remove(routed, { type: 'node', id: 'user' })).layout).toMatchObject(kept);
+  });
+
+  it('are forgotten with the connection, whether it is removed alone or with a component', () => {
+    const both = edited(
+      setEdgeRoute(edited(setEdgeRoute(document, 'api-db', { source: 'top' })), 'user-api', {
+        source: 'bottom',
+      }),
+    );
+    expect(edited(remove(both, { type: 'edge', id: 'api-db' })).layout.edgeRoutes).toEqual({
+      'user-api': { source: 'bottom' },
+    });
+    expect(edited(remove(both, { type: 'node', id: 'db' })).layout.edgeRoutes).toEqual({
+      'user-api': { source: 'bottom' },
+    });
+    expect(edited(remove(both, { type: 'node', id: 'vpc' })).layout).not.toHaveProperty(
+      'edgeRoutes',
+    );
+  });
+
+  it('are copied with the connections that are copied with a group', () => {
+    const withInner: DiagramDocument = {
+      graph: {
+        ...graph,
+        nodes: [
+          ...graph.nodes,
+          { id: 'worker', kind: 'service', label: 'Worker', parentId: 'vpc' },
+        ],
+        edges: [...graph.edges, { id: 'api-worker', source: 'api', target: 'worker' }],
+      },
+      layout: {
+        positions: { ...document.layout.positions, worker: { x: 340, y: 48 } },
+        sizes: { ...document.layout.sizes, worker: DEFAULT_NODE_SIZE },
+        edgeRoutes: { 'api-worker': { source: 'top', bend: { x: 2, y: 3 } } },
+      },
+    };
+    const next = edited(duplicate(withInner, 'vpc'));
+    expect(next.layout.edgeRoutes).toEqual({
+      'api-worker': { source: 'top', bend: { x: 2, y: 3 } },
+      'api-2-worker-2': { source: 'top', bend: { x: 2, y: 3 } },
     });
   });
 });

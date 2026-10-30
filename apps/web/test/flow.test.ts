@@ -184,6 +184,33 @@ describe('toFlow', () => {
     expect(edges[0]?.data?.sourceCategory).toBe('shape');
   });
 
+  it('attaches an edge to the sides its route fixes, and lets the other end choose', () => {
+    const plain = toFlow({ graph, layout }, 'LR').edges.find((edge) => edge.id === 'e2');
+    expect(plain).toMatchObject({ sourceHandle: 'right', targetHandle: 'left' });
+    const routed = toFlow(
+      { graph, layout: { ...layout, edgeRoutes: { e2: { source: 'top', bend: { x: 3, y: 4 } } } } },
+      'LR',
+    ).edges.find((edge) => edge.id === 'e2');
+    expect(routed).toMatchObject({ sourceHandle: 'top' });
+    expect(routed?.data).toMatchObject({
+      route: { source: 'top', bend: { x: 3, y: 4 } },
+      direction: 'LR',
+    });
+    // The other edges are not affected.
+    const other = toFlow(
+      { graph, layout: { ...layout, edgeRoutes: { e2: { source: 'top' } } } },
+      'LR',
+    ).edges.find((edge) => edge.id === 'e1');
+    expect(other?.data?.route).toBeUndefined();
+  });
+
+  it('gives each edge the boxes of its two nodes, in diagram coordinates', () => {
+    const edge = toFlow({ graph, layout }, 'LR').edges.find((candidate) => candidate.id === 'e1');
+    // `api` sits at (24, 48) inside `private` (24, 48) inside `vpc` (300, 0).
+    expect(edge?.data?.sourceBox).toEqual({ x: 0, y: 100, width: 180, height: 64 });
+    expect(edge?.data?.targetBox).toEqual({ x: 348, y: 96, width: 180, height: 64 });
+  });
+
   it('returns nothing for an empty diagram', () => {
     expect(
       toFlow(
