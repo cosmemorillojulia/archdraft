@@ -28,7 +28,7 @@ import { ShapeNode } from './ShapeNode.tsx';
 import { type ArchitectureFlowEdge, type ArchitectureFlowNode, toFlow } from './flow.ts';
 import { useStableHandler } from './use-stable-handler.ts';
 import { type Insets, absoluteBoxes, boundsOf, initialViewport } from './geometry.ts';
-import { ZoomControls } from './ZoomControls.tsx';
+import { CanvasControls } from './CanvasControls.tsx';
 
 const NODE_TYPES = { component: ComponentNode, container: ContainerNode, shape: ShapeNode };
 const EDGE_TYPES = { architecture: ArchitectureEdge };
@@ -593,13 +593,13 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
               }
               nodeBorderRadius={6}
               maskColor="color-mix(in srgb, var(--canvas) 72%, transparent)"
-              className="floating !m-3 !mr-15 overflow-hidden !rounded-panel"
+              className="floating !m-3 !mr-25 overflow-hidden !rounded-panel"
               style={{ width: 176, height: 157 }}
             />
           )}
         </ReactFlow>
         <div className={`pointer-events-none absolute z-10 ${controlsClassName}`}>
-          <ZoomControls onFit={fit} minZoom={MIN_ZOOM} maxZoom={MAX_ZOOM} />
+          <CanvasControls onFit={fit} minZoom={MIN_ZOOM} maxZoom={MAX_ZOOM} />
         </div>
       </div>
     </CanvasContext.Provider>

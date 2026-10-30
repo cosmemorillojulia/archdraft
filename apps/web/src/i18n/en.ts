@@ -183,6 +183,7 @@ export const en = {
       hide: 'Hide the particles on connections',
       show: 'Show the particles on connections',
     },
+    shortcuts: { label: 'Shortcuts' },
     edgeStyle: {
       toSquare: 'Draw connections with right angles',
       toCurved: 'Draw connections as curves',
