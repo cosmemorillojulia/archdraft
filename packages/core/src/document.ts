@@ -15,17 +15,29 @@ const LengthSchema = z.number().finite().positive();
 export const PointSchema = z.strictObject({ x: CoordinateSchema, y: CoordinateSchema });
 export const SizeSchema = z.strictObject({ width: LengthSchema, height: LengthSchema });
 
-function boundedRecord<T extends z.ZodType>(value: T) {
-  return z
-    .record(IdSchema, value)
-    .refine((record) => Object.keys(record).length <= LIMITS.maxNodes, {
-      message: `At most ${LIMITS.maxNodes} entries`,
-    });
+function boundedRecord<T extends z.ZodType>(value: T, max: number = LIMITS.maxNodes) {
+  return z.record(IdSchema, value).refine((record) => Object.keys(record).length <= max, {
+    message: `At most ${max} entries`,
+  });
 }
+
+/** How a connection is drawn: a smooth curve, or straight segments joined at right angles. */
+export const EDGE_STYLES = ['curved', 'square'] as const;
+export type EdgeStyle = (typeof EDGE_STYLES)[number];
+export const EdgeStyleSchema = z.enum(EDGE_STYLES);
+
+/** The style of a diagram that does not choose one. */
+export const DEFAULT_EDGE_STYLE: EdgeStyle = 'curved';
 
 export const DiagramLayoutSchema = z.strictObject({
   positions: boundedRecord(PointSchema).describe('Top left corner per node id, parent relative'),
   sizes: boundedRecord(SizeSchema).describe('Width and height per node id'),
+  edgeStyle: EdgeStyleSchema.optional().describe(
+    `How connections are drawn unless they have a style of their own; ${DEFAULT_EDGE_STYLE} when absent`,
+  ),
+  edgeStyles: boundedRecord(EdgeStyleSchema, LIMITS.maxEdges)
+    .optional()
+    .describe('Style of single connections that differ from the diagram, per edge id'),
 });
 
 /** What the editor stores, shares and restores: the graph plus how it is drawn. */
@@ -72,4 +84,14 @@ export function createEmptyLayout(): DiagramLayout {
  */
 export function layoutEntry<T>(record: Readonly<Record<string, T>>, id: string): T | undefined {
   return Object.hasOwn(record, id) ? record[id] : undefined;
+}
+
+/** The style an edge has of its own, if it has one. */
+export function ownEdgeStyle(layout: DiagramLayout, edgeId: string): EdgeStyle | undefined {
+  return layout.edgeStyles === undefined ? undefined : layoutEntry(layout.edgeStyles, edgeId);
+}
+
+/** How an edge is drawn: its own style if it has one, else the one of the diagram. */
+export function resolveEdgeStyle(layout: DiagramLayout, edgeId: string): EdgeStyle {
+  return ownEdgeStyle(layout, edgeId) ?? layout.edgeStyle ?? DEFAULT_EDGE_STYLE;
 }

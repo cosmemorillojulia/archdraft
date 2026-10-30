@@ -5,16 +5,19 @@ import {
   type CloudProvider,
   type DiagramDocument,
   type EdgeProtocol,
+  type EdgeStyle,
   getNodeDefinition,
   isContainerKind,
   isShapeKind,
   type NodeCategory,
   type NodeKind,
   resolveEdgeMode,
+  resolveEdgeStyle,
 } from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
-import { getBezierPath, Position } from '@xyflow/react';
+import { Position } from '@xyflow/react';
 import { groupTint } from '../canvas/appearance.ts';
+import { connectionPath } from '../canvas/edge-path.ts';
 import {
   absoluteBoxes,
   stackingOrder,
@@ -293,6 +296,7 @@ const overlaps = (a: Box, b: Box) =>
 
 function connection(
   edge: ArchEdge,
+  style: EdgeStyle,
   source: Box,
   target: Box,
   obstacles: readonly Box[],
@@ -303,7 +307,7 @@ function connection(
   const from = sidePoint(source, sides.source);
   const to = sidePoint(target, sides.target);
   const arrow = arrowhead(to.x, to.y, sides.target);
-  const [path, labelX, labelY] = getBezierPath({
+  const [path, labelX, labelY] = connectionPath(style, {
     sourceX: from.x,
     sourceY: from.y,
     targetX: arrow.base.x,
@@ -363,7 +367,9 @@ export function diagramToSvg(document: DiagramDocument, options: DrawingOptions)
   const connections = graph.edges.flatMap((edge) => {
     const source = boxes.get(edge.source);
     const target = boxes.get(edge.target);
-    return source && target ? [connection(edge, source, target, obstacles, options)] : [];
+    if (!source || !target) return [];
+    const style = resolveEdgeStyle(layout, edge.id);
+    return [connection(edge, style, source, target, obstacles, options)];
   });
   const behind = ordered.filter((node) => isContainerKind(node.kind)).map(draw);
   const inFront = ordered.filter((node) => !isContainerKind(node.kind)).map(draw);

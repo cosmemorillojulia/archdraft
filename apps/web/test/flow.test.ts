@@ -123,6 +123,17 @@ describe('toFlow', () => {
     });
   });
 
+  it('gives each edge its own style, or else the one of the diagram', () => {
+    const styles = (styled: DiagramLayout) =>
+      toFlow({ graph, layout: styled }, 'LR').edges.map((edge) => edge.data?.style);
+    expect(styles(layout)).toEqual(['curved', 'curved', 'curved']);
+    expect(styles({ ...layout, edgeStyle: 'square', edgeStyles: { e2: 'curved' } })).toEqual([
+      'square',
+      'curved',
+      'square',
+    ]);
+  });
+
   it('leaves out nodes without layout, their descendants and their edges', () => {
     const { private: _private, ...positions } = layout.positions;
     const { nodes, edges } = toFlow({ graph, layout: { ...layout, positions } }, 'LR');

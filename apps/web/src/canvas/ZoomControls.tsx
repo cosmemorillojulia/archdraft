@@ -1,7 +1,9 @@
+import { DEFAULT_EDGE_STYLE } from '@archdraft/core';
 import { useReactFlow, useViewport } from '@xyflow/react';
-import { Activity, Maximize, Minus, Plus } from 'lucide-react';
+import { Activity, CornerDownRight, Maximize, Minus, Plus, Spline } from 'lucide-react';
 import { memo } from 'react';
 import { Button } from '../components/Button.tsx';
+import { editorStore, useEditor } from '../editor/store.ts';
 import { preferencesStore, usePreferences } from '../preferences.ts';
 import { useStrings } from '../i18n/locale.ts';
 
@@ -17,9 +19,10 @@ interface ZoomControlsProps {
 }
 
 /**
- * Floating view controls: zoom and fit, and the switch for the particles that
- * travel along connections. Pinching (fingers or trackpad) and the mouse wheel
- * zoom too; these buttons are the visible, keyboard-friendly way to do it.
+ * Floating view controls: zoom and fit, the switch between curved and right-angled
+ * connections, and the switch for the particles that travel along them. Pinching
+ * (fingers or trackpad) and the mouse wheel zoom too; these buttons are the visible,
+ * keyboard-friendly way to do it.
  */
 export const ZoomControls = memo(function ZoomControls({
   onFit,
@@ -29,7 +32,12 @@ export const ZoomControls = memo(function ZoomControls({
   const strings = useStrings();
   const { zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
+  const edgeStyle = useEditor(
+    (state) => state.current?.document.layout.edgeStyle ?? DEFAULT_EDGE_STYLE,
+  );
   const flowAnimation = usePreferences((state) => state.flowAnimation);
+  const edgeStyleLabel =
+    edgeStyle === 'curved' ? strings.canvas.edgeStyle.toSquare : strings.canvas.edgeStyle.toCurved;
   const flowLabel = flowAnimation ? strings.canvas.flow.hide : strings.canvas.flow.show;
   return (
     <div
@@ -74,6 +82,22 @@ export const ZoomControls = memo(function ZoomControls({
         <Maximize size={15} aria-hidden="true" />
       </Button>
       <span aria-hidden="true" className="my-0.5 h-px w-5 bg-line" />
+      <Button
+        variant="ghost"
+        size="icon"
+        className={TOUCH_SIZE}
+        aria-label={edgeStyleLabel}
+        title={edgeStyleLabel}
+        onClick={() =>
+          editorStore.getState().setDefaultEdgeStyle(edgeStyle === 'curved' ? 'square' : 'curved')
+        }
+      >
+        {edgeStyle === 'curved' ? (
+          <Spline size={16} aria-hidden="true" />
+        ) : (
+          <CornerDownRight size={16} aria-hidden="true" />
+        )}
+      </Button>
       <Button
         variant="ghost"
         size="icon"

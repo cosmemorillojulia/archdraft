@@ -163,9 +163,9 @@ export const ARROW_LENGTH = 9;
 export const ARROW_WIDTH = 9;
 
 /**
- * Direction in which an edge arrives at the side of its target. A bezier edge
- * leaves its last control point straight towards the target, so this is also
- * the direction of its end.
+ * Direction in which an edge arrives at the side of its target. Both a bezier edge, which
+ * leaves its last control point straight towards the target, and a right-angled one, whose
+ * last segment runs straight into it, end in this direction.
  */
 const ARRIVAL: Record<Side, { x: number; y: number }> = {
   left: { x: 1, y: 0 },

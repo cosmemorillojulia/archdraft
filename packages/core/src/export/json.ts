@@ -1,4 +1,9 @@
-import { type DiagramDocument, type DiagramLayout, DiagramLayoutSchema } from '../document.ts';
+import {
+  type DiagramDocument,
+  type DiagramLayout,
+  DiagramLayoutSchema,
+  layoutEntry,
+} from '../document.ts';
 import { migrateDocument } from '../migrations.ts';
 import {
   type ArchitectureGraph,
@@ -41,17 +46,35 @@ export function documentToJson(
   options: DocumentJsonOptions = {},
 ): string {
   const { graph, layout } = document;
-  const inNodeOrder = <T>(record: Readonly<Record<string, T>>) =>
-    Object.fromEntries(
-      graph.nodes
-        .filter((node) => Object.hasOwn(record, node.id))
-        .map((node) => [node.id, record[node.id]]),
-    );
-  const ordered = {
-    graph: orderGraph(graph),
-    layout: { positions: inNodeOrder(layout.positions), sizes: inNodeOrder(layout.sizes) },
-  };
+  const ordered = { graph: orderGraph(graph), layout: layoutOf(graph, layout) };
   return JSON.stringify(ordered, null, options.indent ?? 2);
+}
+
+/**
+ * The entries of `record` that belong to one of `items`, in the order of the
+ * items. What belongs to nothing in the graph is left out.
+ */
+function entriesOf<T>(
+  record: Readonly<Record<string, T>>,
+  items: readonly { readonly id: string }[],
+): Record<string, T> {
+  return Object.fromEntries(
+    items.flatMap(({ id }) => {
+      const value = layoutEntry(record, id);
+      return value === undefined ? [] : [[id, value] as const];
+    }),
+  );
+}
+
+/** The layout limited to the nodes and edges of `graph`, in the order of the graph. */
+function layoutOf(graph: ArchitectureGraph, layout: DiagramLayout): DiagramLayout {
+  const edgeStyles = entriesOf(layout.edgeStyles ?? {}, graph.edges);
+  return {
+    positions: entriesOf(layout.positions, graph.nodes),
+    sizes: entriesOf(layout.sizes, graph.nodes),
+    ...(layout.edgeStyle === undefined ? {} : { edgeStyle: layout.edgeStyle }),
+    ...(Object.keys(edgeStyles).length === 0 ? {} : { edgeStyles }),
+  };
 }
 
 function orderGraph(graph: ArchitectureGraph): Record<string, unknown> {
@@ -94,8 +117,9 @@ export type DocumentImportResult =
       readonly success: true;
       readonly graph: ArchitectureGraph;
       /**
-       * Positions and sizes, limited to the nodes of the graph; it can miss
-       * some of them. Null when the text is a bare graph without a layout.
+       * Positions and sizes, limited to the nodes of the graph, and edge
+       * styles, limited to its edges; it can miss some of them. Null when the
+       * text is a bare graph without a layout.
        */
       readonly layout: DiagramLayout | null;
       readonly warnings: ValidationIssue[];
@@ -131,13 +155,10 @@ export function importDocument(text: string): DocumentImportResult {
       })),
     };
   }
-  const ids = new Set(parsed.graph.nodes.map((node) => node.id));
-  const known = <T>(record: Readonly<Record<string, T>>) =>
-    Object.fromEntries(Object.entries(record).filter(([id]) => ids.has(id)));
   return {
     success: true,
     graph: parsed.graph,
-    layout: { positions: known(layout.data.positions), sizes: known(layout.data.sizes) },
+    layout: layoutOf(parsed.graph, layout.data),
     warnings: parsed.warnings,
   };
 }

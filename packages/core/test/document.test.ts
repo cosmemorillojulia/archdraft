@@ -5,6 +5,8 @@ import {
   DiagramLayoutSchema,
   layoutEntry,
   LIMITS,
+  ownEdgeStyle,
+  resolveEdgeStyle,
 } from '../src/index.ts';
 import { threeTierGraph } from './fixtures.ts';
 
@@ -66,4 +68,58 @@ describe('layoutEntry', () => {
       expect(layoutEntry<unknown>({}, id)).toBeUndefined();
     },
   );
+});
+
+describe('the style of connections in the layout', () => {
+  const base = createEmptyLayout();
+
+  it('accepts a style for the diagram and styles for single connections', () => {
+    const layout = { ...base, edgeStyle: 'square', edgeStyles: { 'api-db': 'curved' } };
+    expect(DiagramLayoutSchema.parse(layout)).toEqual(layout);
+  });
+
+  it.each([
+    ['an unknown style for the diagram', { ...base, edgeStyle: 'zigzag' }],
+    ['an unknown style for a connection', { ...base, edgeStyles: { a: 'zigzag' } }],
+    ['a key that is not an id', { ...base, edgeStyles: { __proto__x: 'square' } }],
+  ])('rejects %s', (_name, layout) => {
+    expect(DiagramLayoutSchema.safeParse(layout).success).toBe(false);
+  });
+
+  it('rejects more styles than the edge limit', () => {
+    const edgeStyles = Object.fromEntries(
+      Array.from({ length: LIMITS.maxEdges + 1 }, (_, i) => [`e${i}`, 'square']),
+    );
+    expect(DiagramLayoutSchema.safeParse({ ...base, edgeStyles }).success).toBe(false);
+  });
+
+  it('tells the style an edge has of its own, which is none unless it was given one', () => {
+    const layout = { ...base, edgeStyle: 'square', edgeStyles: { 'api-db': 'curved' } } as const;
+    expect(ownEdgeStyle(layout, 'api-db')).toBe('curved');
+    expect(ownEdgeStyle(layout, 'other')).toBeUndefined();
+    expect(ownEdgeStyle(base, 'api-db')).toBeUndefined();
+  });
+
+  describe('resolveEdgeStyle', () => {
+    it('is curved when nothing says otherwise', () => {
+      expect(resolveEdgeStyle(base, 'api-db')).toBe('curved');
+    });
+
+    it('follows the style of the diagram', () => {
+      expect(resolveEdgeStyle({ ...base, edgeStyle: 'square' }, 'api-db')).toBe('square');
+    });
+
+    it('prefers the style of the connection to the one of the diagram', () => {
+      const layout = { ...base, edgeStyle: 'square', edgeStyles: { 'api-db': 'curved' } } as const;
+      expect(resolveEdgeStyle(layout, 'api-db')).toBe('curved');
+      expect(resolveEdgeStyle(layout, 'other')).toBe('square');
+    });
+
+    it.each(['constructor', 'toString', '__proto__'])(
+      'ignores what an id such as %s inherits from Object.prototype',
+      (id) => {
+        expect(resolveEdgeStyle({ ...base, edgeStyles: {} }, id)).toBe('curved');
+      },
+    );
+  });
 });

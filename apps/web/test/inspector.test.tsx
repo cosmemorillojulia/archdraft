@@ -163,6 +163,32 @@ describe('Inspector', () => {
     });
   });
 
+  it('draws a connection as the diagram does until it is given a style of its own', async () => {
+    const user = userEvent.setup();
+    render(<PanelSlot placement="side" />);
+    inspect('edge', 'api-db');
+    const panel = screen.getByRole('region', { name: strings.inspector.connection });
+    const layout = () => editorStore.getState().current?.document.layout;
+    // The mode has an Auto option too, so the choice is looked up in its own group.
+    const line = within(panel).getByRole('radiogroup', { name: strings.inspector.edgeStyle });
+    expect(
+      within(panel).getByText(strings.inspector.edgeStyleFollows('curved')),
+    ).toBeInTheDocument();
+
+    act(() => editorStore.getState().setDefaultEdgeStyle('square'));
+    expect(
+      within(panel).getByText(strings.inspector.edgeStyleFollows('square')),
+    ).toBeInTheDocument();
+
+    await user.click(within(line).getByLabelText(strings.inspector.edgeStyles.curved));
+    expect(layout()?.edgeStyles).toEqual({ 'api-db': 'curved' });
+    expect(within(panel).queryByText(/Follows the diagram/)).not.toBeInTheDocument();
+
+    await user.click(within(line).getByLabelText(strings.inspector.edgeStyles.auto));
+    expect(layout()?.edgeStyles).toBeUndefined();
+    expect(layout()?.edgeStyle).toBe('square');
+  });
+
   it('deletes the selection and closes', async () => {
     const user = userEvent.setup();
     render(<PanelSlot placement="side" />);

@@ -198,6 +198,47 @@ describe('documentToJson and importDocument', () => {
     expect(result).toEqual({ success: true, graph, layout: document.layout, warnings: [] });
   });
 
+  it('round-trips the style of the connections', () => {
+    const styled: DiagramDocument = {
+      graph,
+      layout: { ...document.layout, edgeStyle: 'square', edgeStyles: { 'api-db': 'curved' } },
+    };
+    const result = importDocument(documentToJson(styled));
+    expect(result).toEqual({ success: true, graph, layout: styled.layout, warnings: [] });
+  });
+
+  it('writes no style for a diagram that chose none', () => {
+    const { layout } = JSON.parse(documentToJson(document)) as { layout: object };
+    expect(Object.keys(layout)).toEqual(['positions', 'sizes']);
+  });
+
+  it('keeps only the styles of connections in the graph', () => {
+    const stray: DiagramDocument = {
+      graph,
+      layout: { ...document.layout, edgeStyles: { ghost: 'square' } },
+    };
+    expect(JSON.parse(documentToJson(stray)) as object).not.toHaveProperty('layout.edgeStyles');
+    const text = JSON.stringify({
+      graph,
+      layout: { positions: {}, sizes: {}, edgeStyles: { 'api-db': 'square', ghost: 'square' } },
+    });
+    expect(importDocument(text)).toMatchObject({
+      success: true,
+      layout: { edgeStyles: { 'api-db': 'square' } },
+    });
+  });
+
+  it('rejects an unknown style with its path', () => {
+    const text = JSON.stringify({
+      graph,
+      layout: { positions: {}, sizes: {}, edgeStyle: 'zigzag' },
+    });
+    expect(importDocument(text)).toMatchObject({
+      success: false,
+      issues: [{ code: 'SCHEMA', path: ['layout', 'edgeStyle'] }],
+    });
+  });
+
   it('reads a bare graph without a layout', () => {
     expect(importDocument(toJson(graph))).toMatchObject({ success: true, graph, layout: null });
     expect(importDocument(JSON.stringify({ graph }))).toMatchObject({

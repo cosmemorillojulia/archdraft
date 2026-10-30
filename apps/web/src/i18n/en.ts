@@ -183,6 +183,10 @@ export const en = {
       hide: 'Hide the particles on connections',
       show: 'Show the particles on connections',
     },
+    edgeStyle: {
+      toSquare: 'Draw connections with right angles',
+      toCurved: 'Draw connections as curves',
+    },
     zoom: {
       label: 'View',
       in: 'Zoom in',
@@ -309,6 +313,10 @@ export const en = {
     modes: { auto: 'Auto', sync: 'Sync', async: 'Async' },
     modeHint: (mode: 'sync' | 'async') =>
       mode === 'sync' ? 'The source waits for a reply.' : 'The source does not wait for a reply.',
+    edgeStyle: 'Line',
+    edgeStyles: { auto: 'Auto', curved: 'Curved', square: 'Square' },
+    edgeStyleFollows: (style: 'curved' | 'square') =>
+      style === 'curved' ? 'Follows the diagram: curved.' : 'Follows the diagram: right angles.',
     connect: 'Connect',
     duplicate: 'Duplicate',
     delete: 'Delete',

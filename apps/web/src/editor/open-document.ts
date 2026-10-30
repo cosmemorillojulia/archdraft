@@ -142,7 +142,8 @@ async function showDiagram(
   let shown = layout ? (inferDirection({ graph, layout }) ?? direction) : direction;
   if (!layout || !isComplete(graph, layout)) {
     try {
-      layout = await layoutDiagram(graph, shown, layout ?? undefined);
+      // The layout computed has positions and sizes; the rest of the presentation stays as it was.
+      layout = { ...layout, ...(await layoutDiagram(graph, shown, layout ?? undefined)) };
     } catch (error) {
       console.error('Could not lay out the diagram', error);
       if (request === latestRequest) store.getState().notify(currentStrings().canvas.layoutFailed);
