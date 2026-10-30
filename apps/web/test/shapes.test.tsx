@@ -216,4 +216,21 @@ describe('resizing', () => {
     await waitFor(() => expect(handlesOf('approved').length).toBeGreaterThan(0));
     expect(handlesOf('mail')).toHaveLength(0);
   });
+
+  it('shows the selection as the one outline the node has on hover, with no second line', async () => {
+    const diagram = await openFlowchart();
+    const selectedPart = (id: string) =>
+      diagram.querySelector(`.react-flow__node[data-id="${id}"] div[data-state][data-selected]`);
+
+    act(() => editorStore.getState().select({ type: 'node', id: 'mail' }));
+    await waitFor(() => expect(selectedPart('mail')).not.toBeNull());
+    const card = selectedPart('mail');
+    expect(card?.className).not.toMatch(/outline|ring/);
+    expect(card?.getAttribute('style')).toContain('var(--cat-');
+
+    act(() => editorStore.getState().select({ type: 'node', id: 'review' }));
+    await waitFor(() => expect(selectedPart('review')).not.toBeNull());
+    const body = selectedPart('review')?.querySelector('span[aria-hidden="true"]');
+    expect(body?.className).not.toMatch(/shadow|outline|ring/);
+  });
 });
