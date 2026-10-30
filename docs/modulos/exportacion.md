@@ -70,6 +70,7 @@ flowchart LR
 Decisiones:
 
 - El modo de cada arista es el efectivo, calculado con `resolveEdgeMode`: una arista `kafka` sin `mode` se dibuja discontinua.
+- Mermaid no recibe la disposición, así que no refleja el estilo de las conexiones (`curved` o `square`); lo decide Mermaid. Lo siguen el SVG y el PNG del editor (`apps/web`), que dibujan cada conexión como el lienzo.
 - El producto (`resolveServiceName`) se añade como segunda línea solo cuando es distinto de la etiqueta del nodo y del nombre genérico del tipo. Así un nodo AWS muestra "Order worker / AWS Lambda", pero un nodo genérico no repite "Service" debajo de su nombre.
 - Todos los nodos y contenedores se declaran antes que las aristas. Mermaid coloca un nodo en el `subgraph` donde aparece por primera vez, de modo que declarar una arista dentro de un bloque podría mover nodos de contenedor.
 - Los contenedores vacíos se exportan como `subgraph` vacío; Mermaid los dibuja como un marco sin contenido.
@@ -142,6 +143,7 @@ Decisiones:
 
 - Identificadores de celda: `n-<id>` para nodos y `e-<id>` para aristas. En draw.io nodos y aristas comparten espacio de nombres y las celdas `0` y `1` están reservadas para la raíz y la capa, mientras que en el dominio un nodo y una arista pueden llamarse igual (`e1`) y un slug puede ser `1`.
 - Los contenedores se escriben antes que sus hijos. draw.io pinta en el orden del documento, así que el contenido queda encima del marco.
+- El exportador escribe siempre `edgeStyle=orthogonalEdgeStyle`, sea cual sea el estilo de las conexiones del diagrama (`layout.edgeStyle`): de momento no lo traduce.
 - Las aristas cuelgan de la capa (`parent="1"`) aunque sus extremos estén en contenedores distintos: draw.io calcula la posición absoluta de cada extremo.
 - Si a un nodo le falta la posición en la disposición se coloca en el origen de su padre, y si le falta el tamaño recibe el tamaño por defecto de su tipo (`defaultSizeOf`). Una disposición desfasada respecto al grafo sigue exportándose en lugar de fallar.
 - Colores de la paleta estándar de draw.io, uno por categoría, para que el diagrama encaje con lo que el usuario ya dibuja allí. No se usan iconos de proveedor (ADR 0008).

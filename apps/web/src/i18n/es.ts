@@ -361,6 +361,10 @@ export const es: Strings = {
       hide: 'Ocultar las partículas de las conexiones',
       show: 'Mostrar las partículas de las conexiones',
     },
+    edgeStyle: {
+      toSquare: 'Dibujar las conexiones con ángulos rectos',
+      toCurved: 'Dibujar las conexiones como curvas',
+    },
     zoom: {
       label: 'Vista',
       in: 'Acercar',
@@ -478,6 +482,10 @@ export const es: Strings = {
     modes: { auto: 'Auto', sync: 'Síncrono', async: 'Asíncrono' },
     modeHint: (mode: 'sync' | 'async') =>
       mode === 'sync' ? 'El origen espera una respuesta.' : 'El origen no espera respuesta.',
+    edgeStyle: 'Línea',
+    edgeStyles: { auto: 'Auto', curved: 'Curva', square: 'Cuadrada' },
+    edgeStyleFollows: (style: 'curved' | 'square') =>
+      style === 'curved' ? 'Sigue al diagrama: curva.' : 'Sigue al diagrama: ángulos rectos.',
     connect: 'Conectar',
     duplicate: 'Duplicar',
     delete: 'Eliminar',

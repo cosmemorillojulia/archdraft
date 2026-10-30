@@ -27,6 +27,8 @@ import {
   NUDGE,
   remove,
   resizeNode,
+  setDefaultEdgeStyle,
+  setEdgeStyle,
   subtreeOf,
   uniqueId,
   uniqueLabel,
@@ -607,5 +609,95 @@ describe('text fixed to a box', () => {
       .map((node) => node.id);
     expect(ids.indexOf('text')).toBe(ids.indexOf('db') + 1);
     expect(stackNode(next, 'text', 'front')).toMatchObject({ ok: true, document: next });
+  });
+});
+
+describe('edge styles', () => {
+  const square = edited(setDefaultEdgeStyle(document, 'square'));
+
+  it('sets the style of the diagram, and stores the default one as nothing', () => {
+    expect(square.layout.edgeStyle).toBe('square');
+    const back = edited(setDefaultEdgeStyle(square, 'curved'));
+    expect(back.layout).toEqual(document.layout);
+    expect(back.layout).not.toHaveProperty('edgeStyle');
+  });
+
+  it('changes nothing when the diagram already has that style', () => {
+    expect(setDefaultEdgeStyle(document, 'curved')).toEqual({ ok: true, document });
+    expect(setDefaultEdgeStyle(square, 'square')).toEqual({ ok: true, document: square });
+  });
+
+  it('gives one connection a style of its own, and takes it back', () => {
+    const own = edited(setEdgeStyle(document, 'api-db', 'square'));
+    expect(own.layout.edgeStyles).toEqual({ 'api-db': 'square' });
+    expect(own.layout).not.toHaveProperty('edgeStyle');
+    const followed = edited(setEdgeStyle(own, 'api-db', undefined));
+    expect(followed.layout).toEqual(document.layout);
+    expect(followed.layout).not.toHaveProperty('edgeStyles');
+  });
+
+  it('keeps the style of a connection when the diagram changes style', () => {
+    const own = edited(setEdgeStyle(document, 'api-db', 'curved'));
+    expect(edited(setDefaultEdgeStyle(own, 'square')).layout.edgeStyles).toEqual({
+      'api-db': 'curved',
+    });
+  });
+
+  it('changes nothing for a connection that does not exist or has that style already', () => {
+    expect(setEdgeStyle(document, 'ghost', 'square')).toEqual({ ok: true, document });
+    expect(setEdgeStyle(document, 'api-db', undefined)).toEqual({ ok: true, document });
+    const own = edited(setEdgeStyle(document, 'api-db', 'square'));
+    expect(setEdgeStyle(own, 'api-db', 'square')).toEqual({ ok: true, document: own });
+  });
+
+  it('survive the other edits of the layout', () => {
+    const styled = edited(setEdgeStyle(square, 'api-db', 'curved'));
+    const kept = { edgeStyle: 'square', edgeStyles: { 'api-db': 'curved' } };
+    expect(edited(addNode(styled, 'cache', { x: 100, y: 600 })).layout).toMatchObject(kept);
+    expect(edited(moveNode(styled, 'api', { x: 80, y: 90 })).layout).toMatchObject(kept);
+    expect(
+      edited(resizeNode(styled, 'db', { x: 1000, y: 100, width: 240, height: 100 })).layout,
+    ).toMatchObject(kept);
+    expect(edited(duplicate(styled, 'db')).layout).toMatchObject(kept);
+    expect(edited(remove(styled, { type: 'node', id: 'user' })).layout).toMatchObject(kept);
+  });
+
+  it('are forgotten with the connection, whether it is removed alone or with a component', () => {
+    const both = edited(
+      setEdgeStyle(edited(setEdgeStyle(document, 'api-db', 'square')), 'user-api', 'square'),
+    );
+    expect(edited(remove(both, { type: 'edge', id: 'api-db' })).layout.edgeStyles).toEqual({
+      'user-api': 'square',
+    });
+    expect(edited(remove(both, { type: 'node', id: 'db' })).layout.edgeStyles).toEqual({
+      'user-api': 'square',
+    });
+    expect(edited(remove(both, { type: 'node', id: 'vpc' })).layout).not.toHaveProperty(
+      'edgeStyles',
+    );
+  });
+
+  it('are copied with the connections that are copied with a group', () => {
+    const withInner: DiagramDocument = {
+      graph: {
+        ...graph,
+        nodes: [
+          ...graph.nodes,
+          { id: 'worker', kind: 'service', label: 'Worker', parentId: 'vpc' },
+        ],
+        edges: [...graph.edges, { id: 'api-worker', source: 'api', target: 'worker' }],
+      },
+      layout: {
+        positions: { ...document.layout.positions, worker: { x: 340, y: 48 } },
+        sizes: { ...document.layout.sizes, worker: DEFAULT_NODE_SIZE },
+        edgeStyles: { 'api-worker': 'square', 'api-db': 'square' },
+      },
+    };
+    const next = edited(duplicate(withInner, 'vpc'));
+    expect(next.layout.edgeStyles).toEqual({
+      'api-worker': 'square',
+      'api-db': 'square',
+      'api-2-worker-2': 'square',
+    });
   });
 });

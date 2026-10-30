@@ -123,6 +123,27 @@ describe('diagram as SVG', () => {
     expect(texts).toEqual(expect.arrayContaining(['HTTPS', 'Enqueue']));
   });
 
+  it('draws connections as curves, with right angles when the layout asks for it', () => {
+    const lines = (laid: DiagramDocument['layout']) =>
+      [
+        ...parse(diagramToSvg({ ...document, layout: laid }, options).svg).querySelectorAll(
+          `path[fill="none"][stroke="${palette.edge}"]`,
+        ),
+      ].map((path) => path.getAttribute('d') ?? '');
+    const curved = lines(document.layout);
+    expect(curved).toHaveLength(2);
+    expect(curved.every((d) => d.includes('C'))).toBe(true);
+
+    const mixed = lines({
+      ...document.layout,
+      edgeStyle: 'square',
+      edgeStyles: { 'user-api': 'curved' },
+    });
+    expect(mixed[0]).toContain('C');
+    expect(mixed[1]).not.toContain('C');
+    expect(mixed[1]).toMatch(/L/);
+  });
+
   it('shows the product, the kind icon and a badge for another provider', () => {
     const { svg } = diagramToSvg(document, options);
     expect(svg).toContain('>Amazon ECS<');

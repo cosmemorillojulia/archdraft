@@ -4,13 +4,17 @@ import {
   type ArchNode,
   CLOUD_PROVIDERS,
   type CloudProvider,
+  DEFAULT_EDGE_STYLE,
   EDGE_PROTOCOLS,
+  EDGE_STYLES,
   type EdgeProtocol,
+  type EdgeStyle,
   getNodeDefinition,
   isContainerKind,
   isShapeKind,
   LIMITS,
   type NodeAttributes,
+  ownEdgeStyle,
   resolveEdgeMode,
 } from '@archdraft/core';
 import {
@@ -550,6 +554,9 @@ function EdgeForm({
   const update = (patch: EdgePatch) => editorStore.getState().updateEdge(edge.id, patch);
   const { mode: _mode, ...withoutMode } = edge;
   const inferred = resolveEdgeMode(withoutMode);
+  const layout = useEditor((state) => state.current?.document.layout);
+  const ownStyle = layout === undefined ? undefined : ownEdgeStyle(layout, edge.id);
+  const diagramStyle = layout?.edgeStyle ?? DEFAULT_EDGE_STYLE;
 
   const title = {
     headingId,
@@ -626,6 +633,25 @@ function EdgeForm({
             onChange={(mode) => update({ mode: mode === 'auto' ? undefined : mode })}
           />
           <p className="text-xs text-muted">{strings.inspector.modeHint(edge.mode ?? inferred)}</p>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <ChoiceField<'auto' | EdgeStyle>
+            label={strings.inspector.edgeStyle}
+            value={ownStyle ?? 'auto'}
+            options={[
+              { value: 'auto', label: strings.inspector.edgeStyles.auto },
+              ...EDGE_STYLES.map((style) => ({
+                value: style,
+                label: strings.inspector.edgeStyles[style],
+              })),
+            ]}
+            onChange={(style) =>
+              editorStore.getState().setEdgeStyle(edge.id, style === 'auto' ? undefined : style)
+            }
+          />
+          {ownStyle === undefined && (
+            <p className="text-xs text-muted">{strings.inspector.edgeStyleFollows(diagramStyle)}</p>
+          )}
         </div>
       </div>
       <Actions>{remove}</Actions>

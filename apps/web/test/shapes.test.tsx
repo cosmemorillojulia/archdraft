@@ -121,6 +121,33 @@ describe('flow animation', () => {
   });
 });
 
+describe('edge style', () => {
+  const lines = (diagram: HTMLElement) =>
+    [...diagram.querySelectorAll('.react-flow__edge path[fill="none"]')].map(
+      (path) => path.getAttribute('d') ?? '',
+    );
+
+  it('switches every connection between curves and right angles, one undoable step each', async () => {
+    const user = userEvent.setup();
+    const diagram = await openFlowchart();
+    const view = screen.getByRole('group', { name: strings.canvas.zoom.label });
+    const layout = () => editorStore.getState().current?.document.layout;
+    await waitFor(() => expect(lines(diagram).length).toBeGreaterThan(0));
+    expect(lines(diagram).every((d) => d.includes('C'))).toBe(true);
+
+    await user.click(within(view).getByRole('button', { name: strings.canvas.edgeStyle.toSquare }));
+    expect(layout()?.edgeStyle).toBe('square');
+    await waitFor(() => expect(lines(diagram).some((d) => d.includes('C'))).toBe(false));
+
+    await user.click(within(view).getByRole('button', { name: strings.canvas.edgeStyle.toCurved }));
+    expect(layout()).not.toHaveProperty('edgeStyle');
+    await waitFor(() => expect(lines(diagram).every((d) => d.includes('C'))).toBe(true));
+
+    act(() => editorStore.getState().undo());
+    expect(layout()?.edgeStyle).toBe('square');
+  });
+});
+
 describe('connections', () => {
   it('arrive at the left and the top of every node and leave by the right and the bottom', async () => {
     const diagram = await openFlowchart();

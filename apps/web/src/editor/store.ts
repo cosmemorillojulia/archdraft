@@ -4,6 +4,7 @@ import {
   isShapeKind,
   CONTAINMENT_RULES,
   type DiagramDocument,
+  type EdgeStyle,
   isContainerKind,
   type NodeKind,
   type Point,
@@ -30,6 +31,8 @@ import {
   remove,
   removeNodes,
   type Selection,
+  setDefaultEdgeStyle,
+  setEdgeStyle,
   type DiagramPatch,
   type StackMove,
   stackNode,
@@ -108,6 +111,10 @@ export interface EditorActions {
   resizeNode: (id: string, box: Point & Size) => void;
   updateNode: (id: string, patch: NodePatch) => void;
   updateEdge: (id: string, patch: EdgePatch) => void;
+  /** Draws every connection without a style of its own as curves or as right-angled lines. */
+  setDefaultEdgeStyle: (style: EdgeStyle) => void;
+  /** Draws one connection in `style`; `undefined` makes it follow the diagram again. */
+  setEdgeStyle: (id: string, style: EdgeStyle | undefined) => void;
   /** Renames the diagram or changes its cloud provider. */
   updateDiagram: (patch: DiagramPatch) => void;
   /** Moves a node in front of or behind the nodes it is stacked with. */
@@ -290,6 +297,8 @@ export function createEditorStore() {
       resizeNode: (id, box) => apply((document) => resizeNode(document, id, box)),
       updateNode: (id, patch) => apply((document) => updateNode(document, id, patch)),
       updateEdge: (id, patch) => apply((document) => updateEdge(document, id, patch)),
+      setDefaultEdgeStyle: (style) => apply((document) => setDefaultEdgeStyle(document, style)),
+      setEdgeStyle: (id, style) => apply((document) => setEdgeStyle(document, id, style)),
       updateDiagram: (patch) => apply((document) => updateDiagram(document, patch)),
       stackNode: (id, move) => apply((document) => stackNode(document, id, move)),
       removeSelection: () => {

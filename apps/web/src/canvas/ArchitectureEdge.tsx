@@ -1,9 +1,10 @@
-import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { memo, useState } from 'react';
 import { EASE_OUT } from '../motion.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
+import { connectionPath } from './edge-path.ts';
 import type { ArchitectureFlowEdge } from './flow.ts';
 import { arrowhead } from './geometry.ts';
 
@@ -16,8 +17,8 @@ const PARTICLE_MAX_S = 4;
 const DRAW_S = 0.55;
 
 /**
- * A connection: a smooth curve that draws itself in when the diagram builds,
- * dashed when asynchronous, ending in an arrowhead, with a particle in the
+ * A connection: a smooth curve, or a line of right angles, that draws itself in when the
+ * diagram builds, dashed when asynchronous, ending in an arrowhead, with a particle in the
  * colour of its source that travels along it. When it is selected, or either
  * end is in focus, it turns to the accent colour and shows its label.
  *
@@ -42,8 +43,11 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   // Drawing in uses a normalised dash, which Chromium does not rescale when the path changes
   // length (a node moved); once drawn, the line is a plain path.
   const [drawn, setDrawn] = useState(false);
+  if (!data) return null;
+
+  const { edge, async, style, sourceCategory, appearDelay } = data;
   const arrow = arrowhead(targetX, targetY, targetPosition);
-  const [path, labelX, labelY] = getBezierPath({
+  const [path, labelX, labelY] = connectionPath(style, {
     sourceX,
     sourceY,
     targetX: arrow.base.x,
@@ -51,9 +55,6 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
     sourcePosition,
     targetPosition,
   });
-  if (!data) return null;
-
-  const { edge, async, sourceCategory, appearDelay } = data;
   const selected = isSelected(canvas.selection, 'edge', id);
   const active = selected || canvas.edges.has(id);
   const dimmed = canvas.dimOthers && !active;

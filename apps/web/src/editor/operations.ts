@@ -6,15 +6,18 @@ import {
   CONTAINMENT_RULES,
   type ContainerKind,
   DEFAULT_CONTAINER_SIZE,
+  DEFAULT_EDGE_STYLE,
   defaultSizeOf,
   type DiagramDocument,
   type DiagramLayout,
+  type EdgeStyle,
   getNodeDefinition,
   isContainerKind,
   isShapeKind,
   layoutEntry,
   LIMITS,
   type NodeKind,
+  ownEdgeStyle,
   type Point,
   type Size,
 } from '@archdraft/core';
@@ -181,7 +184,7 @@ function growAncestors(graph: ArchitectureGraph, layout: DiagramLayout, id: stri
     }
     sizes[parentId] = { width, height };
   }
-  return { positions: layout.positions, sizes };
+  return { ...layout, sizes };
 }
 
 /** Grid step, reach in steps and clearance of the search for room around a new node. */
@@ -262,6 +265,15 @@ function withoutKeys<T>(record: Readonly<Record<string, T>>, ids: ReadonlySet<st
   return Object.fromEntries(Object.entries(record).filter(([id]) => !ids.has(id)));
 }
 
+/** The layout with `styles` as the styles of single edges; with none, the field is left out. */
+function withEdgeStyles(
+  layout: DiagramLayout,
+  styles: Readonly<Record<string, EdgeStyle>>,
+): DiagramLayout {
+  const { edgeStyles: _previous, ...rest } = layout;
+  return Object.keys(styles).length === 0 ? rest : { ...rest, edgeStyles: styles };
+}
+
 /** Copies `target` with the fields of `patch`; an `undefined` value removes the field. */
 function patched<T extends object>(target: T, patch: object): T {
   const next: Record<string, unknown> = { ...(target as Record<string, unknown>) };
@@ -338,7 +350,11 @@ export function addNode(
   const nextGraph = { ...graph, nodes: [...graph.nodes, node] };
   const nextLayout = growAncestors(
     nextGraph,
-    { positions: { ...layout.positions, [id]: position }, sizes: { ...layout.sizes, [id]: size } },
+    {
+      ...layout,
+      positions: { ...layout.positions, [id]: position },
+      sizes: { ...layout.sizes, [id]: size },
+    },
     id,
   );
   return {
@@ -501,7 +517,7 @@ export function moveNode(document: DiagramDocument, id: string, position: Point)
           ],
         }
       : graph;
-  let nextLayout: DiagramLayout = { positions, sizes: layout.sizes };
+  let nextLayout: DiagramLayout = { ...layout, positions };
   for (const moving of [id, ...attached.map((text) => text.id)]) {
     nextLayout = growAncestors(nextGraph, nextLayout, moving);
   }
@@ -624,6 +640,7 @@ export function resizeNode(document: DiagramDocument, id: string, box: Box): Edi
       layout: growAncestors(
         graph,
         {
+          ...layout,
           positions,
           sizes: { ...layout.sizes, [id]: { width: fitted.width, height: fitted.height } },
         },
@@ -641,25 +658,34 @@ export function remove(document: DiagramDocument, selection: Selection): Edit {
     return {
       ok: true,
       document: {
-        ...document,
         graph: { ...graph, edges: graph.edges.filter((edge) => edge.id !== selection.id) },
+        layout: withEdgeStyles(
+          layout,
+          withoutKeys(layout.edgeStyles ?? {}, new Set([selection.id])),
+        ),
       },
       selection: null,
     };
   }
   const ids = subtreeOf(graph, selection.id);
+  const touched = (edge: ArchEdge) => ids.has(edge.source) || ids.has(edge.target);
+  const goneEdges = new Set(graph.edges.filter(touched).map((edge) => edge.id));
   return {
     ok: true,
     document: {
       graph: {
         ...graph,
         nodes: graph.nodes.filter((node) => !ids.has(node.id)),
-        edges: graph.edges.filter((edge) => !ids.has(edge.source) && !ids.has(edge.target)),
+        edges: graph.edges.filter((edge) => !touched(edge)),
       },
-      layout: {
-        positions: withoutKeys(layout.positions, ids),
-        sizes: withoutKeys(layout.sizes, ids),
-      },
+      layout: withEdgeStyles(
+        {
+          ...layout,
+          positions: withoutKeys(layout.positions, ids),
+          sizes: withoutKeys(layout.sizes, ids),
+        },
+        withoutKeys(layout.edgeStyles ?? {}, goneEdges),
+      ),
     },
     selection: null,
   };
@@ -727,12 +753,16 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
   });
 
   const takenEdgeIds = new Set(graph.edges.map((edge) => edge.id));
+  // A copied connection is drawn in the style of the one it copies.
+  const edgeStyles: Record<string, EdgeStyle> = { ...layout.edgeStyles };
   const edges = innerEdges.map((edge) => {
     const source = copyOf(edge.source);
     const target = copyOf(edge.target);
     const base = `${source}-${target}`;
     const edgeId = uniqueId(base.length <= LIMITS.idLength ? base : 'edge', takenEdgeIds);
     takenEdgeIds.add(edgeId);
+    const own = ownEdgeStyle(layout, edge.id);
+    if (own !== undefined) edgeStyles[edgeId] = own;
     return { ...edge, id: edgeId, source, target };
   });
 
@@ -745,7 +775,11 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
     ok: true,
     document: {
       graph: nextGraph,
-      layout: growAncestors(nextGraph, { positions, sizes }, copyOf(id)),
+      layout: growAncestors(
+        nextGraph,
+        withEdgeStyles({ ...layout, positions, sizes }, edgeStyles),
+        copyOf(id),
+      ),
     },
     selection: { type: 'node', id: copyOf(id) },
   };
@@ -802,6 +836,42 @@ export function updateEdge(document: DiagramDocument, id: string, patch: EdgePat
         ...graph,
         edges: graph.edges.map((edge) => (edge.id === id ? patched(edge, patch) : edge)),
       },
+    },
+  };
+}
+
+/**
+ * Sets how the connections without a style of their own are drawn. The default
+ * style is stored as nothing, so a diagram that never chose one is unchanged.
+ */
+export function setDefaultEdgeStyle(document: DiagramDocument, style: EdgeStyle): Edit {
+  const { layout } = document;
+  if ((layout.edgeStyle ?? DEFAULT_EDGE_STYLE) === style) return unchanged(document);
+  const { edgeStyle: _previous, ...rest } = layout;
+  return {
+    ok: true,
+    document: {
+      ...document,
+      layout: style === DEFAULT_EDGE_STYLE ? rest : { ...rest, edgeStyle: style },
+    },
+  };
+}
+
+/** Sets the style of one connection; `undefined` makes it follow the diagram again. */
+export function setEdgeStyle(
+  document: DiagramDocument,
+  id: string,
+  style: EdgeStyle | undefined,
+): Edit {
+  const { graph, layout } = document;
+  if (!graph.edges.some((edge) => edge.id === id)) return unchanged(document);
+  if (ownEdgeStyle(layout, id) === style) return unchanged(document);
+  const others = withoutKeys(layout.edgeStyles ?? {}, new Set([id]));
+  return {
+    ok: true,
+    document: {
+      ...document,
+      layout: withEdgeStyles(layout, style === undefined ? others : { ...others, [id]: style }),
     },
   };
 }

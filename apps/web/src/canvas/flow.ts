@@ -4,6 +4,7 @@ import {
   type ArchNode,
   type CloudProvider,
   type DiagramDocument,
+  type EdgeStyle,
   type NodeCategory,
   getNodeDefinition,
   type NodeKind,
@@ -11,6 +12,7 @@ import {
   isShapeKind,
   layoutEntry,
   resolveEdgeMode,
+  resolveEdgeStyle,
 } from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
 import type { Edge, Node } from '@xyflow/react';
@@ -49,6 +51,8 @@ export interface ShapeNodeData extends Record<string, unknown> {
 export interface ArchitectureEdgeData extends Record<string, unknown> {
   edge: ArchEdge;
   async: boolean;
+  /** Curved or right-angled: the style of the edge, or else the one of the diagram. */
+  style: EdgeStyle;
   /** Category of the component the edge starts from, for the colour of its flow particle. */
   sourceCategory: NodeCategory;
   appearDelay: number;
@@ -165,6 +169,7 @@ export function toFlow(
         data: {
           edge,
           async: resolveEdgeMode(edge) === 'async',
+          style: resolveEdgeStyle(layout, edge.id),
           sourceCategory: getNodeDefinition(sourceKind).category,
           appearDelay: Math.max(appearDelay(edge.source), appearDelay(edge.target)) + 0.15,
         },
