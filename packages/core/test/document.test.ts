@@ -5,6 +5,7 @@ import {
   DiagramLayoutSchema,
   layoutEntry,
   LIMITS,
+  ownEdgeRoute,
   ownEdgeStyle,
   resolveEdgeStyle,
 } from '../src/index.ts';
@@ -98,6 +99,45 @@ describe('the style of connections in the layout', () => {
     expect(ownEdgeStyle(layout, 'api-db')).toBe('curved');
     expect(ownEdgeStyle(layout, 'other')).toBeUndefined();
     expect(ownEdgeStyle(base, 'api-db')).toBeUndefined();
+  });
+
+  describe('edge routes', () => {
+    it('accept the sides and the bend of single connections, each of them optional', () => {
+      const layout = {
+        ...base,
+        edgeRoutes: {
+          'api-db': { source: 'top', target: 'right', bend: { x: 12, y: -30 } },
+          'user-api': { bend: { x: 0, y: 8 } },
+          other: { target: 'bottom' },
+        },
+      };
+      expect(DiagramLayoutSchema.parse(layout)).toEqual(layout);
+    });
+
+    it.each([
+      ['an unknown side', { a: { source: 'middle' } }],
+      ['a bend that is not a point', { a: { bend: { x: 1 } } }],
+      ['a bend that is not finite', { a: { bend: { x: Infinity, y: 0 } } }],
+      ['a field that does not exist', { a: { colour: 'red' } }],
+      ['a key that is not an id', { __proto__x: { source: 'top' } }],
+    ])('reject %s', (_name, edgeRoutes) => {
+      expect(DiagramLayoutSchema.safeParse({ ...base, edgeRoutes }).success).toBe(false);
+    });
+
+    it('reject more routes than the edge limit', () => {
+      const edgeRoutes = Object.fromEntries(
+        Array.from({ length: LIMITS.maxEdges + 1 }, (_, i) => [`e${i}`, { source: 'top' }]),
+      );
+      expect(DiagramLayoutSchema.safeParse({ ...base, edgeRoutes }).success).toBe(false);
+    });
+
+    it('tell the route an edge was given, which is none unless it was routed', () => {
+      const layout = { ...base, edgeRoutes: { 'api-db': { source: 'top' } } } as const;
+      expect(ownEdgeRoute(layout, 'api-db')).toEqual({ source: 'top' });
+      expect(ownEdgeRoute(layout, 'other')).toBeUndefined();
+      expect(ownEdgeRoute(base, 'api-db')).toBeUndefined();
+      expect(ownEdgeRoute({ ...base, edgeRoutes: {} }, 'constructor')).toBeUndefined();
+    });
   });
 
   describe('resolveEdgeStyle', () => {

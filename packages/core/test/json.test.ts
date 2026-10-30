@@ -228,6 +228,56 @@ describe('documentToJson and importDocument', () => {
     });
   });
 
+  it('round-trips the routes of the connections, in the order of the schema', () => {
+    const routed: DiagramDocument = {
+      graph,
+      layout: {
+        ...document.layout,
+        edgeRoutes: { 'api-db': { bend: { x: 4, y: -2 }, target: 'top', source: 'left' } },
+      },
+    };
+    const text = documentToJson(routed);
+    expect(
+      Object.keys(
+        (JSON.parse(text) as { layout: { edgeRoutes: Record<string, object> } }).layout.edgeRoutes[
+          'api-db'
+        ] ?? {},
+      ),
+    ).toEqual(['source', 'target', 'bend']);
+    expect(importDocument(text)).toMatchObject({ success: true, layout: routed.layout });
+  });
+
+  it('keeps only the routes of connections in the graph, and none that say nothing', () => {
+    const stray: DiagramDocument = {
+      graph,
+      layout: { ...document.layout, edgeRoutes: { ghost: { source: 'top' }, 'api-db': {} } },
+    };
+    expect(JSON.parse(documentToJson(stray)) as object).not.toHaveProperty('layout.edgeRoutes');
+    const text = JSON.stringify({
+      graph,
+      layout: {
+        positions: {},
+        sizes: {},
+        edgeRoutes: { 'api-db': { source: 'top' }, ghost: { source: 'top' } },
+      },
+    });
+    expect(importDocument(text)).toMatchObject({
+      success: true,
+      layout: { edgeRoutes: { 'api-db': { source: 'top' } } },
+    });
+  });
+
+  it('rejects an unknown side with its path', () => {
+    const text = JSON.stringify({
+      graph,
+      layout: { positions: {}, sizes: {}, edgeRoutes: { 'api-db': { source: 'middle' } } },
+    });
+    expect(importDocument(text)).toMatchObject({
+      success: false,
+      issues: [{ code: 'SCHEMA', path: ['layout', 'edgeRoutes', 'api-db', 'source'] }],
+    });
+  });
+
   it('rejects an unknown style with its path', () => {
     const text = JSON.stringify({
       graph,

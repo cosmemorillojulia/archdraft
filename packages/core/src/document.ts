@@ -29,6 +29,24 @@ export const EdgeStyleSchema = z.enum(EDGE_STYLES);
 /** The style of a diagram that does not choose one. */
 export const DEFAULT_EDGE_STYLE: EdgeStyle = 'curved';
 
+/** A side of a node, which a connection can leave from or arrive at. */
+export const NODE_SIDES = ['left', 'right', 'top', 'bottom'] as const;
+export type NodeSide = (typeof NODE_SIDES)[number];
+export const NodeSideSchema = z.enum(NODE_SIDES);
+
+/**
+ * How one connection departs from what the diagram would draw by itself. Every field is
+ * optional, and the missing ones stay automatic: the sides are the ones that make the shortest
+ * line, and the bend is where the middle of the connection falls.
+ */
+export const EdgeRouteSchema = z.strictObject({
+  source: NodeSideSchema.optional().describe('Side of the source the connection leaves from'),
+  target: NodeSideSchema.optional().describe('Side of the target the connection arrives at'),
+  bend: PointSchema.optional().describe(
+    'How far the middle of the connection is moved from where it falls by default',
+  ),
+});
+
 export const DiagramLayoutSchema = z.strictObject({
   positions: boundedRecord(PointSchema).describe('Top left corner per node id, parent relative'),
   sizes: boundedRecord(SizeSchema).describe('Width and height per node id'),
@@ -38,6 +56,9 @@ export const DiagramLayoutSchema = z.strictObject({
   edgeStyles: boundedRecord(EdgeStyleSchema, LIMITS.maxEdges)
     .optional()
     .describe('Style of single connections that differ from the diagram, per edge id'),
+  edgeRoutes: boundedRecord(EdgeRouteSchema, LIMITS.maxEdges)
+    .optional()
+    .describe('Sides and bend of single connections that were routed by hand, per edge id'),
 });
 
 /** What the editor stores, shares and restores: the graph plus how it is drawn. */
@@ -47,6 +68,7 @@ export const DiagramDocumentSchema = z.strictObject({
 });
 
 export type Point = z.infer<typeof PointSchema>;
+export type EdgeRoute = z.infer<typeof EdgeRouteSchema>;
 export type Size = z.infer<typeof SizeSchema>;
 export type DiagramLayout = z.infer<typeof DiagramLayoutSchema>;
 export type DiagramDocument = z.infer<typeof DiagramDocumentSchema>;
@@ -94,4 +116,9 @@ export function ownEdgeStyle(layout: DiagramLayout, edgeId: string): EdgeStyle |
 /** How an edge is drawn: its own style if it has one, else the one of the diagram. */
 export function resolveEdgeStyle(layout: DiagramLayout, edgeId: string): EdgeStyle {
   return ownEdgeStyle(layout, edgeId) ?? layout.edgeStyle ?? DEFAULT_EDGE_STYLE;
+}
+
+/** The route an edge was given by hand, if it has one. */
+export function ownEdgeRoute(layout: DiagramLayout, edgeId: string): EdgeRoute | undefined {
+  return layout.edgeRoutes === undefined ? undefined : layoutEntry(layout.edgeRoutes, edgeId);
 }
