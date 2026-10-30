@@ -51,9 +51,9 @@ export function ShapeBody({
   return outline === null ? (
     <span
       aria-hidden="true"
-      className={`absolute inset-0 border-[1.5px] transition-[border-color,box-shadow] duration-200 ${
+      className={`absolute inset-0 border-[1.5px] transition-[border-color] duration-200 ${
         kind === 'circle' ? 'rounded-full' : 'rounded-lg'
-      } ${selected ? 'shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_25%,transparent)]' : ''}`}
+      }`}
       style={{ borderColor: stroke, backgroundColor: fill }}
     />
   ) : (

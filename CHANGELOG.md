@@ -71,6 +71,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- `@archdraft/web`: a selected component or figure shows one outline, the one it has on hover, instead of a second accent ring around it.
 - `@archdraft/web`: dragging a node re-rendered every node and edge at each step and opened the inspector; it is now about twice as cheap and leaves the selection alone. A resize made with a finger was never saved.
 
 - `@archdraft/web`: arrowheads were hidden inside the target or out of place, because connection points were measured in the middle of the entrance animation; they are now drawn by the edge, with the line ending at their base and the tip on the border.

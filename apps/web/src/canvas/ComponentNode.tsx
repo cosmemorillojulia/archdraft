@@ -49,7 +49,7 @@ export const ComponentNode = memo(function ComponentNode({
           data-state={focused ? 'focused' : dimmed ? 'dimmed' : 'idle'}
           data-selected={selected || undefined}
           title={service === node.label ? node.label : `${node.label}: ${service}`}
-          className="relative flex h-full w-full items-center gap-2.5 rounded-xl border bg-surface px-3 outline-2 outline-offset-2 outline-transparent transition-[opacity,transform,border-color,box-shadow,outline-color] duration-200 ease-out-soft data-selected:outline-accent data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.04] data-[state=focused]:shadow-[0_8px_20px_-6px_rgb(17_24_39/0.25)]"
+          className="relative flex h-full w-full items-center gap-2.5 rounded-xl border bg-surface px-3 transition-[opacity,transform,border-color,box-shadow] duration-200 ease-out-soft data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.04] data-[state=focused]:shadow-[0_8px_20px_-6px_rgb(17_24_39/0.25)]"
           style={{
             borderColor: focused || selected ? `var(--cat-${category})` : 'var(--line)',
             ...(canvas.finding && inFinding
