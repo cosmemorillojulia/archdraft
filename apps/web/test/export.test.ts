@@ -144,6 +144,29 @@ describe('diagram as SVG', () => {
     expect(mixed[1]).toMatch(/L/);
   });
 
+  it('draws a connection with the sides and the bend its route gives it', () => {
+    const lines = (laid: DiagramDocument['layout']) =>
+      [
+        ...parse(diagramToSvg({ ...document, layout: laid }, options).svg).querySelectorAll(
+          `path[fill="none"][stroke="${palette.edge}"]`,
+        ),
+      ].map((path) => path.getAttribute('d') ?? '');
+    const edgeId = document.graph.edges[0]?.id ?? '';
+    const plain = lines(document.layout);
+    const sides = lines({ ...document.layout, edgeRoutes: { [edgeId]: { source: 'top' } } });
+    expect(sides[0]).not.toBe(plain[0]);
+    expect(sides[1]).toBe(plain[1]);
+    const bent = lines({ ...document.layout, edgeRoutes: { [edgeId]: { bend: { x: 0, y: 60 } } } });
+    expect(bent[0]).not.toBe(plain[0]);
+    expect(bent[1]).toBe(plain[1]);
+    const squareBent = lines({
+      ...document.layout,
+      edgeStyle: 'square',
+      edgeRoutes: { [edgeId]: { bend: { x: 40, y: 60 } } },
+    });
+    expect(squareBent[0]).not.toContain('C');
+  });
+
   it('shows the product, the kind icon and a badge for another provider', () => {
     const { svg } = diagramToSvg(document, options);
     expect(svg).toContain('>Amazon ECS<');

@@ -5,8 +5,9 @@ import { EASE_OUT } from '../motion.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
 import { connectionPath } from './edge-path.ts';
+import { EdgeRouteHandles, type RoutePreview } from './EdgeRouteHandles.tsx';
 import type { ArchitectureFlowEdge } from './flow.ts';
-import { arrowhead } from './geometry.ts';
+import { arrowhead, type EdgeSides, sidePoint } from './geometry.ts';
 
 /** Speed of the flow particle, in diagram pixels per second, and its limits in seconds. */
 const PARTICLE_SPEED = 110;
@@ -43,18 +44,40 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   // Drawing in uses a normalised dash, which Chromium does not rescale when the path changes
   // length (a node moved); once drawn, the line is a plain path.
   const [drawn, setDrawn] = useState(false);
+  // What a handle being dragged shows until it is let go.
+  const [preview, setPreview] = useState<RoutePreview | null>(null);
   if (!data) return null;
 
-  const { edge, async, style, sourceCategory, appearDelay } = data;
-  const arrow = arrowhead(targetX, targetY, targetPosition);
-  const [path, labelX, labelY] = connectionPath(style, {
-    sourceX,
-    sourceY,
+  const {
+    edge,
+    async,
+    style,
+    route,
+    sourceBox,
+    targetBox,
+    direction,
+    sourceCategory,
+    appearDelay,
+  } = data;
+  // The sides come from the handles React Flow measured, except while another side is being tried.
+  const settled: EdgeSides = { source: sourcePosition, target: targetPosition };
+  const trying = preview?.kind === 'sides' ? preview.sides : null;
+  const sides = trying ?? settled;
+  const start = trying ? sidePoint(sourceBox, trying.source) : { x: sourceX, y: sourceY };
+  const tip = trying ? sidePoint(targetBox, trying.target) : { x: targetX, y: targetY };
+  const arrow = arrowhead(tip.x, tip.y, sides.target);
+  const ends = {
+    sourceX: start.x,
+    sourceY: start.y,
     targetX: arrow.base.x,
     targetY: arrow.base.y,
-    sourcePosition,
-    targetPosition,
-  });
+    sourcePosition: sides.source,
+    targetPosition: sides.target,
+  };
+  // A bend was made for the sides it was stored with, so it is not applied to other ones.
+  const stored = trying ? undefined : route?.bend;
+  const bend = preview?.kind === 'bend' ? preview.bend : stored;
+  const { path, labelX, labelY, bend: bendHandle } = connectionPath(style, ends, bend);
   const selected = isSelected(canvas.selection, 'edge', id);
   const active = selected || canvas.edges.has(id);
   const dimmed = canvas.dimOthers && !active;
@@ -63,7 +86,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   const strokeWidth = selected ? 2.5 : active ? 2 : 1.5;
   const delay = canvas.building ? appearDelay : 0;
   const travel = Math.min(
-    Math.max(Math.hypot(targetX - sourceX, targetY - sourceY) / PARTICLE_SPEED, PARTICLE_MIN_S),
+    Math.max(Math.hypot(tip.x - start.x, tip.y - start.y) / PARTICLE_SPEED, PARTICLE_MIN_S),
     PARTICLE_MAX_S,
   );
   // Dashes and pathLength both use stroke-dasharray, so async edges fade in instead of drawing.
@@ -140,6 +163,21 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
             )}
           </AnimatePresence>
         </div>
+        {selected && (
+          <EdgeRouteHandles
+            id={id}
+            sides={settled}
+            source={start}
+            target={tip}
+            home={connectionPath(style, ends).bend}
+            bend={bendHandle}
+            sourceBox={sourceBox}
+            targetBox={targetBox}
+            direction={direction}
+            route={route}
+            onPreview={setPreview}
+          />
+        )}
       </EdgeLabelRenderer>
     </>
   );

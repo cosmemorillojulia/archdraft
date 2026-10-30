@@ -365,6 +365,11 @@ export const es: Strings = {
       toSquare: 'Dibujar las conexiones con ángulos rectos',
       toCurved: 'Dibujar las conexiones como curvas',
     },
+    edgeHandles: {
+      source: 'Mover por dónde sale la conexión: arrástrala a otro lado',
+      target: 'Mover por dónde llega la conexión: arrástrala a otro lado',
+      bend: 'Mover el centro de la conexión',
+    },
     zoom: {
       label: 'Vista',
       in: 'Acercar',
@@ -486,6 +491,8 @@ export const es: Strings = {
     edgeStyles: { auto: 'Auto', curved: 'Curva', square: 'Cuadrada' },
     edgeStyleFollows: (style: 'curved' | 'square') =>
       style === 'curved' ? 'Sigue al diagrama: curva.' : 'Sigue al diagrama: ángulos rectos.',
+    edgeRouteHint: 'Arrastra los puntos de la conexión para cambiar sus lados o mover su centro.',
+    edgeRouteReset: 'Volver al recorrido automático',
     connect: 'Conectar',
     duplicate: 'Duplicar',
     delete: 'Eliminar',

@@ -4,6 +4,7 @@ import {
   type ArchNode,
   type CloudProvider,
   type DiagramDocument,
+  type EdgeRoute,
   type EdgeStyle,
   type NodeCategory,
   getNodeDefinition,
@@ -11,6 +12,7 @@ import {
   isContainerKind,
   isShapeKind,
   layoutEntry,
+  ownEdgeRoute,
   resolveEdgeMode,
   resolveEdgeStyle,
 } from '@archdraft/core';
@@ -18,7 +20,14 @@ import type { LayoutDirection } from '@archdraft/layout';
 import type { Edge, Node } from '@xyflow/react';
 import { en, type KindText } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
-import { absoluteBoxes, boundsOf, edgeSides, nestingDepths, stackingOrder } from './geometry.ts';
+import {
+  absoluteBoxes,
+  type Box,
+  boundsOf,
+  edgeSides,
+  nestingDepths,
+  stackingOrder,
+} from './geometry.ts';
 
 /** What a screen reader says for a node: name and kind, or only the kind if it has no name. */
 const spoken = (label: string, kind: string): string => (label === '' ? kind : `${label}, ${kind}`);
@@ -53,6 +62,12 @@ export interface ArchitectureEdgeData extends Record<string, unknown> {
   async: boolean;
   /** Curved or right-angled: the style of the edge, or else the one of the diagram. */
   style: EdgeStyle;
+  /** What was decided by hand about how the edge runs: its sides and the bend of its middle. */
+  route: EdgeRoute | undefined;
+  /** The boxes of its two nodes, for choosing another side to attach to, and the flow direction. */
+  sourceBox: Box;
+  targetBox: Box;
+  direction: LayoutDirection;
   /** Category of the component the edge starts from, for the colour of its flow particle. */
   sourceCategory: NodeCategory;
   appearDelay: number;
@@ -79,7 +94,8 @@ export interface FlowElements {
  * - Kind names, in accessible names and as the product of components that
  *   name none, come from `kinds`, in the language of the interface.
  * - Each edge leaves by the right or bottom of its source and arrives at the left or
- *   top of its target, whichever pair makes the shortest line (`edgeSides`).
+ *   top of its target, whichever pair makes the shortest line (`edgeSides`), unless its
+ *   route fixes a side.
  * - Each element carries the delay of its entrance, so the diagram builds
  *   along its flow direction.
  * - Containers are not draggable here: dragging a large group by accident
@@ -157,7 +173,8 @@ export function toFlow(
     const from = boxes.get(edge.source);
     const to = boxes.get(edge.target);
     if (sourceKind === undefined || !from || !to) return [];
-    const sides = edgeSides(from, to, direction);
+    const route = ownEdgeRoute(layout, edge.id);
+    const sides = edgeSides(from, to, direction, route);
     return [
       {
         id: edge.id,
@@ -170,6 +187,10 @@ export function toFlow(
           edge,
           async: resolveEdgeMode(edge) === 'async',
           style: resolveEdgeStyle(layout, edge.id),
+          route,
+          sourceBox: from,
+          targetBox: to,
+          direction,
           sourceCategory: getNodeDefinition(sourceKind).category,
           appearDelay: Math.max(appearDelay(edge.source), appearDelay(edge.target)) + 0.15,
         },

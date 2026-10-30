@@ -3,6 +3,7 @@ import {
   type ArchNode,
   type DiagramLayout,
   layoutEntry,
+  type NodeSide,
 } from '@archdraft/core';
 import type { LayoutDirection } from '@archdraft/layout';
 
@@ -156,7 +157,15 @@ export function initialViewport(
 }
 
 /** Side of a node an edge connects to. Same values as React Flow's `Position`. */
-export type Side = 'left' | 'right' | 'top' | 'bottom';
+export type Side = NodeSide;
+
+/** Direction pointing out of a node through each of its sides. */
+export const OUTWARD: Record<Side, { x: number; y: number }> = {
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+  top: { x: 0, y: -1 },
+  bottom: { x: 0, y: 1 },
+};
 
 /** Arrowhead size in diagram pixels: from base to tip, and across the base. */
 export const ARROW_LENGTH = 9;
@@ -208,9 +217,19 @@ export function sidePoint(box: Box, side: Side): { x: number; y: number } {
   }
 }
 
-/** Sides of a node edges leave from, and sides they arrive at: out by right or bottom, in by left or top. */
-export type SourceSide = 'right' | 'bottom';
-export type TargetSide = 'left' | 'top';
+/** The sides edges leave from and arrive at unless they are told otherwise: out by right or bottom, in by left or top. */
+export interface EdgeSides {
+  readonly source: Side;
+  readonly target: Side;
+}
+
+/** Sides of a connection that were chosen by hand; the other one is left to `edgeSides`. */
+export interface FixedSides {
+  readonly source?: Side | undefined;
+  readonly target?: Side | undefined;
+}
+
+const ALL_SIDES: readonly Side[] = ['right', 'bottom', 'left', 'top'];
 
 /** The four ways to join two nodes, in the order they win a tie for each flow direction. */
 const ACROSS = { source: 'right', target: 'left' } as const;
@@ -230,40 +249,89 @@ const COMBINATIONS: Record<'horizontal' | 'vertical', readonly EdgeSides[]> = {
   ],
 };
 
-export interface EdgeSides {
-  readonly source: SourceSide;
-  readonly target: TargetSide;
-}
-
 /** How much a pixel of going against the side an edge leaves or arrives at costs, in pixels of length. */
 const AGAINST_COST = 3;
 
+/** Pixels the line has to go against the sides it leaves and arrives at to join the two points. */
+function againstSides(from: Point, to: Point, sides: EdgeSides): number {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const out = OUTWARD[sides.source];
+  const into = OUTWARD[sides.target];
+  // Leaving a side towards a point behind it, or arriving from the side of the point it lies beyond.
+  const along = (axis: 'x' | 'y') =>
+    Math.max(0, -(axis === 'x' ? dx : dy) * out[axis], (axis === 'x' ? dx : dy) * into[axis]);
+  return along('x') + along('y');
+}
+
+type Point = { x: number; y: number };
+
 /**
- * Sides an edge connects, from the position of its two nodes: it always
- * leaves by the right or the bottom of the source and arrives at the left or
- * the top of the target. Of the four combinations, it picks the one with the
- * shortest line, counting extra for lines that would leave a side backwards
- * (for example, leaving by the right towards a target on the left). Ties go to
- * the combination that follows the flow direction.
+ * Sides an edge connects, from the position of its two nodes. Unless told
+ * otherwise it leaves by the right or the bottom of the source and arrives at
+ * the left or the top of the target: of the four combinations, it picks the
+ * one with the shortest line, counting extra for lines that would leave a side
+ * backwards (for example, leaving by the right towards a target on the left).
+ * Ties go to the combination that follows the flow direction.
+ *
+ * `fixed` holds the sides chosen by hand. The end that was not chosen then
+ * takes any of the four sides, whichever makes the shortest line with the other.
  */
-export function edgeSides(source: Box, target: Box, direction: LayoutDirection): EdgeSides {
-  const options =
-    COMBINATIONS[direction === 'LR' || direction === 'RL' ? 'horizontal' : 'vertical'];
+export function edgeSides(
+  source: Box,
+  target: Box,
+  direction: LayoutDirection,
+  fixed: FixedSides = {},
+): EdgeSides {
+  const options: readonly EdgeSides[] =
+    fixed.source === undefined && fixed.target === undefined
+      ? COMBINATIONS[direction === 'LR' || direction === 'RL' ? 'horizontal' : 'vertical']
+      : (fixed.source === undefined ? ALL_SIDES : [fixed.source]).flatMap((from) =>
+          (fixed.target === undefined ? ALL_SIDES : [fixed.target]).map((to) => ({
+            source: from,
+            target: to,
+          })),
+        );
   let best = options[0] as EdgeSides;
   let bestCost = Infinity;
   for (const option of options) {
     const from = sidePoint(source, option.source);
     const to = sidePoint(target, option.target);
-    const backwardsX =
-      option.source === 'right' || option.target === 'left' ? Math.max(0, from.x - to.x) : 0;
-    const backwardsY =
-      option.source === 'bottom' || option.target === 'top' ? Math.max(0, from.y - to.y) : 0;
     const cost =
-      Math.hypot(to.x - from.x, to.y - from.y) + AGAINST_COST * (backwardsX + backwardsY);
+      Math.hypot(to.x - from.x, to.y - from.y) + AGAINST_COST * againstSides(from, to, option);
     if (cost < bestCost) {
       best = option;
       bestCost = cost;
     }
   }
   return best;
+}
+
+/** The side of `box` that a point is closest to, inside or outside it. */
+export function nearestSide(box: Box, point: Point): Side {
+  let best: Side = 'right';
+  let bestDistance = Infinity;
+  for (const side of ALL_SIDES) {
+    const distance = distanceToSide(box, side, point);
+    if (distance < bestDistance) {
+      best = side;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function distanceToSide(box: Box, side: Side, point: Point): number {
+  const horizontal = side === 'top' || side === 'bottom';
+  const line = horizontal
+    ? side === 'top'
+      ? box.y
+      : box.y + box.height
+    : side === 'left'
+      ? box.x
+      : box.x + box.width;
+  const [from, to] = horizontal ? [box.x, box.x + box.width] : [box.y, box.y + box.height];
+  const along = horizontal ? point.x : point.y;
+  const across = horizontal ? point.y : point.x;
+  return Math.hypot(across - line, along - Math.min(Math.max(along, from), to));
 }

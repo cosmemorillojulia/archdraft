@@ -23,6 +23,7 @@ import {
   duplicate,
   type Edit,
   type EdgePatch,
+  type EdgeRoutePatch,
   exists,
   moveNode,
   moveNodes,
@@ -32,6 +33,7 @@ import {
   removeNodes,
   type Selection,
   setDefaultEdgeStyle,
+  setEdgeRoute,
   setEdgeStyle,
   type DiagramPatch,
   type StackMove,
@@ -115,6 +117,8 @@ export interface EditorActions {
   setDefaultEdgeStyle: (style: EdgeStyle) => void;
   /** Draws one connection in `style`; `undefined` makes it follow the diagram again. */
   setEdgeStyle: (id: string, style: EdgeStyle | undefined) => void;
+  /** Changes the sides and the bend of one connection; `null` makes its route automatic again. */
+  setEdgeRoute: (id: string, patch: EdgeRoutePatch | null) => void;
   /** Renames the diagram or changes its cloud provider. */
   updateDiagram: (patch: DiagramPatch) => void;
   /** Moves a node in front of or behind the nodes it is stacked with. */
@@ -299,6 +303,7 @@ export function createEditorStore() {
       updateEdge: (id, patch) => apply((document) => updateEdge(document, id, patch)),
       setDefaultEdgeStyle: (style) => apply((document) => setDefaultEdgeStyle(document, style)),
       setEdgeStyle: (id, style) => apply((document) => setEdgeStyle(document, id, style)),
+      setEdgeRoute: (id, patch) => apply((document) => setEdgeRoute(document, id, patch)),
       updateDiagram: (patch) => apply((document) => updateDiagram(document, patch)),
       stackNode: (id, move) => apply((document) => stackNode(document, id, move)),
       removeSelection: () => {

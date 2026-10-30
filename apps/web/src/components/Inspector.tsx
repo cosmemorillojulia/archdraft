@@ -14,6 +14,7 @@ import {
   isShapeKind,
   LIMITS,
   type NodeAttributes,
+  ownEdgeRoute,
   ownEdgeStyle,
   resolveEdgeMode,
 } from '@archdraft/core';
@@ -557,6 +558,7 @@ function EdgeForm({
   const layout = useEditor((state) => state.current?.document.layout);
   const ownStyle = layout === undefined ? undefined : ownEdgeStyle(layout, edge.id);
   const diagramStyle = layout?.edgeStyle ?? DEFAULT_EDGE_STYLE;
+  const routed = layout !== undefined && ownEdgeRoute(layout, edge.id) !== undefined;
 
   const title = {
     headingId,
@@ -651,6 +653,17 @@ function EdgeForm({
           />
           {ownStyle === undefined && (
             <p className="text-xs text-muted">{strings.inspector.edgeStyleFollows(diagramStyle)}</p>
+          )}
+        </div>
+        <div className="flex flex-col items-start gap-1.5">
+          <p className="text-xs text-muted">{strings.inspector.edgeRouteHint}</p>
+          {routed && (
+            <Button
+              size="default"
+              onClick={() => editorStore.getState().setEdgeRoute(edge.id, null)}
+            >
+              {strings.inspector.edgeRouteReset}
+            </Button>
           )}
         </div>
       </div>

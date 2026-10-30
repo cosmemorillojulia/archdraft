@@ -10,6 +10,7 @@ import {
   defaultSizeOf,
   type DiagramDocument,
   type DiagramLayout,
+  type EdgeRoute,
   type EdgeStyle,
   getNodeDefinition,
   isContainerKind,
@@ -17,6 +18,7 @@ import {
   layoutEntry,
   LIMITS,
   type NodeKind,
+  ownEdgeRoute,
   ownEdgeStyle,
   type Point,
   type Size,
@@ -272,6 +274,15 @@ function withEdgeStyles(
 ): DiagramLayout {
   const { edgeStyles: _previous, ...rest } = layout;
   return Object.keys(styles).length === 0 ? rest : { ...rest, edgeStyles: styles };
+}
+
+/** The layout with `routes` as the routes of single edges; with none, the field is left out. */
+function withEdgeRoutes(
+  layout: DiagramLayout,
+  routes: Readonly<Record<string, EdgeRoute>>,
+): DiagramLayout {
+  const { edgeRoutes: _previous, ...rest } = layout;
+  return Object.keys(routes).length === 0 ? rest : { ...rest, edgeRoutes: routes };
 }
 
 /** Copies `target` with the fields of `patch`; an `undefined` value removes the field. */
@@ -650,6 +661,14 @@ export function resizeNode(document: DiagramDocument, id: string, box: Box): Edi
   };
 }
 
+/** The layout without what it says about the edges `ids`: their styles and their routes. */
+function withoutEdgeEntries(layout: DiagramLayout, ids: ReadonlySet<string>): DiagramLayout {
+  return withEdgeRoutes(
+    withEdgeStyles(layout, withoutKeys(layout.edgeStyles ?? {}, ids)),
+    withoutKeys(layout.edgeRoutes ?? {}, ids),
+  );
+}
+
 /** Removes a node with everything inside it and every edge they touch, or an edge. */
 export function remove(document: DiagramDocument, selection: Selection): Edit {
   const { graph, layout } = document;
@@ -659,10 +678,7 @@ export function remove(document: DiagramDocument, selection: Selection): Edit {
       ok: true,
       document: {
         graph: { ...graph, edges: graph.edges.filter((edge) => edge.id !== selection.id) },
-        layout: withEdgeStyles(
-          layout,
-          withoutKeys(layout.edgeStyles ?? {}, new Set([selection.id])),
-        ),
+        layout: withoutEdgeEntries(layout, new Set([selection.id])),
       },
       selection: null,
     };
@@ -678,13 +694,13 @@ export function remove(document: DiagramDocument, selection: Selection): Edit {
         nodes: graph.nodes.filter((node) => !ids.has(node.id)),
         edges: graph.edges.filter((edge) => !touched(edge)),
       },
-      layout: withEdgeStyles(
+      layout: withoutEdgeEntries(
         {
           ...layout,
           positions: withoutKeys(layout.positions, ids),
           sizes: withoutKeys(layout.sizes, ids),
         },
-        withoutKeys(layout.edgeStyles ?? {}, goneEdges),
+        goneEdges,
       ),
     },
     selection: null,
@@ -753,8 +769,9 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
   });
 
   const takenEdgeIds = new Set(graph.edges.map((edge) => edge.id));
-  // A copied connection is drawn in the style of the one it copies.
+  // A copied connection is drawn in the style, and runs the way, of the one it copies.
   const edgeStyles: Record<string, EdgeStyle> = { ...layout.edgeStyles };
+  const edgeRoutes: Record<string, EdgeRoute> = { ...layout.edgeRoutes };
   const edges = innerEdges.map((edge) => {
     const source = copyOf(edge.source);
     const target = copyOf(edge.target);
@@ -763,6 +780,8 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
     takenEdgeIds.add(edgeId);
     const own = ownEdgeStyle(layout, edge.id);
     if (own !== undefined) edgeStyles[edgeId] = own;
+    const route = ownEdgeRoute(layout, edge.id);
+    if (route !== undefined) edgeRoutes[edgeId] = route;
     return { ...edge, id: edgeId, source, target };
   });
 
@@ -777,7 +796,7 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
       graph: nextGraph,
       layout: growAncestors(
         nextGraph,
-        withEdgeStyles({ ...layout, positions, sizes }, edgeStyles),
+        withEdgeRoutes(withEdgeStyles({ ...layout, positions, sizes }, edgeStyles), edgeRoutes),
         copyOf(id),
       ),
     },
@@ -872,6 +891,55 @@ export function setEdgeStyle(
     document: {
       ...document,
       layout: withEdgeStyles(layout, style === undefined ? others : { ...others, [id]: style }),
+    },
+  };
+}
+
+/**
+ * What can be said about the route of one connection. A field set to `undefined` goes back to
+ * automatic; one left out stays as it was.
+ */
+export interface EdgeRoutePatch {
+  readonly source?: EdgeRoute['source'];
+  readonly target?: EdgeRoute['target'];
+  readonly bend?: EdgeRoute['bend'];
+}
+
+/**
+ * Changes how one connection runs: the sides it leaves from and arrives at, and where its
+ * middle falls. `null` makes it fully automatic again. A route with nothing left in it is
+ * stored as nothing, so a diagram nobody routed by hand is unchanged.
+ */
+export function setEdgeRoute(
+  document: DiagramDocument,
+  id: string,
+  patch: EdgeRoutePatch | null,
+): Edit {
+  const { graph, layout } = document;
+  if (!graph.edges.some((edge) => edge.id === id)) return unchanged(document);
+  const current = ownEdgeRoute(layout, id);
+  const merged = patch === null ? {} : patched(current ?? {}, patch);
+  // A bend that did not move is no bend.
+  const bend =
+    merged.bend !== undefined && merged.bend.x === 0 && merged.bend.y === 0
+      ? undefined
+      : merged.bend;
+  // Written in the order of the schema, so that the saved text is stable.
+  const next: EdgeRoute = {
+    ...(merged.source === undefined ? {} : { source: merged.source }),
+    ...(merged.target === undefined ? {} : { target: merged.target }),
+    ...(bend === undefined ? {} : { bend }),
+  };
+  if (JSON.stringify(next) === JSON.stringify(current ?? {})) return unchanged(document);
+  const others = withoutKeys(layout.edgeRoutes ?? {}, new Set([id]));
+  return {
+    ok: true,
+    document: {
+      ...document,
+      layout: withEdgeRoutes(
+        layout,
+        Object.keys(next).length === 0 ? others : { ...others, [id]: next },
+      ),
     },
   };
 }

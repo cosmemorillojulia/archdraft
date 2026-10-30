@@ -9,6 +9,7 @@ import {
   drawingScale,
   edgeSides,
   initialViewport,
+  nearestSide,
   nestingDepths,
   sidePoint,
 } from '../src/canvas/geometry.ts';
@@ -187,6 +188,60 @@ describe('edgeSides', () => {
         expect(['left', 'top']).toContain(sides.target);
       }
     }
+  });
+});
+
+describe('edgeSides with sides chosen by hand', () => {
+  const box = (x: number, y: number) => ({ x, y, width: 100, height: 50 });
+
+  it('keeps the side that was chosen, whatever the nodes are like', () => {
+    expect(edgeSides(box(0, 0), box(300, 0), 'LR', { source: 'top' }).source).toBe('top');
+    expect(edgeSides(box(0, 0), box(300, 0), 'LR', { target: 'bottom' }).target).toBe('bottom');
+    expect(edgeSides(box(0, 0), box(300, 0), 'LR', { source: 'left', target: 'right' })).toEqual({
+      source: 'left',
+      target: 'right',
+    });
+  });
+
+  it('leaves the other end the side that makes the shortest line, on any of the four', () => {
+    // Leaving by the bottom towards a target far above, the line arrives by the top or the bottom side nearest it.
+    const sides = edgeSides(box(0, 300), box(0, 0), 'LR', { source: 'top' });
+    expect(sides).toEqual({ source: 'top', target: 'bottom' });
+    // A target to the left of the source is reached by its right side, which the default never uses.
+    expect(edgeSides(box(300, 0), box(0, 0), 'LR', { source: 'left' })).toEqual({
+      source: 'left',
+      target: 'right',
+    });
+  });
+
+  it('is the automatic choice when nothing was chosen', () => {
+    expect(edgeSides(box(0, 0), box(200, 0), 'LR', {})).toEqual(
+      edgeSides(box(0, 0), box(200, 0), 'LR'),
+    );
+  });
+});
+
+describe('nearestSide', () => {
+  const b = { x: 100, y: 100, width: 200, height: 60 };
+
+  it('is the side a point outside the node is closest to', () => {
+    expect(nearestSide(b, { x: 200, y: 40 })).toBe('top');
+    expect(nearestSide(b, { x: 200, y: 220 })).toBe('bottom');
+    expect(nearestSide(b, { x: 20, y: 130 })).toBe('left');
+    expect(nearestSide(b, { x: 380, y: 130 })).toBe('right');
+  });
+
+  it('is the closest border for a point inside the node', () => {
+    expect(nearestSide(b, { x: 110, y: 130 })).toBe('left');
+    expect(nearestSide(b, { x: 200, y: 105 })).toBe('top');
+    expect(nearestSide(b, { x: 290, y: 130 })).toBe('right');
+    expect(nearestSide(b, { x: 200, y: 155 })).toBe('bottom');
+  });
+
+  it('follows the border past the corners, not the middle of the sides', () => {
+    // Above the left end of a wide node is still closer to its top than to its left side.
+    expect(nearestSide(b, { x: 110, y: 90 })).toBe('top');
+    expect(nearestSide(b, { x: 80, y: 130 })).toBe('left');
   });
 });
 
