@@ -361,6 +361,7 @@ export const es: Strings = {
       hide: 'Ocultar las partículas de las conexiones',
       show: 'Mostrar las partículas de las conexiones',
     },
+    shortcuts: { label: 'Accesos directos' },
     edgeStyle: {
       toSquare: 'Dibujar las conexiones con ángulos rectos',
       toCurved: 'Dibujar las conexiones como curvas',

@@ -103,7 +103,7 @@ describe('flow animation', () => {
     const user = userEvent.setup();
     const diagram = await openFlowchart();
     await waitFor(() => expect(particles(diagram)).toHaveLength(flowchart.graph.edges.length));
-    const view = screen.getByRole('group', { name: strings.canvas.zoom.label });
+    const view = screen.getByRole('group', { name: strings.canvas.shortcuts.label });
     const toggle = within(view).getByRole('button', { name: strings.canvas.flow.label });
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
     expect(toggle).toHaveAttribute('title', strings.canvas.flow.hide);
@@ -130,7 +130,7 @@ describe('edge style', () => {
   it('switches every connection between curves and right angles, one undoable step each', async () => {
     const user = userEvent.setup();
     const diagram = await openFlowchart();
-    const view = screen.getByRole('group', { name: strings.canvas.zoom.label });
+    const view = screen.getByRole('group', { name: strings.canvas.shortcuts.label });
     const layout = () => editorStore.getState().current?.document.layout;
     await waitFor(() => expect(lines(diagram).length).toBeGreaterThan(0));
     expect(lines(diagram).every((d) => d.includes('C'))).toBe(true);
