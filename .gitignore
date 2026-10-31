@@ -11,3 +11,10 @@ coverage/
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Third-party skills live once in .agents/skills; .claude/skills only links to them.
+.claude/skills/*
+!.claude/skills/code-review-excellence/
+!.claude/skills/commit-message/
+!.claude/skills/design-critique/
+!.claude/skills/ingeniero-senior/
