@@ -1,47 +1,54 @@
 .DEFAULT_GOAL := help
 
+# En Windows pnpm es un .cmd que make 3.81 no sabe lanzar directamente.
+ifeq ($(OS),Windows_NT)
+PNPM := cmd /c pnpm
+else
+PNPM := pnpm
+endif
+
 WEB := @archdraft/web
 
 .PHONY: help install run preview build test coverage watch lint format format-check typecheck check clean
 
 help: ## Muestra esta ayuda
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
+	@node -e "require('fs').readFileSync('Makefile','utf8').split('\n').forEach(l=>{const m=l.match(/^([a-z-]+):.*## (.*)/);if(m)console.log('  make '+m[1].padEnd(14)+m[2])})"
 
 install: ## Instala las dependencias
-	pnpm install
+	$(PNPM) install
 
 run: ## Levanta el editor en local con recarga en caliente
-	pnpm --filter $(WEB) dev
+	$(PNPM) --filter $(WEB) dev
 
 preview: build ## Construye y sirve el build de producción en local
-	pnpm --filter $(WEB) preview
+	$(PNPM) --filter $(WEB) preview
 
 build: ## Construye todos los paquetes
-	pnpm build
+	$(PNPM) build
 
 test: ## Pasa todos los tests
-	pnpm test
+	$(PNPM) test
 
 coverage: ## Pasa los tests con los umbrales de cobertura
-	pnpm test:coverage
+	$(PNPM) test:coverage
 
 watch: ## Tests de la web en modo vigilancia
-	pnpm --filter $(WEB) test:watch
+	$(PNPM) --filter $(WEB) test:watch
 
 lint: ## Ejecuta ESLint
-	pnpm lint
+	$(PNPM) lint
 
 format: ## Formatea el código con Prettier
-	pnpm format
+	$(PNPM) format
 
 format-check: ## Comprueba el formato sin modificar nada
-	pnpm format:check
+	$(PNPM) format:check
 
 typecheck: ## Comprueba los tipos en todos los paquetes
-	pnpm typecheck
+	$(PNPM) typecheck
 
 check: ## Lo mismo que el CI: formato, lint, tipos, tests y build
-	pnpm check
+	$(PNPM) check
 
 clean: ## Borra los builds generados
-	pnpm -r exec node -e "require('fs').rmSync('dist',{recursive:true,force:true})"
+	$(PNPM) -r exec node -e "require('fs').rmSync('dist',{recursive:true,force:true})"
