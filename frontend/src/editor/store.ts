@@ -121,6 +121,11 @@ export interface EditorActions {
   setEdgeRoute: (id: string, patch: EdgeRoutePatch | null) => void;
   /** Renames the diagram or changes its cloud provider. */
   updateDiagram: (patch: DiagramPatch) => void;
+  /**
+   * Puts `document` in place of the open diagram as one step of the history, validated like
+   * any edit: a change made by the assistant. The selection stays if it is still there.
+   */
+  replaceDocument: (document: DiagramDocument) => void;
   /** Moves a node in front of or behind the nodes it is stacked with. */
   stackNode: (id: string, move: StackMove) => void;
   removeSelection: () => void;
@@ -305,6 +310,14 @@ export function createEditorStore() {
       setEdgeStyle: (id, style) => apply((document) => setEdgeStyle(document, id, style)),
       setEdgeRoute: (id, patch) => apply((document) => setEdgeRoute(document, id, patch)),
       updateDiagram: (patch) => apply((document) => updateDiagram(document, patch)),
+      replaceDocument: (next) => {
+        const { selection } = get();
+        apply(() => ({
+          ok: true,
+          document: next,
+          selection: selection && exists(next, selection) ? selection : null,
+        }));
+      },
       stackNode: (id, move) => apply((document) => stackNode(document, id, move)),
       removeSelection: () => {
         const { selection, group } = get();

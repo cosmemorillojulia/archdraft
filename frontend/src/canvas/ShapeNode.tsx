@@ -92,7 +92,8 @@ export const ShapeNode = memo(function ShapeNode({
   const dimmed = canvas.dimOthers && !canvas.nodes.has(id);
   const { selected, grouped } = nodeChoice(canvas, id);
   const kind = node.kind;
-  const stroke = focused || selected ? 'var(--accent)' : 'var(--shape-line)';
+  const stroke =
+    focused || selected || canvas.changed.has(id) ? 'var(--accent)' : 'var(--shape-line)';
   const fill = SHAPE_FILL(kind);
 
   return (

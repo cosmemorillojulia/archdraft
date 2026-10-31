@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, beforeEach, vi } from 'vitest';
+import { assistantStore } from '../src/ai/assistant-store.ts';
 import { editorStore } from '../src/editor/store.ts';
 import { localeStore } from '../src/i18n/locale.ts';
 import { preferencesStore } from '../src/preferences.ts';
@@ -68,6 +69,8 @@ afterEach(() => {
   // Each test starts with an empty editor.
   editorStore.setState(editorStore.getInitialState(), true);
   reviewStore.setState(reviewStore.getInitialState(), true);
+  assistantStore.getState().controller?.abort();
+  assistantStore.setState(assistantStore.getInitialState(), true);
   preferencesStore.setState(preferencesStore.getInitialState(), true);
   localeStore.setState(localeStore.getInitialState(), true);
   document.documentElement.lang = 'en';
@@ -75,4 +78,5 @@ afterEach(() => {
   delete document.documentElement.dataset.theme;
   document.documentElement.classList.remove('theme-fade');
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });

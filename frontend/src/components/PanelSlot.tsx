@@ -1,4 +1,6 @@
 import { AnimatePresence } from 'motion/react';
+import { useAssistant } from '../ai/assistant-store.ts';
+import { AssistantPanel } from '../ai/AssistantPanel.tsx';
 import { isInspectorExpanded, useEditor } from '../editor/store.ts';
 import { useReview } from '../review/review-store.ts';
 import type { PanelPlacement } from './FloatingPanel.tsx';
@@ -7,10 +9,12 @@ import { ReviewPanel } from './ReviewPanel.tsx';
 
 /**
  * The place under the diagram card, or across the bottom on narrow screens,
- * for one panel at a time: the design review while it is open, otherwise
- * the inspector of the selection. One panel leaves as the other arrives.
+ * for one panel at a time: the proposals of the assistant while there are any,
+ * else the design review while it is open, otherwise the inspector of the
+ * selection. One panel leaves as the other arrives.
  */
 export function PanelSlot({ placement }: { placement: PanelPlacement }) {
+  const offering = useAssistant((state) => state.offer !== null);
   const reviewOpen = useReview((state) => state.open);
   const inspecting = useInspecting(placement);
   const selection = useEditor((state) => state.selection);
@@ -20,7 +24,9 @@ export function PanelSlot({ placement }: { placement: PanelPlacement }) {
 
   return (
     <AnimatePresence mode="popLayout" initial={false}>
-      {reviewOpen ? (
+      {offering ? (
+        <AssistantPanel key="assistant" placement={placement} />
+      ) : reviewOpen ? (
         <ReviewPanel key="review" placement={placement} />
       ) : inspecting && selection && graph ? (
         group.length > 1 ? (

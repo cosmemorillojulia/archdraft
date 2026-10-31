@@ -214,7 +214,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
     const prompt = screen.getByRole('textbox', { name: strings.prompt.label });
-    expect(prompt).toHaveAccessibleDescription(strings.prompt.soon);
+    expect(prompt).toHaveAccessibleDescription(strings.prompt.unavailable);
     expect(screen.getByRole('button', { name: strings.prompt.generate })).toBeDisabled();
     expect(screen.getByText(strings.prompt.examples[0])).toBeInTheDocument();
 

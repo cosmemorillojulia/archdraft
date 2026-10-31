@@ -3,6 +3,7 @@ import type { LayoutDirection } from './layout/compute-layout.ts';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import { AnimatePresence, LazyMotion, m, MotionConfig } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAssistant } from './ai/assistant-store.ts';
 import { DiagramCanvas } from './canvas/DiagramCanvas.tsx';
 import type { Insets } from './canvas/geometry.ts';
 import {
@@ -104,8 +105,9 @@ function Editor() {
   const graph = useEditor((state) => state.current?.document.graph);
   const selecting = useEditor((state) => state.selection !== null);
   const reviewing = useReview((state) => state.open);
+  const offering = useAssistant((state) => state.offer !== null);
   // On narrow screens a panel takes the place of the prompt.
-  const panelOpen = selecting || reviewing;
+  const panelOpen = selecting || reviewing || offering;
   const flow = useReactFlow();
   const insets = useMemo(() => canvasInsets(wide, paletteOpen), [wide, paletteOpen]);
 
@@ -228,7 +230,7 @@ function Editor() {
                   </div>
                 )}
                 <div className="pointer-events-none flex justify-center px-3 pb-4 md:justify-end md:pr-83 md:pl-78">
-                  <PromptDock />
+                  <PromptDock direction={direction} />
                 </div>
               </m.div>
             )}

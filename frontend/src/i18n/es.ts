@@ -14,6 +14,13 @@ function listOf(items: readonly string[], conjunction: string): string {
     : `${items.slice(0, -1).join(', ')} ${conjunction} ${items.at(-1) ?? ''}`;
 }
 
+/** "45 segundos", "3 minutos", "2 horas". */
+function waitFor(seconds: number): string {
+  if (seconds < 90) return `${Math.max(1, Math.round(seconds))} segundos`;
+  if (seconds < 90 * 60) return `${Math.round(seconds / 60)} minutos`;
+  return `${Math.round(seconds / 3600)} horas`;
+}
+
 const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /** A label in Spanish quotation marks. */
@@ -340,7 +347,7 @@ export const es: Strings = {
       'Un pipeline de clics hacia BigQuery con extracciones nocturnas',
     ],
     generate: 'Generar diagrama',
-    soon: 'La generación con IA llegará pronto',
+    unavailable: 'El asistente de IA no está disponible en esta versión',
     templates: 'Plantillas',
     templateNames: {
       'three-tier-web': 'Tres capas',
@@ -349,6 +356,82 @@ export const es: Strings = {
       'rag-chatbot': 'Chatbot RAG',
       'analytics-pipeline': 'Analítica',
       'static-site-cms': 'Web estática',
+    },
+  },
+  assistant: {
+    editLabel: 'Describe un cambio en este diagrama',
+    editExamples: [
+      'Pon una caché delante de la base de datos',
+      'Pasa la API a funciones serverless',
+      'Añade una cola entre la API y el procesador',
+      'Lleva la base de datos a dos zonas de disponibilidad',
+    ],
+    newDiagram: 'Diagrama nuevo',
+    newDiagramHint: 'Describe un diagrama nuevo en lugar de cambiar este',
+    edit: 'Cambiar diagrama',
+    stop: 'Detener',
+    working: {
+      generate: 'Dibujando el diagrama…',
+      edit: 'Cambiando el diagrama…',
+      improve: 'Buscando mejoras…',
+      simplify: 'Diseñando una versión más simple…',
+      extend: 'Diseñando una versión más completa…',
+    },
+    menu: 'Asistente',
+    actions: {
+      improve: 'Sugerir mejoras',
+      simplify: 'Simplificar',
+      extend: 'Completar',
+    },
+    actionHints: {
+      improve: 'Arreglos para la revisión y lo que señalaría un arquitecto',
+      simplify: 'Menos piezas para lo mismo',
+      extend: 'Lo que le falta para producción',
+    },
+    titles: {
+      improve: 'Mejoras propuestas',
+      simplify: 'Un diseño más simple',
+      extend: 'Un diseño más completo',
+    },
+    close: 'Cerrar las propuestas',
+    apply: 'Aplicar',
+    applyLabel: (title) => `Aplicar ${title}`,
+    discard: 'Descartar',
+    discardLabel: (title) => `Descartar ${title}`,
+    changes: ({ added, updated, removed }) =>
+      [
+        added > 0 ? `${added} ${added === 1 ? 'nuevo' : 'nuevos'}` : '',
+        updated > 0 ? `${updated} ${updated === 1 ? 'cambiado' : 'cambiados'}` : '',
+        removed > 0 ? `${removed} ${removed === 1 ? 'quitado' : 'quitados'}` : '',
+      ]
+        .filter((part) => part !== '')
+        .join(' · ') || 'Cambia los datos del diagrama',
+    stale:
+      'El diagrama ha cambiado desde esta propuesta y ya no encaja. Vuelve a pedírsela al asistente.',
+    warnings: {
+      'proposals-dropped': 'Algunas sugerencias no eran válidas y se han dejado fuera.',
+      'not-simpler': 'Esta propuesta tiene más componentes que el diagrama, no menos.',
+      'not-more-complete': 'Esta propuesta tiene menos componentes que el diagrama.',
+      'more-findings':
+        'Una sugerencia da más hallazgos en la revisión de diseño: revísala antes de aplicarla.',
+    },
+    failed: {
+      network: () =>
+        'No se ha podido contactar con el asistente. Revisa la conexión y vuelve a intentarlo.',
+      'rate-limited': (seconds) =>
+        seconds === undefined
+          ? 'El asistente ha llegado a su límite por ahora. Vuelve a intentarlo más tarde.'
+          : `El asistente ha llegado a su límite por ahora. Vuelve a intentarlo en ${waitFor(seconds)}.`,
+      'model-timeout': () =>
+        'El asistente ha tardado demasiado. Vuelve a intentarlo o pide algo más acotado.',
+      'model-error': () =>
+        'El asistente no está disponible ahora. Vuelve a intentarlo en un momento.',
+      'invalid-model-output': () =>
+        'El asistente no ha conseguido un diagrama válido esta vez. Vuelve a intentarlo o dilo de otra forma.',
+      'invalid-request': () => 'El asistente no ha podido atender esta petición.',
+      'payload-too-large': () => 'El diagrama es demasiado grande para el asistente.',
+      'not-found': () => 'El asistente no está donde este editor lo espera.',
+      'internal-error': () => 'Algo ha fallado en el asistente. Vuelve a intentarlo.',
     },
   },
   canvas: {
