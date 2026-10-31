@@ -41,3 +41,11 @@ Datos de los planes gratuitos consultados el 2026-10-20 (cambian sin aviso, ver 
 ## Revisar si
 
 Cambian las condiciones de los planes gratuitos, la cuota diaria se agota con frecuencia, o el proyecto pasa a tener usuarios que justifiquen un coste.
+
+## Actualización 2026-10-31
+
+GitHub Models se retiró por completo el 2026-07-30: ya no hay catálogo ni API de inferencia. Cambia esto:
+
+- El proveedor alternativo del Worker es cualquier API compatible con OpenAI. La comprobada es Groq (`https://api.groq.com/openai/v1`, modo `json_object` en todos sus modelos), con su clave como secreto del Worker (`LLM_BASE_URL`, `LLM_API_KEY`).
+- Las evaluaciones (T16, T17) no pueden usar el permiso `models: read` de Actions. Se ejecutarán contra Groq con una clave guardada en los secretos del repositorio, siempre que su plan gratuito siga sin pedir tarjeta; está pendiente de comprobar al hacer T17.
+- La cuota de Workers AI sigue siendo de 10.000 neurons al día; con el modelo de 70B da para unas quince generaciones (detalle en `docs/modulos/backend.md`).

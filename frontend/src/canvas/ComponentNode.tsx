@@ -57,6 +57,12 @@ export const ComponentNode = memo(function ComponentNode({
                   boxShadow: `0 0 0 3px color-mix(in srgb, ${SEVERITY_COLOR[canvas.finding.severity]} 45%, transparent)`,
                 }
               : {}),
+            ...(canvas.changed.has(id)
+              ? {
+                  borderColor: 'var(--accent)',
+                  boxShadow: '0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent)',
+                }
+              : {}),
           }}
         >
           <span

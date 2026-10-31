@@ -41,6 +41,8 @@ export interface CanvasState {
   issues: ReadonlyMap<string, LintSeverity>;
   /** The finding chosen in the review: its components are outlined in its colour. */
   finding: { nodes: ReadonlySet<string>; severity: LintSeverity } | null;
+  /** What the assistant just changed, or a proposal would: outlined in the accent colour. */
+  changed: ReadonlySet<string>;
 }
 
 export const CanvasContext = createContext<CanvasState>({
@@ -58,6 +60,7 @@ export const CanvasContext = createContext<CanvasState>({
   resize: () => undefined,
   issues: new Map(),
   finding: null,
+  changed: new Set(),
 });
 
 export function useCanvas(): CanvasState {

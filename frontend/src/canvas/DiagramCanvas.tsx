@@ -14,6 +14,7 @@ import { AnimatePresence, m } from 'motion/react';
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { containerAt, fitResize, subtreeOf } from '../editor/operations.ts';
 import { editorStore, isInspectorExpanded, type Snapshot, useEditor } from '../editor/store.ts';
+import { useAssistant } from '../ai/assistant-store.ts';
 import { findingKey, severityByNode, useFindings } from '../review/findings.ts';
 import { reviewStore, useReview } from '../review/review-store.ts';
 import { EASE_OUT } from '../motion.ts';
@@ -67,6 +68,7 @@ const DRAGGED_Z = 1000;
 const CONNECTION_LINE_STYLE = { stroke: 'var(--accent)', strokeWidth: 1.5 };
 const PRO_OPTIONS = { hideAttribution: true };
 const NO_ISSUES: ReadonlyMap<string, LintSeverity> = new Map();
+const NO_CHANGES: ReadonlySet<string> = new Set();
 
 export interface DiagramCanvasProps {
   /** Space covered by the floating interface, kept clear when the diagram is fitted. */
@@ -121,6 +123,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const reviewOpen = useReview((state) => state.open);
   const activeKey = useReview((state) => state.activeKey);
   const focusCount = useReview((state) => state.focusCount);
+  const assistantHighlight = useAssistant((state) => state.highlight);
   const flow = useReactFlow<ArchitectureFlowNode, ArchitectureFlowEdge>();
   const containerRef = useRef<HTMLDivElement>(null);
   const pointerType = useRef('mouse');
@@ -243,6 +246,18 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       issues,
       resize,
     };
+    // What the assistant changes stands out the way a chosen finding does.
+    if (hovered === null && assistantHighlight) {
+      return {
+        ...shared,
+        focusId: null,
+        nodes: assistantHighlight.nodes,
+        edges: assistantHighlight.edges,
+        dimOthers: true,
+        finding: null,
+        changed: assistantHighlight.nodes,
+      };
+    }
     if (hovered === null && activeFinding) {
       const nodes = new Set(activeFinding.nodeIds);
       return {
@@ -252,6 +267,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
         edges: new Set(activeFinding.edgeIds),
         dimOthers: true,
         finding: { nodes, severity: activeFinding.severity },
+        changed: NO_CHANGES,
       };
     }
     const focusId = draggingId === null ? (hovered ?? selectedNodeId) : null;
@@ -261,9 +277,11 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       ...relatedTo(focusId, diagram.graph.edges),
       dimOthers: hovered !== null,
       finding: null,
+      changed: NO_CHANGES,
     };
   }, [
     activeFinding,
+    assistantHighlight,
     building,
     busyId,
     diagram.graph.edges,

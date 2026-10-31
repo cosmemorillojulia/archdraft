@@ -13,7 +13,11 @@ import {
   type NodeCategory,
   type NodeKind,
   type TemplateId,
+  type AssistTask,
+  type AssistWarning,
+  type OfferTask,
 } from '@archdraft/shared';
+import type { AssistFailure } from '../ai/client.ts';
 import type { ExportFormat } from '../export/files.ts';
 
 /** "a subnet", "an availability zone". */
@@ -26,6 +30,13 @@ function listOf(items: readonly string[], conjunction: string): string {
   return items.length <= 1
     ? (items[0] ?? '')
     : `${items.slice(0, -1).join(', ')} ${conjunction} ${items.at(-1) ?? ''}`;
+}
+
+/** "45 seconds", "3 minutes", "2 hours". */
+function waitFor(seconds: number): string {
+  if (seconds < 90) return `${Math.max(1, Math.round(seconds))} seconds`;
+  if (seconds < 90 * 60) return `${Math.round(seconds / 60)} minutes`;
+  return `${Math.round(seconds / 3600)} hours`;
 }
 
 const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -162,7 +173,7 @@ export const en = {
       'A clickstream pipeline into BigQuery with nightly extracts',
     ],
     generate: 'Generate diagram',
-    soon: 'AI generation is coming soon',
+    unavailable: 'The AI assistant is not available in this version',
     templates: 'Templates',
     templateNames: {
       'three-tier-web': 'Three-tier web',
@@ -172,6 +183,80 @@ export const en = {
       'analytics-pipeline': 'Data pipeline',
       'static-site-cms': 'Static site',
     } satisfies Record<TemplateId, string>,
+  },
+  assistant: {
+    editLabel: 'Describe a change to this diagram',
+    editExamples: [
+      'Put a cache in front of the database',
+      'Move the API to serverless functions',
+      'Add a queue between the API and the worker',
+      'Run the database in two availability zones',
+    ],
+    newDiagram: 'New diagram',
+    newDiagramHint: 'Describe a new diagram instead of changing this one',
+    edit: 'Change diagram',
+    stop: 'Stop',
+    working: {
+      generate: 'Drawing the diagram…',
+      edit: 'Changing the diagram…',
+      improve: 'Looking for improvements…',
+      simplify: 'Designing a simpler version…',
+      extend: 'Designing a more complete version…',
+    } satisfies Record<AssistTask, string>,
+    menu: 'Assistant',
+    actions: {
+      improve: 'Suggest improvements',
+      simplify: 'Make it simpler',
+      extend: 'Make it more complete',
+    } satisfies Record<OfferTask, string>,
+    actionHints: {
+      improve: 'Fixes for the design review and what an architect would raise',
+      simplify: 'Fewer parts for the same job',
+      extend: 'What it needs for production',
+    } satisfies Record<OfferTask, string>,
+    titles: {
+      improve: 'Suggested improvements',
+      simplify: 'A simpler design',
+      extend: 'A more complete design',
+    } satisfies Record<OfferTask, string>,
+    close: 'Close the proposals',
+    apply: 'Apply',
+    applyLabel: (title: string) => `Apply ${title}`,
+    discard: 'Discard',
+    discardLabel: (title: string) => `Discard ${title}`,
+    changes: ({ added, updated, removed }: { added: number; updated: number; removed: number }) =>
+      [
+        added > 0 ? `${added} added` : '',
+        updated > 0 ? `${updated} changed` : '',
+        removed > 0 ? `${removed} removed` : '',
+      ]
+        .filter((part) => part !== '')
+        .join(' · ') || 'Changes the diagram details',
+    stale:
+      'The diagram changed since this was proposed and it no longer fits. Ask the assistant again.',
+    warnings: {
+      'proposals-dropped': 'Some suggestions were not valid and were left out.',
+      'not-simpler': 'This proposal has more components than the diagram, not fewer.',
+      'not-more-complete': 'This proposal has fewer components than the diagram.',
+      'more-findings':
+        'A suggestion gives the design review more to report: check it before applying.',
+    } satisfies Record<AssistWarning, string>,
+    failed: {
+      network: () => 'Could not reach the assistant. Check the connection and try again.',
+      'rate-limited': (seconds?: number) =>
+        seconds === undefined
+          ? 'The assistant has reached its limit for now. Try again later.'
+          : `The assistant has reached its limit for now. Try again in ${waitFor(seconds)}.`,
+      'model-timeout': () =>
+        'The assistant took too long. Try again, or ask for something smaller.',
+      'model-error': () => 'The assistant is not available right now. Try again in a moment.',
+      'invalid-model-output': () =>
+        'The assistant did not manage a valid diagram this time. Try again, or put it another way.',
+      'invalid-request': () => 'The assistant could not take this request.',
+      'payload-too-large': () => 'The diagram is too large for the assistant.',
+      'not-found': () => 'The assistant is not where this editor expects it.',
+      'internal-error': () => 'Something went wrong with the assistant. Try again.',
+    } satisfies Record<AssistFailure, (seconds?: number) => string>,
   },
   canvas: {
     label: 'Diagram',

@@ -2,7 +2,7 @@
 
 Editor visual de Archdraft. Es una aplicación de una sola página con Vite, React 19, TypeScript y Tailwind CSS 4, publicada en GitHub Pages en `https://cosmemorillojulia.github.io/archdraft/`. Depende de `@archdraft/shared`, nunca al revés; la disposición automática vive dentro, en `src/layout/` ([layout.md](layout.md)) (ver [arquitectura](../arquitectura.md)).
 
-Estado: estructura y despliegue (T07), lienzo con React Flow y zoom (T08), rediseño centrado en el lienzo (T25), cabecera fija con animaciones (T27), paleta en móvil (T28) y ajustes visuales (T29). La edición llega en T09 y el panel de revisión en T10.
+Estado: estructura y despliegue (T07), lienzo con React Flow y zoom (T08), rediseño centrado en el lienzo (T25), cabecera fija con animaciones (T27), paleta en móvil (T28) y ajustes visuales (T29). La edición llegó en T09, la revisión en T10 y el asistente de IA en T20.
 
 ## Estructura
 
@@ -13,6 +13,11 @@ frontend/
   public/favicon.svg      # logo (G3); apple-touch-icon.png, la misma figura para iOS
   src/
     main.tsx              # punto de entrada
+    ai/
+      client.ts           # requestAssist: POST /v1/assist, problemas y validación de la respuesta
+      assistant-store.ts  # tarea en curso, propuestas ofrecidas y resaltado
+      run-assistant.ts    # ejecuta cada tarea y aplica propuestas conservando la disposición
+      AssistantPanel.tsx  # panel de propuestas con Aplicar y Descartar
     layout/
       compute-layout.ts   # computeLayout con ELK, puro; se ejecuta en el worker de disposición
     App.tsx               # proveedores, cabecera fija, lienzo, capas flotantes y añadir en el centro
@@ -462,6 +467,42 @@ La sección Export del mismo menú (T12) ofrece:
 Las imágenes no son una captura de la pantalla: `diagramToSvg` (`export/diagram-svg.ts`) dibuja el documento como lo dibuja el lienzo en reposo, sin selección, resaltado ni partículas, y entero aunque la vista muestre solo una parte. Es una función pura; recibe los colores del tema en uso (`readPalette` lee los tokens de la página), los nombres en el idioma de la interfaz, los iconos de Lucide del lienzo (`iconMarkup` los pinta una vez en un elemento suelto) y una función que mide el texto con la fuente del editor (`OffscreenCanvas`). Así los nombres se parten en dos líneas y se recortan como en el lienzo. Orden: grupos, conexiones con sus puntas de flecha, componentes y figuras, y las etiquetas de las conexiones encima; una etiqueta que taparía un nodo (una curva que pasa por detrás de él, ver T30) se omite. El SVG lleva la fuente solo por nombre, para que pese poco y se pueda editar; el PNG se dibuja desde un SVG que la lleva dentro (`@font-face` con el fichero en base64), porque una imagen SVG no puede cargar fuentes de fuera. Si el PNG falla, el menú lo dice y propone el SVG.
 
 Los nombres de fichero salen del título (`fileNameFor(title, format)` en `export/files.ts`), sin tildes y con guiones.
+
+## Asistente de IA
+
+El asistente (T20) usa la API del backend (`POST /v1/assist`, ver [backend.md](backend.md)) y solo aparece en los builds que tienen `VITE_API_URL`. Sin ella, el editor funciona igual que antes y la barra de descripción explica que el asistente no está disponible.
+
+### Qué se le puede pedir
+
+| Desde                                     | Tarea      | Qué pasa                                                           |
+| ----------------------------------------- | ---------- | ------------------------------------------------------------------ |
+| Barra de descripción, diagrama vacío      | `generate` | Se abre el diagrama generado; deshacer vuelve al anterior          |
+| Barra de descripción con «Diagrama nuevo» | `generate` | Lo mismo, aunque el diagrama abierto tenga contenido               |
+| Barra de descripción, diagrama con algo   | `edit`     | El cambio se aplica como un paso del historial                     |
+| Menú del asistente: Sugerir mejoras       | `improve`  | Panel con de una a cinco mejoras, cada una con Aplicar y Descartar |
+| Menú del asistente: Simplificar           | `simplify` | Panel con un diseño más simple                                     |
+| Menú del asistente: Completar             | `extend`   | Panel con un diseño más completo, listo para producción            |
+
+Intro envía y Mayús+Intro hace un salto de línea. Mientras el asistente trabaja, la barra lo dice («Cambiando el diagrama…»), el botón de enviar pasa a Detener y Escape cancela. Una petición nueva cancela la anterior: solo cuenta la última.
+
+### Aplicar un cambio
+
+`ai/run-assistant.ts` hace lo mismo con cualquier propuesta:
+
+1. Vuelve a validar el grafo con `parseArchitectureGraph`, porque llega de la red.
+2. Conserva la disposición con `carryLayout`: lo que sigue en su grupo mantiene posición y tamaño; lo nuevo o lo que cambia de grupo lo coloca ELK; un grupo que gana o pierde miembros suelta su tamaño para crecer a su alrededor. Los estilos y recorridos dibujados a mano se quedan con las conexiones que siguen igual.
+3. Lo registra como un paso del historial con `replaceDocument`, que valida como cualquier edición del store.
+4. Resalta durante cuatro segundos lo añadido y lo cambiado, con el mismo mecanismo que el hallazgo elegido en la revisión: un anillo del color de acento y el resto atenuado.
+
+Si el diagrama cambió mientras el modelo respondía, o desde que se ofreció una propuesta, una propuesta hecha de operaciones (editar, mejorar) se aplica de nuevo sobre el diagrama actual con `applyPatch`. Así se pueden aplicar varias mejoras seguidas. Un rediseño completo no se puede adaptar, y el editor pide volver a pedirlo.
+
+### Panel de propuestas
+
+`ai/AssistantPanel.tsx` ocupa el lugar del panel bajo la tarjeta del diagrama (y, en pantallas estrechas, el de la barra de descripción), con prioridad sobre la revisión y el inspector. Cada propuesta muestra su título, su explicación y un resumen de lo que añade, cambia y quita. Al pasar el ratón o el foco por ella, el lienzo señala lo que tocaría del diagrama actual. Aplicada o descartada, sale de la lista; el panel se cierra al quedar vacío.
+
+### Errores y avisos
+
+Los tipos de problema de la API y los avisos de la respuesta se traducen en `i18n/en.ts` y `es.ts` (`assistant.failed`, `assistant.warnings`) y se muestran en el aviso del editor. Un límite de uso dice cuánto esperar, con el `Retry-After` de la API.
 
 ## Idioma
 

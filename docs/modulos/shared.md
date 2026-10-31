@@ -19,6 +19,9 @@ shared/
     lint/           # motor de reglas de diseño, ver modulos/lint.md
     export/         # Mermaid, JSON y draw.io, ver modulos/exportacion.md
     templates/      # seis arquitecturas de referencia, ver modulos/plantillas.md
+    patch.ts        # operaciones de edición: applyPatch, diffGraphs, hasChanges
+    assist/
+      contract.ts   # contrato de POST /v1/assist, que usan el backend y el editor
   test/
     fixtures.ts     # grafo de ejemplo: tienda online de tres capas en AWS
     *.test.ts
@@ -50,6 +53,8 @@ shared/
 | `CONTAINMENT_RULES`                                                                                                                                    | Constante                             | Validación y, en el editor, impedir anidamientos inválidos al arrastrar                                                                      |
 | `architectureGraphJsonSchema()`                                                                                                                        | Función                               | Prompt del modelo                                                                                                                            |
 | `LIMITS`, `SCHEMA_VERSION`                                                                                                                             | Constantes                            | Límites compartidos                                                                                                                          |
+| `GraphOperationSchema`, `GraphPatchSchema`, `applyPatch(graph, operations)`, `diffGraphs(before, after)`, `hasChanges`                                 | Esquemas y funciones                  | Cambios de un grafo como datos: los que propone el asistente, ver el [modelo de dominio](../modelo-de-dominio.md#operaciones-de-edición)     |
+| `AssistRequestSchema`, `AssistResultSchema`, `ProposalSchema`, `ASSIST_TASKS`, `ASSIST_PROBLEMS`, `ASSIST_WARNINGS`, `problemType`                     | Esquemas y constantes                 | Contrato de la API del asistente, ver [backend.md](backend.md)                                                                               |
 
 ## Importar de otras herramientas
 

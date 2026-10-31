@@ -200,6 +200,22 @@ Es tolerante con grafos inválidos: con ids duplicados gana la primera aparició
 
 `architectureGraphJsonSchema()` genera el JSON Schema (draft 2020-12) en modo `input`, con las descripciones de los campos. Ocupa unos 3,5 KB serializado, un tamaño razonable para incluirlo en cada prompt.
 
+## Operaciones de edición
+
+`shared/src/patch.ts` describe un cambio del grafo como datos: una lista de operaciones que se aplican en orden. Es lo que devuelve el asistente al editar o al proponer una mejora (ADR 0022), en lugar de un diagrama nuevo, para que el resto quede donde estaba y se vea qué cambió.
+
+| Operación       | Campos          | Efecto                                                                                                         |
+| --------------- | --------------- | -------------------------------------------------------------------------------------------------------------- |
+| `addNode`       | `node`          | Añade el nodo completo; falla si el id existe                                                                  |
+| `updateNode`    | `id`, `changes` | Cambia solo los campos dados; `null` quita uno. En `attributes`, solo los atributos dados, y `null` olvida uno |
+| `removeNode`    | `id`            | Quita el nodo, sus aristas y el texto fijado a él; lo que contenía pasa al contenedor que lo contenía a él     |
+| `addEdge`       | `edge`          | Añade la arista completa; falla si el id existe                                                                |
+| `updateEdge`    | `id`, `changes` | Cambia solo los campos dados, incluidos los extremos; `null` quita uno                                         |
+| `removeEdge`    | `id`            | Quita la arista                                                                                                |
+| `updateDiagram` | `changes`       | Cambia el título, la descripción o el proveedor del diagrama                                                   |
+
+`applyPatch(graph, operations)` es pura y no modifica el grafo que recibe. Comprueba todas las operaciones y devuelve todos los fallos a la vez, cada uno con el índice de su operación, para que el modelo los corrija en un solo reintento. El resultado debe pasar `parseArchitectureGraph`: un parche nunca deja el grafo inválido. `diffGraphs(before, after)` lista por id los nodos y aristas añadidos, cambiados y quitados (el orden de las claves no cuenta), e indica si cambió el diagrama en sí; el editor lo usa para resaltar lo que cambió.
+
 ## Separación entre semántica y presentación
 
 El grafo no contiene posiciones, tamaños ni colores. Esa información vive en el documento del editor junto al grafo (ADR 0007). Ventajas:
