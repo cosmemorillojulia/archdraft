@@ -77,7 +77,7 @@ After Matthew Butterick's *Practical Typography*, paraphrased; where his numbers
 
 Answer each item with rendered or source evidence, then rerun the scan. Do not substitute a bare “yes” for verification.
 
-When the hierarchy holds, hand off to `$impeccable polish`.
+When the hierarchy holds, hand off to `/impeccable polish`.
 
 ## Live-mode signature params
 

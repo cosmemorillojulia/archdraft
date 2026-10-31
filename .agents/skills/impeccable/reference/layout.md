@@ -71,7 +71,7 @@ Variation is not a goal by itself. Repetition should support recognition; break 
 
 Answer each item with rendered or source evidence, then rerun the scan. Do not substitute a bare “yes” for verification.
 
-When the structure holds, hand off to `$impeccable polish`.
+When the structure holds, hand off to `/impeccable polish`.
 
 ## Live-mode signature params
 
