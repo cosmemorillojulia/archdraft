@@ -8,8 +8,9 @@ PNPM := pnpm
 endif
 
 WEB := @archdraft/web
+API := @archdraft/api
 
-.PHONY: help install run preview build test coverage watch lint format format-check typecheck check clean
+.PHONY: help install run api api-remote preview build test coverage watch lint format format-check typecheck check clean
 
 help: ## Muestra esta ayuda
 	@node -e "require('fs').readFileSync('Makefile','utf8').split('\n').forEach(l=>{const m=l.match(/^([a-z-]+):.*## (.*)/);if(m)console.log('  make '+m[1].padEnd(14)+m[2])})"
@@ -19,6 +20,14 @@ install: ## Instala las dependencias
 
 run: ## Levanta el editor en local con recarga en caliente
 	$(PNPM) --filter $(WEB) dev
+
+api: ## Levanta la API en local con Groq (clave en .env.secrets), sin cuenta de Cloudflare
+	@node -e "require('fs').existsSync('.env.secrets')||(console.error('Falta .env.secrets: copia .env.secrets.example y pon tu clave de Groq'),process.exit(1))"
+	$(PNPM) --filter $(API) dev
+
+api-remote: ## Levanta la API en local con Workers AI (necesita wrangler login)
+	@node -e "require('fs').existsSync('.env.secrets')||(console.error('Falta .env.secrets: copia .env.secrets.example; la clave puede quedar vacia'),process.exit(1))"
+	$(PNPM) --filter $(API) dev:remote
 
 preview: build ## Construye y sirve el build de producción en local
 	$(PNPM) --filter $(WEB) preview
