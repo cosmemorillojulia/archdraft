@@ -27,14 +27,14 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T10 | Editor: panel de revisión de diseño                              | T02, T09      | hecha (2026-10-25) |
 | T11 | Editor: persistencia local, importación y enlaces para compartir | T03, T09      | hecha (2026-10-25) |
 | T12 | Editor: exportación desde la interfaz                            | T03, T05, T09 | hecha (2026-10-25) |
-| T13 | Backend: Worker con Hono y endpoint /v1/assist                   | T15, T18, T35 | pendiente          |
-| T14 | Backend: interfaz y proveedores LLM                              | T34           | pendiente          |
-| T15 | Backend: contrato, prompts, pipeline y tarea generate            | T06, T14      | pendiente          |
+| T13 | Backend: Worker con Hono y endpoint /v1/assist                   | T15, T18, T35 | hecha (2026-10-31) |
+| T14 | Backend: interfaz y proveedores LLM                              | T34           | hecha (2026-10-31) |
+| T15 | Backend: contrato, prompts, pipeline y tarea generate            | T06, T14      | hecha (2026-10-31) |
 | T16 | Banco de evaluación: conjunto de casos y métricas                | T15           | pendiente          |
 | T17 | Evaluaciones en CI y elección del modelo                         | T16           | pendiente          |
-| T18 | Operaciones de edición (T18a) y tarea edit del agente (T18b)     | T15, T34      | pendiente          |
+| T18 | Operaciones de edición (T18a) y tarea edit del agente (T18b)     | T15, T34      | hecha (2026-10-31) |
 | T19 | API: límites de uso, protección y observabilidad                 | T15           | pendiente          |
-| T20 | Editor: integración con el agente                                | T11, T13      | pendiente          |
+| T20 | Editor: integración con el agente                                | T11, T13      | en curso           |
 | T21 | Tests de extremo a extremo y accesibilidad                       | T20           | pendiente          |
 | T22 | Rendimiento y presupuesto de tamaño                              | T21           | pendiente          |
 | T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | pendiente          |
@@ -49,7 +49,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T32 | Editor: interfaz en inglés y español                             | T10, T11      | hecha (2026-10-25) |
 | T33 | Editor: fluidez al mover, cambiar el tamaño y añadir             | T31           | hecha (2026-10-25) |
 | T34 | Repositorio en frontend, backend y shared                        | T33           | hecha (2026-10-31) |
-| T35 | Backend: tareas improve, simplify y extend del agente            | T18           | pendiente          |
+| T35 | Backend: tareas improve, simplify y extend del agente            | T18           | hecha (2026-10-31) |
 
 ## Fase 0: fundamentos
 
@@ -339,6 +339,8 @@ Orden de trabajo: T14 → T15 → T18 → T35 → T13 → T20. Después, T19, T1
 
 ### T14. Backend: interfaz y proveedores LLM
 
+Estado: hecha (2026-10-31). Documentado en `docs/modulos/backend.md`. GitHub Models se retiró el 2026-07-30 (ADR 0004, actualización): el proveedor compatible con OpenAI toma Groq como referencia, según su documentación; falta probarlo con una clave real.
+
 Objetivo: invocar modelos sin acoplarse a un proveedor.
 
 Entregables:
@@ -354,6 +356,8 @@ Criterios de aceptación: tests con `fetch` falso: éxito, 429 con y sin `Retry-
 Documentación: `docs/modulos/backend.md`.
 
 ### T15. Backend: contrato, prompts, pipeline y tarea generate
+
+Estado: hecha (2026-10-31). Documentado en `docs/modulos/backend.md`. Las cinco tareas responden con la misma forma, una lista de propuestas con el grafo validado y sus cambios; los avisos son códigos que traduce el editor.
 
 Objetivo: descripción en lenguaje natural a grafo válido.
 
@@ -387,11 +391,13 @@ Documentación: `docs/evaluacion.md` con metodología y limitaciones.
 
 Objetivo: comparar modelos y elegir el de producción con datos.
 
-Entregables: workflow `evals.yml` manual y semanal con `permissions: models: read`, informe como artefacto y resumen del job; resultados de al menos dos modelos en `docs/evaluacion.md`.
+Entregables: workflow `evals.yml` manual y semanal contra Groq, con la clave en los secretos del repositorio; informe como artefacto y resumen del job; resultados de al menos dos modelos en `docs/evaluacion.md`.
 
-Criterios de aceptación: ADR con el modelo por defecto y su justificación numérica. Limitación conocida: desde Actions se evalúan modelos de GitHub Models; si el modelo de Workers AI no está allí, se evalúa el equivalente más cercano y se indica.
+Criterios de aceptación: ADR con el modelo por defecto y su justificación numérica. Limitación conocida: GitHub Models se retiró el 2026-07-30, así que el permiso `models: read` ya no sirve. Desde Actions se evalúan modelos de Groq; si el modelo de Workers AI no está allí, se evalúa el equivalente más cercano (Llama 3.3 70B en los dos) y se indica. Antes, comprobar que el plan gratuito de Groq sigue sin pedir tarjeta.
 
 ### T18. Operaciones de edición y tarea edit
+
+Estado: hecha (2026-10-31). Documentado en `docs/modelo-de-dominio.md`, `docs/modulos/shared.md` y `docs/modulos/backend.md`. `diffGraphs` también indica si cambió el diagrama en sí (título, descripción o proveedor).
 
 Objetivo: pedir cambios en lenguaje natural sin regenerar el diagrama.
 
@@ -418,6 +424,8 @@ Criterios de aceptación: tests del límite de uso y de las respuestas 429 con `
 
 ### T13. Backend: Worker con Hono y endpoint /v1/assist
 
+Estado: hecha (2026-10-31). Documentado en `docs/modulos/backend.md`. `pnpm build` ejecuta `wrangler deploy --dry-run`; el despliegue real espera a la cuenta de Cloudflare (`docs/operaciones.md`).
+
 Objetivo: API desplegable que ejecuta el agente.
 
 Entregables:
@@ -435,6 +443,13 @@ Documentación: contrato y errores en `docs/modulos/backend.md`; cuenta, token y
 
 ### T20. Editor: integración con el agente
 
+Estado: en curso. Hecho el 2026-10-31: cliente, store, barra de descripción con crear y editar, menú del asistente, panel de propuestas, resaltado de cambios, textos en los dos idiomas y tests con `fetch` simulado. Una mejora hecha de operaciones se vuelve a aplicar sobre el diagrama actual si ha cambiado, así que se pueden aplicar varias seguidas. Documentado en `docs/modulos/web.md`.
+
+Pendiente:
+
+- Capturas de la barra, el menú y el panel en escritorio y móvil, claro y oscuro, revisadas con la skill `design-critique`, con la API en marcha (`make api`).
+- Variable `API_URL` del repositorio tras el primer despliegue de la API (`docs/operaciones.md`).
+
 Objetivo: crear, editar, mejorar y rediseñar con IA desde el editor.
 
 Entregables:
@@ -451,6 +466,8 @@ Criterios de aceptación: tests de los flujos con la API simulada (crear, editar
 Documentación: `docs/modulos/web.md` y `README.md`.
 
 ### T35. Backend: tareas improve, simplify y extend del agente
+
+Estado: hecha (2026-10-31). Documentado en `docs/modulos/backend.md` y ADR 0022.
 
 Objetivo: que el agente encuentre mejoras y proponga arquitecturas más simples o más completas.
 
