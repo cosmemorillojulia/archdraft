@@ -3,3 +3,5 @@ pnpm-lock.yaml
 **/coverage
 **/.wrangler
 .claude
+.agents
+skills-lock.json
