@@ -11,3 +11,5 @@ export * from './document.ts';
 export * from './templates/index.ts';
 export * from './import/mermaid.ts';
 export * from './import/drawio.ts';
+export * from './patch.ts';
+export * from './assist/contract.ts';
