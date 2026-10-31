@@ -1,13 +1,13 @@
 # Módulo: motor de reglas de diseño
 
-Vive en `packages/core/src/lint/`. Recibe un grafo estructuralmente válido y devuelve hallazgos de diseño: riesgos de disponibilidad, seguridad o acoplamiento, cada uno con explicación y sugerencia. No modifica el grafo ni hace E/S.
+Vive en `shared/src/lint/`. Recibe un grafo estructuralmente válido y devuelve hallazgos de diseño: riesgos de disponibilidad, seguridad o acoplamiento, cada uno con explicación y sugerencia. No modifica el grafo ni hace E/S.
 
 La validación estructural (`validateGraph`) responde a "¿se puede confiar en estos datos?"; el motor de reglas responde a "¿es una buena arquitectura?". Un grafo inválido se rechaza antes de llegar aquí.
 
 ## Estructura
 
 ```
-packages/core/src/lint/
+shared/src/lint/
   types.ts        # LintRule, LintFinding, severidades e ids de regla
   rules.ts        # las ocho reglas y LINT_RULES
   sync-paths.ts   # recorridos del subgrafo síncrono: cadenas largas y ciclos

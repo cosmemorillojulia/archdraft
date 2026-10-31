@@ -12,16 +12,16 @@ pnpm check
 
 ## Scripts
 
-| Script                                     | Qué hace                                                                                         |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `pnpm check`                               | Todo lo que ejecuta CI, en el mismo orden: formato, lint, typecheck, tests con cobertura y build |
-| `pnpm test`                                | Tests de todos los paquetes                                                                      |
-| `pnpm test:coverage`                       | Tests con umbrales de cobertura                                                                  |
-| `pnpm lint`                                | ESLint con información de tipos                                                                  |
-| `pnpm typecheck`                           | `tsc --noEmit` en cada paquete                                                                   |
-| `pnpm format` / `pnpm format:check`        | Prettier                                                                                         |
-| `pnpm --filter @archdraft/core test:watch` | Tests de un paquete en modo observación                                                          |
-| `pnpm --filter web dev`                    | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)           |
+| Script                                       | Qué hace                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `pnpm check`                                 | Todo lo que ejecuta CI, en el mismo orden: formato, lint, typecheck, tests con cobertura y build |
+| `pnpm test`                                  | Tests de todos los paquetes                                                                      |
+| `pnpm test:coverage`                         | Tests con umbrales de cobertura                                                                  |
+| `pnpm lint`                                  | ESLint con información de tipos                                                                  |
+| `pnpm typecheck`                             | `tsc --noEmit` en cada paquete                                                                   |
+| `pnpm format` / `pnpm format:check`          | Prettier                                                                                         |
+| `pnpm --filter @archdraft/shared test:watch` | Tests de un paquete en modo observación                                                          |
+| `pnpm --filter @archdraft/web dev`           | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)           |
 
 ## Herramientas y por qué
 
@@ -38,7 +38,7 @@ Reglas de ESLint añadidas a la configuración recomendada:
 - `consistent-type-imports`: las importaciones solo de tipos usan `type`, necesario con `verbatimModuleSyntax`.
 - `no-unused-vars` con excepción para nombres que empiezan por `_`.
 - `eqeqeq` y aviso ante `console.log` (se permiten `console.warn` y `console.error`).
-- En `apps/web`, las reglas recomendadas de `eslint-plugin-react-hooks` y las variables globales del navegador.
+- En `frontend`, las reglas recomendadas de `eslint-plugin-react-hooks` y las variables globales del navegador.
 
 ## Configuración de TypeScript
 
@@ -89,7 +89,7 @@ Además, la pasada de simplificación usa la skill integrada `simplify` de Claud
 
 ## Convenciones de código
 
-- Datos inmutables y funciones puras en `packages/*`.
+- Datos inmutables y funciones puras en `shared/`; la red, el almacenamiento y el DOM quedan en los bordes de `frontend/` y `backend/`.
 - Toda entrada no confiable pasa por `parseArchitectureGraph` o por un esquema Zod.
 - Nada de `any`; si un tipo externo es impreciso, se acota en el borde.
 - Comentarios solo para explicar el porqué, no el qué.

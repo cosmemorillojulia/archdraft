@@ -38,44 +38,41 @@ El usuario solo interactúa con el editor. El editor es útil sin la API: se pue
 ```mermaid
 flowchart TB
   subgraph browser [Navegador]
-    web["apps/web<br/>React · React Flow · Zustand"]
-    worker["Web Worker de disposición<br/>ELK.js"]
+    web["frontend<br/>React · React Flow · Zustand"]
+    worker["Web Worker de disposición<br/>frontend/src/layout · ELK.js"]
     storage[(localStorage<br/>y fragmento de URL)]
   end
   subgraph cloudflare [Cloudflare]
-    api["apps/api<br/>Hono en Workers"]
+    api["backend<br/>Hono en Workers · agente"]
     ai[(Workers AI)]
   end
-  core[["packages/core<br/>esquema · validación · reglas · exportadores"]]
-  aipkg[["packages/ai<br/>prompt · proveedores · pipeline"]]
-  evals["evals/<br/>CLI + GitHub Actions"]
+  shared[["shared<br/>esquema · validación · reglas · exportadores · contrato de la API"]]
+  evals["backend/evals<br/>CLI + GitHub Actions"]
   ghm[(GitHub Models)]
 
   web <--> worker
   web <--> storage
   web -->|HTTPS JSON| api
   api --> ai
-  core -.->|importado por| web
-  core -.->|importado por| aipkg
-  aipkg -.->|importado por| api
-  aipkg -.->|importado por| evals
+  shared -.->|importado por| web
+  shared -.->|importado por| api
+  evals -.->|ejecuta el agente de| api
   evals -->|inferencia| ghm
 ```
 
-| Contenedor        | Responsabilidad                                                                                                            | Tecnología                                 | Despliegue                                               | Estado                                                                                                       |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `packages/core`   | Modelo de dominio: esquema, catálogo, índice del grafo, validación, reglas de diseño, exportadores, plantillas             | TypeScript puro, Zod                       | Librería interna                                         | Hecho (T01 a T06) salvo las operaciones de edición (T18)                                                     |
-| `packages/layout` | Disposición automática de un grafo jerárquico                                                                              | ELK.js                                     | Librería interna, ejecutada en un Web Worker             | Hecho (T04)                                                                                                  |
-| `packages/ai`     | Construcción del prompt, interfaz de proveedor LLM, proveedor compatible con OpenAI, pipeline de generación con reintentos | TypeScript puro                            | Librería interna, sin E/S propia salvo `fetch` inyectado | T14, T15, T18                                                                                                |
-| `apps/web`        | Editor visual, revisión en vivo, exportación, persistencia local                                                           | React, Vite, Tailwind, React Flow, Zustand | GitHub Pages                                             | Estructura, despliegue, lienzo, edición, revisión y persistencia hechos (T07 a T11); resto en T12, T20 y T23 |
-| `apps/api`        | Capa HTTP: rutas, validación de entrada, límites de uso, adaptador de Workers AI                                           | Hono, Cloudflare Workers, Workers AI       | Cloudflare Workers                                       | T13, T15, T18, T19                                                                                           |
-| `evals/`          | Medir la calidad de la generación                                                                                          | TypeScript, GitHub Actions, GitHub Models  | Workflow de CI                                           | T16, T17                                                                                                     |
+El repositorio tiene tres paquetes, uno por carpeta (ADR 0021): lo que corre en el navegador, lo que corre en el servidor y lo que usan los dos.
 
-La regla de dependencias es estricta: `apps/*` y `evals/` dependen de `packages/*`; `packages/*` nunca depende de `apps/*`. El pipeline de generación vive en `packages/ai` precisamente para que la API y el banco de evaluación ejecuten el mismo código: lo que se mide es lo que se despliega. Los paquetes no hacen E/S por su cuenta; reciben `fetch` o el proveedor por parámetro, así que se prueban sin red, sin navegador y sin Worker.
+| Paquete    | Nombre              | Responsabilidad                                                                                                                     | Tecnología                                         | Despliegue         | Estado                                                                                 |
+| ---------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------- |
+| `frontend` | `@archdraft/web`    | Editor visual, revisión en vivo, exportación, persistencia local y disposición automática (`src/layout`, en un Web Worker)          | React, Vite, Tailwind, React Flow, Zustand, ELK.js | GitHub Pages       | Hecho (T04, T07 a T12, T25 a T33); integración con el agente en T20                    |
+| `backend`  | `@archdraft/api`    | Capa HTTP (`src/http`), proveedores LLM (`src/llm`) y agente: prompts, pipeline con reintentos y tareas (`src/agent`)               | Hono, Cloudflare Workers, Workers AI               | Cloudflare Workers | T13, T14, T15, T18, T19                                                                |
+| `shared`   | `@archdraft/shared` | Modelo de dominio: esquema, catálogo, índice del grafo, validación, reglas de diseño, exportadores, plantillas y contrato de la API | TypeScript puro, Zod                               | Librería interna   | Hecho (T01 a T06) salvo las operaciones de edición (T18) y el contrato de la API (T15) |
+
+La regla de dependencias es estricta: `frontend` y `backend` dependen de `shared`; `shared` no depende de nadie, y `frontend` y `backend` nunca se importan entre sí. Lo que necesitan los dos lados, como el contrato de `/v1/assist`, va en `shared`. El banco de evaluación vivirá en `backend/evals/` y ejecutará el mismo agente que la API: lo que se mide es lo que se despliega. El código de dominio y el agente no hacen E/S por su cuenta; reciben `fetch` o el proveedor por parámetro, así que se prueban sin red, sin navegador y sin Worker.
 
 ## 4. Componentes
 
-### 4.1 packages/core
+### 4.1 shared
 
 | Módulo           | Contenido                                                                                    | Estado |
 | ---------------- | -------------------------------------------------------------------------------------------- | ------ |
@@ -92,9 +89,9 @@ La regla de dependencias es estricta: `apps/*` y `evals/` dependen de `packages/
 | `templates/`     | Seis arquitecturas de referencia para la galería y el prompt                                 | Hecho  |
 | `patch.ts`       | Operaciones de edición (añadir, quitar, modificar) y su aplicación                           | T18    |
 
-Detalle en [modelo-de-dominio.md](modelo-de-dominio.md), [modulos/core.md](modulos/core.md), [modulos/lint.md](modulos/lint.md), [modulos/exportacion.md](modulos/exportacion.md), [modulos/plantillas.md](modulos/plantillas.md) y, para la disposición, [modulos/layout.md](modulos/layout.md).
+Detalle en [modelo-de-dominio.md](modelo-de-dominio.md), [modulos/shared.md](modulos/shared.md), [modulos/lint.md](modulos/lint.md), [modulos/exportacion.md](modulos/exportacion.md), [modulos/plantillas.md](modulos/plantillas.md) y, para la disposición, [modulos/layout.md](modulos/layout.md).
 
-### 4.2 apps/web
+### 4.2 frontend
 
 Hoy existen la estructura de la aplicación, el despliegue en Pages (T07), la interfaz centrada en el lienzo (T25, ADR 0014) y el lienzo React Flow con el adaptador `toFlow`, la disposición en un Web Worker y el zoom (T08), y la edición con el store de Zustand, el inspector y el historial (T09, ADR 0017, ver [modulos/web.md](modulos/web.md)). El panel de revisión de diseño llegó con T10, y el autoguardado, los enlaces y los ficheros JSON con T11. Faltan la exportación desde la interfaz y el cliente de la API. El diagrama muestra el diseño completo previsto:
 
@@ -115,12 +112,12 @@ flowchart LR
 
 Decisiones de diseño del editor:
 
-- Un único documento en el store: `DiagramDocument` (`{ graph, layout: { positions, sizes } }`, esquema en `core`). El grafo es la fuente de verdad semántica; la disposición es presentación (ADR 0007). `computeLayout` de `packages/layout` calcula la disposición y, con posiciones fijadas, coloca solo los nodos nuevos.
+- Un único documento en el store: `DiagramDocument` (`{ graph, layout: { positions, sizes } }`, esquema en `shared`). El grafo es la fuente de verdad semántica; la disposición es presentación (ADR 0007). `computeLayout` de `frontend/src/layout` calcula la disposición y, con posiciones fijadas, coloca solo los nodos nuevos.
 - Toda modificación pasa por acciones del store que producen un nuevo documento inmutable, se validan con el esquema y `validateGraph` y se apilan en el historial para deshacer (ADR 0017). La disposición automática se calcula al abrir una plantilla; después, las posiciones son las que deja el usuario.
 - React Flow es una vista: su estado de nodos y aristas se deriva del documento mediante un adaptador puro y testeable, y los cambios del lienzo vuelven al store como acciones.
 - La revisión de diseño se recalcula en cada cambio. Las reglas son funciones puras y el grafo tiene como mucho 200 nodos, así que basta con memoizar por versión del documento.
 
-### 4.3 apps/api y packages/ai (planificado)
+### 4.3 backend (planificado)
 
 ```mermaid
 flowchart LR
@@ -137,7 +134,7 @@ flowchart LR
 ```
 
 - Hono como router por su tamaño mínimo y su soporte nativo de Workers.
-- El constructor de prompt, el pipeline y el proveedor compatible con OpenAI están en `packages/ai`; en `apps/api` solo quedan las rutas, los middlewares y el adaptador del binding de Workers AI.
+- El constructor de prompt, el pipeline y el proveedor compatible con OpenAI están en `backend/src/agent` y `backend/src/llm`, sin E/S propia; la capa HTTP (`backend/src/http`) solo tiene las rutas, los middlewares y la creación del proveedor a partir del entorno del Worker.
 - El pipeline recibe el proveedor por inyección, de modo que los tests usan un proveedor falso y las evaluaciones uno real.
 - El prompt incluye el catálogo de tipos, el JSON Schema del formato y ejemplos sacados de las plantillas.
 - Si la salida no pasa la validación, se reintenta como máximo dos veces enviando al modelo los errores concretos. Es la técnica más barata para mejorar la tasa de salidas válidas con modelos pequeños.
@@ -179,7 +176,7 @@ El documento, con su disposición, se serializa, se comprime y se codifica en el
 
 ## 6. Formato de datos y versionado
 
-- El formato está definido en `packages/core/src/schema.ts` y documentado en [modelo-de-dominio.md](modelo-de-dominio.md).
+- El formato está definido en `shared/src/schema.ts` y documentado en [modelo-de-dominio.md](modelo-de-dominio.md).
 - `schemaVersion` es un entero. Un cambio incompatible incrementa la versión y añade una migración desde la anterior; `importJson` aplica la cadena al importar y rechaza versiones más nuevas que la del código.
 - Las posiciones no forman parte del grafo semántico (ADR 0007).
 

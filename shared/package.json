@@ -1,0 +1,24 @@
+{
+  "name": "@archdraft/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Code shared by the frontend and the backend: the provider-agnostic domain model of a diagram, its validation, design rules, exporters and templates.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@xmldom/xmldom": "0.9.12"
+  }
+}

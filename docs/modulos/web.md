@@ -1,18 +1,20 @@
-# Módulo: apps/web
+# Módulo: frontend
 
-Editor visual de Archdraft. Es una aplicación de una sola página con Vite, React 19, TypeScript y Tailwind CSS 4, publicada en GitHub Pages en `https://cosmemorillojulia.github.io/archdraft/`. Depende de `@archdraft/core` y `@archdraft/layout`, nunca al revés (ver [arquitectura](../arquitectura.md)).
+Editor visual de Archdraft. Es una aplicación de una sola página con Vite, React 19, TypeScript y Tailwind CSS 4, publicada en GitHub Pages en `https://cosmemorillojulia.github.io/archdraft/`. Depende de `@archdraft/shared`, nunca al revés; la disposición automática vive dentro, en `src/layout/` ([layout.md](layout.md)) (ver [arquitectura](../arquitectura.md)).
 
 Estado: estructura y despliegue (T07), lienzo con React Flow y zoom (T08), rediseño centrado en el lienzo (T25), cabecera fija con animaciones (T27), paleta en móvil (T28) y ajustes visuales (T29). La edición llega en T09 y el panel de revisión en T10.
 
 ## Estructura
 
 ```
-apps/web/
+frontend/
   index.html              # aplica el tema guardado antes del primer pintado
   vite.config.ts          # base /archdraft/, plugins de React y Tailwind, configuración de Vitest
   public/favicon.svg      # logo (G3); apple-touch-icon.png, la misma figura para iOS
   src/
     main.tsx              # punto de entrada
+    layout/
+      compute-layout.ts   # computeLayout con ELK, puro; se ejecuta en el worker de disposición
     App.tsx               # proveedores, cabecera fija, lienzo, capas flotantes y añadir en el centro
     export/
       diagram-svg.ts      # diagramToSvg: el documento como imagen vectorial, puro
@@ -82,12 +84,12 @@ apps/web/
 
 ## Scripts
 
-| Script                      | Qué hace                                                            |
-| --------------------------- | ------------------------------------------------------------------- |
-| `pnpm --filter web dev`     | Servidor de desarrollo en `http://localhost:5173/archdraft/`        |
-| `pnpm --filter web build`   | Build de producción en `apps/web/dist`                              |
-| `pnpm --filter web preview` | Sirve el build en `http://localhost:4173/archdraft/` para revisarlo |
-| `pnpm --filter web test`    | Tests en jsdom                                                      |
+| Script                                 | Qué hace                                                            |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| `pnpm --filter @archdraft/web dev`     | Servidor de desarrollo en `http://localhost:5173/archdraft/`        |
+| `pnpm --filter @archdraft/web build`   | Build de producción en `frontend/dist`                              |
+| `pnpm --filter @archdraft/web preview` | Sirve el build en `http://localhost:4173/archdraft/` para revisarlo |
+| `pnpm --filter @archdraft/web test`    | Tests en jsdom                                                      |
 
 La `base` de Vite es `/archdraft/` también en desarrollo: GitHub Pages sirve el sitio del proyecto bajo el nombre del repositorio, y usar la misma ruta en local evita sorpresas con rutas de recursos que solo fallarían en producción.
 
@@ -224,9 +226,9 @@ Pulsar un mosaico añade su componente en el centro de la vista; en escritorio t
 
 ### Disposición en un Web Worker
 
-`openTemplate` llama a `layoutDiagram`, que envía el grafo a `layout.worker.ts`, donde se ejecuta `computeLayout` de `@archdraft/layout`: de izquierda a derecha si la plantilla se abre en una pantalla ancha y de arriba abajo en una estrecha. Esa dirección se guarda con el documento, porque orienta los conectores; girar el móvil no vuelve a disponer el diagrama, para no perder lo editado. El worker se crea la primera vez que hace falta, así que ELK (unos 440 KB comprimidos) no forma parte de la carga inicial y nunca bloquea la interfaz. Donde no hay workers (los tests en jsdom) se ejecuta en el hilo principal con `import()` dinámico.
+`openTemplate` llama a `layoutDiagram`, que envía el grafo a `layout.worker.ts`, donde se ejecuta `computeLayout` de `frontend/src/layout`: de izquierda a derecha si la plantilla se abre en una pantalla ancha y de arriba abajo en una estrecha. Esa dirección se guarda con el documento, porque orienta los conectores; girar el móvil no vuelve a disponer el diagrama, para no perder lo editado. El worker se crea la primera vez que hace falta, así que ELK (unos 440 KB comprimidos) no forma parte de la carga inicial y nunca bloquea la interfaz. Donde no hay workers (los tests en jsdom) se ejecuta en el hilo principal con `import()` dinámico.
 
-La versión empaquetada de elkjs, al ejecutarse en un contexto con `self` y sin `document`, se comporta como su propio worker: escucha mensajes y deja de exportar el motor que usa `@archdraft/layout`. `elk-in-worker.ts`, importado antes que nada en el worker, declara un `document` vacío para que elkjs se cargue como librería.
+La versión empaquetada de elkjs, al ejecutarse en un contexto con `self` y sin `document`, se comporta como su propio worker: escucha mensajes y deja de exportar el motor que usa `frontend/src/layout`. `elk-in-worker.ts`, importado antes que nada en el worker, declara un `document` vacío para que elkjs se cargue como librería.
 
 ### Distribución en escritorio
 
@@ -419,7 +421,7 @@ Capturas a 1440 × 900 en claro y oscuro y en un móvil táctil de 390 × 844, c
 
 ## Guardar y compartir
 
-Todo se apoya en el documento con disposición de `@archdraft/core` (`documentToJson` e `importDocument`, ver [exportacion.md](exportacion.md#documento-con-disposición)) y en ADR 0019.
+Todo se apoya en el documento con disposición de `@archdraft/shared` (`documentToJson` e `importDocument`, ver [exportacion.md](exportacion.md#documento-con-disposición)) y en ADR 0019.
 
 ### Al abrir el editor
 
@@ -443,7 +445,7 @@ Al abrir un enlace, que puede estar manipulado, `decodeDocument` rechaza caracte
 
 ### Ficheros
 
-«Download JSON» descarga el documento con el título como nombre (`three-tier-web-application.archdraft.json`). «Abrir o importar un fichero» (`openFileText`) distingue por el contenido un documento o grafo suelto de Archdraft (JSON, por ejemplo uno escrito a mano o exportado con `toJson`), un flowchart de Mermaid (`.mmd`, `.mermaid`, `.md`, `.txt`) y un fichero de draw.io (`.drawio`, `.xml`); ver «Importar de otras herramientas» en core.md. Lo que no tiene disposición, como Mermaid, se coloca con ELK; el título sale del fichero o, si no lo trae, de su nombre. Si se omitió algo, un aviso lo cuenta («Importado. 2 connectors…»).
+«Download JSON» descarga el documento con el título como nombre (`three-tier-web-application.archdraft.json`). «Abrir o importar un fichero» (`openFileText`) distingue por el contenido un documento o grafo suelto de Archdraft (JSON, por ejemplo uno escrito a mano o exportado con `toJson`), un flowchart de Mermaid (`.mmd`, `.mermaid`, `.md`, `.txt`) y un fichero de draw.io (`.drawio`, `.xml`); ver «Importar de otras herramientas» en shared.md. Lo que no tiene disposición, como Mermaid, se coloca con ELK; el título sale del fichero o, si no lo trae, de su nombre. Si se omitió algo, un aviso lo cuenta («Importado. 2 connectors…»).
 
 ### Exportar
 
@@ -467,7 +469,7 @@ La interfaz está en inglés y en español (ADR 0020). `i18n/en.ts` y `i18n/es.t
 
 - Idioma inicial: el elegido antes (`archdraft:locale` en `localStorage`), si no español cuando el primer idioma del navegador empieza por `es`, y si no inglés. `document.documentElement.lang` lo sigue.
 - `LanguageToggle`, en la cabecera entre compartir y el tema: un botón con el código del idioma en que está la interfaz, EN o ES. Al pulsarlo el código sube y entra el otro en 220 ms. Su nombre accesible empieza por el código visible («EN, switch to Spanish», «ES, cambiar a inglés») y el `title` dice qué hace.
-- Nombres y descripciones de los tipos, producto genérico, reglas y hallazgos: el inglés reutiliza los textos de `@archdraft/core`; el español redacta cada hallazgo a partir de la regla, la gravedad, los nodos y aristas implicados y los atributos del primer nodo.
+- Nombres y descripciones de los tipos, producto genérico, reglas y hallazgos: el inglés reutiliza los textos de `@archdraft/shared`; el español redacta cada hallazgo a partir de la regla, la gravedad, los nodos y aristas implicados y los atributos del primer nodo.
 - Plantillas: se abren en el idioma de la interfaz (`localizedTemplate`, que devuelve siempre el mismo objeto para la misma plantilla e idioma). Si se cambia de idioma con una plantilla sin editar, se sustituye por la del idioma nuevo con la misma disposición y sin paso en el historial (`followLanguage` y `replaceGraph`); mover nodos no cuenta como editar. Un diagrama editado, abierto de un fichero o de un enlace no se traduce.
 - Los componentes nuevos se llaman como su tipo en el idioma de la interfaz («Caché», «Caché 2»).
 - El buscador de la paleta ignora mayúsculas y tildes y encuentra también por el nombre en inglés: «cache» encuentra «Caché» y «relational» encuentra «Base de datos relacional».
@@ -519,7 +521,7 @@ Revisión visual: build servido con `vite preview` y capturado con Playwright en
 `.github/workflows/deploy-web.yml` se dispara cuando el workflow CI termina con éxito tras un push a `main` (`workflow_run`), o a mano desde la pestaña Actions:
 
 1. Consulta la API de Pages. Si Pages no está activado, termina con un aviso y no despliega; si está activado con un origen distinto de GitHub Actions, falla con un error que lo explica.
-2. Hace checkout del commit que pasó CI, instala, ejecuta `pnpm --filter web build` y sube `apps/web/dist` con `actions/upload-pages-artifact`.
+2. Hace checkout del commit que pasó CI, instala, ejecuta `pnpm --filter @archdraft/web build` y sube `frontend/dist` con `actions/upload-pages-artifact`.
 3. El job `deploy` publica con `actions/deploy-pages` en el entorno `github-pages`.
 
 Solo se despliega lo que ha pasado CI.

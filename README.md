@@ -1,4 +1,4 @@
-<p align="center"><img src="apps/web/public/favicon.svg" alt="" width="96" height="96" /></p>
+<p align="center"><img src="frontend/public/favicon.svg" alt="" width="96" height="96" /></p>
 
 # Archdraft
 
@@ -19,12 +19,12 @@ Diagrams are provider-agnostic and can be rendered for AWS, Google Cloud or Azur
 
 ```mermaid
 flowchart LR
-  user([User]) --> web["Web app<br/>React + React Flow<br/>GitHub Pages"]
-  web -- "POST /v1/generate<br/>POST /v1/edit" --> api["API<br/>Hono on Cloudflare Workers"]
+  user([User]) --> web["frontend<br/>React + React Flow<br/>GitHub Pages"]
+  web -- "POST /v1/assist" --> api["backend<br/>Hono on Cloudflare Workers<br/>AI agent"]
   api --> llm["LLM<br/>Workers AI"]
-  core[["@archdraft/core<br/>schema · validation · lint · exporters"]]
-  web -. uses .-> core
-  api -. uses .-> core
+  shared[["shared<br/>schema · validation · lint · exporters"]]
+  web -. uses .-> shared
+  api -. uses .-> shared
   evals["Evals<br/>GitHub Actions + GitHub Models"] -. measures .-> api
 ```
 
@@ -44,13 +44,10 @@ Everything runs on free tiers, with no credit card involved. The full design is 
 ## Repository layout
 
 ```
-apps/
-  web/          # editor (planned)
-  api/          # Cloudflare Worker (planned)
-packages/
-  core/         # domain model: schema, catalog, graph utilities, validation
-  layout/       # automatic layout with ELK
-evals/          # generation quality benchmark (planned)
+frontend/       # @archdraft/web: the editor, runs in the browser
+  src/layout/   # automatic layout with ELK, run in a Web Worker
+backend/        # @archdraft/api: Cloudflare Worker with the AI agent (planned)
+shared/         # @archdraft/shared: what both use: domain model, validation, lint, exporters, templates
 docs/           # architecture, decisions (ADRs) and roadmap
 ```
 
