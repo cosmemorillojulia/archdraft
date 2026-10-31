@@ -35,6 +35,9 @@ const EDGE_TYPES = { architecture: ArchitectureEdge };
 
 /** Zoom range of the canvas. */
 export const MIN_ZOOM = 0.2;
+/** The overview is as tall as the zoom panel and sits right next to it (CanvasControls.tsx). */
+const MINIMAP_WIDTH = 176;
+const MINIMAP_HEIGHT = 122;
 export const MAX_ZOOM = 2;
 /** The initial view never enlarges a diagram beyond this zoom. */
 const INITIAL_MAX_ZOOM = 1.2;
@@ -593,13 +596,18 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
               }
               nodeBorderRadius={6}
               maskColor="color-mix(in srgb, var(--canvas) 72%, transparent)"
-              className="floating !m-3 !mr-25 overflow-hidden !rounded-panel"
-              style={{ width: 176, height: 157 }}
+              className="floating !m-3 !mr-[58px] overflow-hidden !rounded-panel"
+              style={{ width: MINIMAP_WIDTH, height: MINIMAP_HEIGHT }}
             />
           )}
         </ReactFlow>
         <div className={`pointer-events-none absolute z-10 ${controlsClassName}`}>
-          <CanvasControls onFit={fit} minZoom={MIN_ZOOM} maxZoom={MAX_ZOOM} />
+          <CanvasControls
+            onFit={fit}
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
+            miniMapWidth={showMiniMap ? MINIMAP_WIDTH : 0}
+          />
         </div>
       </div>
     </CanvasContext.Provider>
