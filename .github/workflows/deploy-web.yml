@@ -75,13 +75,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
         if: steps.pages.outputs.enabled == 'true'
 
-      - run: pnpm --filter web build
+      - run: pnpm --filter @archdraft/web build
         if: steps.pages.outputs.enabled == 'true'
+        env:
+          # Address of the API of the assistant (docs/operaciones.md); without it the editor works without AI.
+          VITE_API_URL: ${{ vars.API_URL }}
 
       - uses: actions/upload-pages-artifact@v5
         if: steps.pages.outputs.enabled == 'true'
         with:
-          path: apps/web/dist
+          path: frontend/dist
 
   deploy:
     name: Deploy

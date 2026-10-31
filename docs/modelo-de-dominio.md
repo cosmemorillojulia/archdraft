@@ -1,6 +1,6 @@
 # Modelo de dominio
 
-El modelo de dominio describe qué es un diagrama de arquitectura para Archdraft. Vive en `packages/core` y lo comparten el editor, la API y el banco de evaluación. Las decisiones de fondo están en ADR 0005 (modelo agnóstico) y ADR 0006 (Zod como fuente de verdad).
+El modelo de dominio describe qué es un diagrama de arquitectura para Archdraft. Vive en `shared` y lo comparten el editor, la API y el banco de evaluación. Las decisiones de fondo están en ADR 0005 (modelo agnóstico) y ADR 0006 (Zod como fuente de verdad).
 
 ## Conceptos
 
@@ -200,6 +200,22 @@ Es tolerante con grafos inválidos: con ids duplicados gana la primera aparició
 
 `architectureGraphJsonSchema()` genera el JSON Schema (draft 2020-12) en modo `input`, con las descripciones de los campos. Ocupa unos 3,5 KB serializado, un tamaño razonable para incluirlo en cada prompt.
 
+## Operaciones de edición
+
+`shared/src/patch.ts` describe un cambio del grafo como datos: una lista de operaciones que se aplican en orden. Es lo que devuelve el asistente al editar o al proponer una mejora (ADR 0022), en lugar de un diagrama nuevo, para que el resto quede donde estaba y se vea qué cambió.
+
+| Operación       | Campos          | Efecto                                                                                                         |
+| --------------- | --------------- | -------------------------------------------------------------------------------------------------------------- |
+| `addNode`       | `node`          | Añade el nodo completo; falla si el id existe                                                                  |
+| `updateNode`    | `id`, `changes` | Cambia solo los campos dados; `null` quita uno. En `attributes`, solo los atributos dados, y `null` olvida uno |
+| `removeNode`    | `id`            | Quita el nodo, sus aristas y el texto fijado a él; lo que contenía pasa al contenedor que lo contenía a él     |
+| `addEdge`       | `edge`          | Añade la arista completa; falla si el id existe                                                                |
+| `updateEdge`    | `id`, `changes` | Cambia solo los campos dados, incluidos los extremos; `null` quita uno                                         |
+| `removeEdge`    | `id`            | Quita la arista                                                                                                |
+| `updateDiagram` | `changes`       | Cambia el título, la descripción o el proveedor del diagrama                                                   |
+
+`applyPatch(graph, operations)` es pura y no modifica el grafo que recibe. Comprueba todas las operaciones y devuelve todos los fallos a la vez, cada uno con el índice de su operación, para que el modelo los corrija en un solo reintento. El resultado debe pasar `parseArchitectureGraph`: un parche nunca deja el grafo inválido. `diffGraphs(before, after)` lista por id los nodos y aristas añadidos, cambiados y quitados (el orden de las claves no cuenta), e indica si cambió el diagrama en sí; el editor lo usa para resaltar lo que cambió.
+
 ## Separación entre semántica y presentación
 
 El grafo no contiene posiciones, tamaños ni colores. Esa información vive en el documento del editor junto al grafo (ADR 0007). Ventajas:
@@ -208,7 +224,7 @@ El grafo no contiene posiciones, tamaños ni colores. Esa información vive en e
 - Una edición con IA no desplaza lo que el usuario colocó a mano.
 - Las reglas y exportadores semánticos no dependen de la disposición.
 
-La disposición tiene su propio esquema en `document.ts`: `DiagramLayout` guarda, por id de nodo, la posición de la esquina superior izquierda relativa al contenedor padre (`positions`) y el tamaño (`sizes`), con coordenadas finitas, tamaños positivos y como mucho `LIMITS.maxNodes` entradas en cada mapa. `DiagramDocument` une `{ graph, layout }` y es lo que el editor guarda y comparte. Una entrada de la disposición sin nodo correspondiente no invalida el documento: se ignora. Las entradas se leen con `layoutEntry(record, id)`, que solo devuelve propiedades propias: un id como `constructor` es válido y `record[id]` devolvería el miembro heredado de `Object.prototype`. La calcula `packages/layout` ([disposición automática](modulos/layout.md)).
+La disposición tiene su propio esquema en `document.ts`: `DiagramLayout` guarda, por id de nodo, la posición de la esquina superior izquierda relativa al contenedor padre (`positions`) y el tamaño (`sizes`), con coordenadas finitas, tamaños positivos y como mucho `LIMITS.maxNodes` entradas en cada mapa. `DiagramDocument` une `{ graph, layout }` y es lo que el editor guarda y comparte. Una entrada de la disposición sin nodo correspondiente no invalida el documento: se ignora. Las entradas se leen con `layoutEntry(record, id)`, que solo devuelve propiedades propias: un id como `constructor` es válido y `record[id]` devolvería el miembro heredado de `Object.prototype`. La calcula `frontend/src/layout` ([disposición automática](modulos/layout.md)).
 
 La disposición guarda también cómo se dibujan las conexiones, porque es presentación y no semántica: `edgeStyle` es el estilo del diagrama (`curved`, curva, o `square`, ángulos rectos) y `edgeStyles` guarda, por id de arista, los estilos que difieren de él. Ambos campos son opcionales: sin ellos, o con un estilo ausente, la arista se dibuja curva, y los documentos anteriores siguen siendo válidos sin migración. `ownEdgeStyle(layout, edgeId)` devuelve el estilo propio de una arista, si lo tiene, y `resolveEdgeStyle(layout, edgeId)` decide el estilo efectivo: el propio de la arista, si lo tiene; si no, el del diagrama; si no, el curvo. Una entrada de `edgeStyles` sin arista correspondiente se ignora al importar, como las de `positions` y `sizes`, y el JSON guardado no escribe campos que no hacen falta.
 

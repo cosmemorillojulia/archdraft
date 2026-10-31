@@ -1,4 +1,4 @@
 packages:
-  - apps/*
-  - packages/*
-  - evals
+  - frontend
+  - backend
+  - shared

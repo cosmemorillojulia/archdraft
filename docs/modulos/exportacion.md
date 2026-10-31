@@ -1,11 +1,11 @@
 # Módulo: exportación e importación
 
-Vive en `packages/core/src/export/` y en `packages/core/src/migrations.ts`. Convierte un grafo a formatos de texto (Mermaid, draw.io y JSON) y lee de vuelta los ficheros JSON de forma segura. Todo son funciones puras sin E/S: el editor (T11, T12) se encarga de copiar, descargar o leer ficheros. Las imágenes SVG y PNG se dibujan en `apps/web` (ver [web.md](web.md#exportar)), porque necesitan medir texto con la fuente, los iconos y los colores del tema, que no son del dominio.
+Vive en `shared/src/export/` y en `shared/src/migrations.ts`. Convierte un grafo a formatos de texto (Mermaid, draw.io y JSON) y lee de vuelta los ficheros JSON de forma segura. Todo son funciones puras sin E/S: el editor (T11, T12) se encarga de copiar, descargar o leer ficheros. Las imágenes SVG y PNG se dibujan en `frontend` (ver [web.md](web.md#exportar)), porque necesitan medir texto con la fuente, los iconos y los colores del tema, que no son del dominio.
 
 ## Estructura
 
 ```
-packages/core/src/
+shared/src/
   export/
     labels.ts      # textos comunes: subtítulo del nodo y etiqueta de la arista
     mermaid.ts     # toMermaid
@@ -70,7 +70,7 @@ flowchart LR
 Decisiones:
 
 - El modo de cada arista es el efectivo, calculado con `resolveEdgeMode`: una arista `kafka` sin `mode` se dibuja discontinua.
-- Mermaid no recibe la disposición, así que no refleja el estilo de las conexiones (`curved` o `square`); lo decide Mermaid. Lo siguen el SVG y el PNG del editor (`apps/web`), que dibujan cada conexión como el lienzo.
+- Mermaid no recibe la disposición, así que no refleja el estilo de las conexiones (`curved` o `square`); lo decide Mermaid. Lo siguen el SVG y el PNG del editor (`frontend`), que dibujan cada conexión como el lienzo.
 - El producto (`resolveServiceName`) se añade como segunda línea solo cuando es distinto de la etiqueta del nodo y del nombre genérico del tipo. Así un nodo AWS muestra "Order worker / AWS Lambda", pero un nodo genérico no repite "Service" debajo de su nombre.
 - Todos los nodos y contenedores se declaran antes que las aristas. Mermaid coloca un nodo en el `subgraph` donde aparece por primera vez, de modo que declarar una arista dentro de un bloque podría mover nodos de contenedor.
 - Los contenedores vacíos se exportan como `subgraph` vacío; Mermaid los dibuja como un marco sin contenido.
@@ -105,7 +105,7 @@ Verificación: el fixture de tres capas y un grafo con todos los casos anteriore
 
 ## draw.io
 
-`toDrawio(graph, layout)` genera un `mxfile` sin comprimir, el formato que draw.io guarda por defecto, con una sola página que se llama como el diagrama. A diferencia de Mermaid, draw.io no calcula posiciones, así que el exportador recibe la disposición: la del editor o la de `computeLayout` (`packages/layout`). La función sigue en `core` porque solo escribe texto; no depende de ELK.
+`toDrawio(graph, layout)` genera un `mxfile` sin comprimir, el formato que draw.io guarda por defecto, con una sola página que se llama como el diagrama. A diferencia de Mermaid, draw.io no calcula posiciones, así que el exportador recibe la disposición: la del editor o la de `computeLayout` (`frontend/src/layout`). La función sigue en `core` porque solo escribe texto; no depende de ELK.
 
 Ejemplo abreviado:
 
@@ -148,11 +148,11 @@ Decisiones:
 - Si a un nodo le falta la posición en la disposición se coloca en el origen de su padre, y si le falta el tamaño recibe el tamaño por defecto de su tipo (`defaultSizeOf`). Una disposición desfasada respecto al grafo sigue exportándose en lugar de fallar.
 - Colores de la paleta estándar de draw.io, uno por categoría, para que el diagrama encaje con lo que el usuario ya dibuja allí. No se usan iconos de proveedor (ADR 0008).
 
-Uso desde Node.js, por ejemplo para generar un fichero de prueba:
+Uso desde Node.js, por ejemplo para generar un fichero de prueba desde `frontend/`:
 
 ```ts
-import { toDrawio } from '@archdraft/core';
-import { computeLayout } from '@archdraft/layout';
+import { toDrawio } from '@archdraft/shared';
+import { computeLayout } from './src/layout/compute-layout.ts';
 
 const xml = toDrawio(graph, await computeLayout(graph));
 ```

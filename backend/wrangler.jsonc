@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "archdraft-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-15",
+  // Workers AI, invoked as env.AI: no API key to keep (ADR 0004).
+  "ai": { "binding": "AI" },
+  "vars": {
+    // The editor on GitHub Pages and in local development.
+    "ALLOWED_ORIGINS": "https://cosmemorillojulia.github.io,http://localhost:5173",
+  },
+  // Logs written as JSON are searchable in Workers Logs.
+  "observability": { "enabled": true },
+}

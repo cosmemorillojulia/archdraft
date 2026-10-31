@@ -32,7 +32,7 @@ If CI is red on `main`, fix it first in a `fix/...` branch before starting new w
 ```
 
 - Types: `feat`, `fix`, `refactor`, `test`, `docs`, `build`, `ci`, `chore`, `perf`.
-- Scopes: `core`, `web`, `api`, `evals`, `docs`, `repo`.
+- Scopes: `shared`, `web`, `api`, `evals`, `docs`, `repo`.
 - The scope is optional; use it when the change is confined to one package.
 - One concern per commit. Tests may go with the code they cover.
 - Merge commits follow the same convention and end with the task id: `feat: add design lint engine (T02)`.
@@ -40,7 +40,8 @@ If CI is red on `main`, fix it first in a `fix/...` branch before starting new w
 
 ## Code conventions
 
-- TypeScript strict mode, no `any`. Validate untrusted input with the Zod schemas from `@archdraft/core`.
+- TypeScript strict mode, no `any`. Validate untrusted input with the Zod schemas from `@archdraft/shared`.
 - Relative imports use explicit `.ts` extensions so that packages run natively on Node.js.
-- Pure functions and immutable data in `packages/*`; side effects live in `apps/*`.
-- Tests sit in each package's `test/` folder and are named `*.test.ts`. `packages/core` keeps coverage above its thresholds.
+- `frontend/` and `backend/` depend on `shared/`, never on each other; `shared/` depends on neither.
+- Pure functions and immutable data in `shared/`; network, storage and the DOM stay at the edges of `frontend/` and `backend/`.
+- Tests sit in each package's `test/` folder and are named `*.test.ts`. `shared/` and `frontend/src/layout/` keep coverage above their thresholds.

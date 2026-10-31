@@ -1,6 +1,6 @@
 # ADR 0002: Monorepo con pnpm workspaces y paquetes internos sin compilar
 
-- Estado: aceptada
+- Estado: aceptada; la organización de carpetas la sustituye el ADR 0021
 - Fecha: 2026-10-20
 
 ## Contexto

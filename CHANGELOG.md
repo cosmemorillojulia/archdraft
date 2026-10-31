@@ -4,7 +4,19 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- Repository layout (ADR 0021): `apps/web` is now `frontend/`, `packages/core` is now `shared/` and is published in the workspace as `@archdraft/shared`, and the ELK layout of `packages/layout` lives in `frontend/src/layout/`, the only place that uses it. The backend will go in `backend/`. Behaviour is unchanged.
+
 ### Added
+
+- `@archdraft/api`: the default Groq model is `openai/gpt-oss-120b`, since Groq shut down `llama-3.3-70b-versatile` for free accounts; answers reserve fewer tokens to fit the 8,000 tokens a minute of its free plan, and provider refusals carry the status and the explanation of the provider in the response and the log.
+
+- Local settings in two files at the root: `.env.defaults` (committed, no secrets: the API address of the editor and the Groq URL) and `.env.secrets` (ignored by git, template in `.env.secrets.example`: the Groq key). `make api` runs the API with Groq without a Cloudflare account; `make api-remote` runs it with Workers AI.
+
+- `@archdraft/web`: the AI assistant. The description bar creates a diagram when the canvas is empty (or with New diagram on) and changes the open one otherwise; the assistant menu asks for improvements, a simpler design or a more complete one, offered in a panel with Apply and Discard. What changes is outlined on the canvas, every change is one undo step, the layout of what stays is kept, and improvements made of edits apply on top of each other. Errors and warnings are worded in English and Spanish. The assistant only appears in builds with `VITE_API_URL`.
+- `@archdraft/api` (`backend/`): Cloudflare Worker with Hono. `GET /health` and `POST /v1/assist` run an agent with five typed tasks (`generate`, `edit`, `improve`, `simplify`, `extend`) on Workers AI or any OpenAI-compatible provider such as Groq. Answers are validated as untrusted input and repaired up to twice with the exact errors; failures are `application/problem+json`. Request ids, CORS allow-list, a 64 KB body limit and one JSON log line per call without the prompt. `deploy-api.yml` deploys it once the Cloudflare secrets exist; `make api` runs it locally (ADR 0022).
+- `@archdraft/shared`: graph edits as data (`GraphPatchSchema`, `applyPatch`, `diffGraphs`, `hasChanges`) and the contract of `/v1/assist` (`AssistRequestSchema`, `AssistResultSchema`, problem types and warnings), used by both sides.
 
 - `@archdraft/core`, `@archdraft/web`: connections can be drawn as curves or with right angles. A button in the view controls switches the whole diagram, and a selected connection has its own Line field (Auto, Curved or Square) in the inspector. The choice lives in the layout (`edgeStyle`, `edgeStyles`, `ownEdgeStyle`, `resolveEdgeStyle`), so it is saved, shared, undone and exported to SVG and PNG; diagrams without it stay curved.
 
