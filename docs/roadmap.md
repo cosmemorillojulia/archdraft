@@ -27,14 +27,14 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T10 | Editor: panel de revisión de diseño                              | T02, T09      | hecha (2026-10-25) |
 | T11 | Editor: persistencia local, importación y enlaces para compartir | T03, T09      | hecha (2026-10-25) |
 | T12 | Editor: exportación desde la interfaz                            | T03, T05, T09 | hecha (2026-10-25) |
-| T13 | API: esqueleto del Worker                                        | T01           | pendiente          |
-| T14 | packages/ai: interfaz y proveedores LLM                          | T01           | pendiente          |
-| T15 | Pipeline de generación y endpoint /v1/generate                   | T06, T13, T14 | pendiente          |
+| T13 | Backend: Worker con Hono y endpoint /v1/assist                   | T15, T18, T35 | pendiente          |
+| T14 | Backend: interfaz y proveedores LLM                              | T34           | pendiente          |
+| T15 | Backend: contrato, prompts, pipeline y tarea generate            | T06, T14      | pendiente          |
 | T16 | Banco de evaluación: conjunto de casos y métricas                | T15           | pendiente          |
 | T17 | Evaluaciones en CI y elección del modelo                         | T16           | pendiente          |
-| T18 | Edición asistida con operaciones y endpoint /v1/edit             | T15           | pendiente          |
+| T18 | Operaciones de edición (T18a) y tarea edit del agente (T18b)     | T15, T34      | pendiente          |
 | T19 | API: límites de uso, protección y observabilidad                 | T15           | pendiente          |
-| T20 | Editor: integración con la API                                   | T11, T15, T18 | pendiente          |
+| T20 | Editor: integración con el agente                                | T11, T13      | pendiente          |
 | T21 | Tests de extremo a extremo y accesibilidad                       | T20           | pendiente          |
 | T22 | Rendimiento y presupuesto de tamaño                              | T21           | pendiente          |
 | T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | pendiente          |
@@ -48,6 +48,8 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T31 | Editor: figuras genéricas, flechas y animación del flujo         | T09           | hecha (2026-10-25) |
 | T32 | Editor: interfaz en inglés y español                             | T10, T11      | hecha (2026-10-25) |
 | T33 | Editor: fluidez al mover, cambiar el tamaño y añadir             | T31           | hecha (2026-10-25) |
+| T34 | Repositorio en frontend, backend y shared                        | T33           | hecha (2026-10-31) |
+| T35 | Backend: tareas improve, simplify y extend del agente            | T18           | pendiente          |
 
 ## Fase 0: fundamentos
 
@@ -277,7 +279,7 @@ Criterios de aceptación: tests de la escala de dibujo y de la profundidad de an
 
 Objetivo: que ninguna arista pase por detrás de un nodo que no es su origen ni su destino, algo que la revisión de diseño de T08 detectó en varias plantillas porque las aristas son curvas directas entre conectores.
 
-Entregables: usar las rutas que ya calcula ELK (secciones con puntos de inflexión) en `@archdraft/layout`, exponerlas en `DiagramLayout` y dibujarlas en el lienzo como trazos suavizados, con la etiqueta en el punto medio de la ruta; mantener la animación de trazado y las partículas.
+Entregables: usar las rutas que ya calcula ELK (secciones con puntos de inflexión) en `frontend/src/layout`, exponerlas en `DiagramLayout` y dibujarlas en el lienzo como trazos suavizados, con la etiqueta en el punto medio de la ruta; mantener la animación de trazado y las partículas.
 
 Criterios de aceptación: tests de la ruta en la disposición y en el adaptador; capturas de las seis plantillas sin aristas que crucen nodos ajenos, revisadas con la skill `design-critique`.
 
@@ -311,61 +313,70 @@ Entregables: cambio de tamaño de cualquier nodo seleccionado, con mínimos por 
 
 Criterios de aceptación: tests del cambio de tamaño, de los tiradores y del arrastre desde la paleta con ratón y con el dedo; comprobación en Chromium (escritorio y Pixel 7 emulado) de mover, cambiar el tamaño y añadir con el dedo; medida del coste de un arrastre con la CPU ralentizada antes y después.
 
+### T34. Repositorio en frontend, backend y shared
+
+Estado: hecha (2026-10-31). Documentado en ADR 0021, `docs/arquitectura.md` y `README.md`.
+
+Objetivo: a petición del propietario, que la estructura diga qué corre en el navegador, qué en el servidor y qué es común, antes de empezar el backend.
+
+Entregables: `apps/web` pasa a `frontend/`; `packages/core` pasa a `shared/` con el nombre `@archdraft/shared`; `packages/layout` se integra en `frontend/src/layout/`, con su umbral de cobertura por ruta; workspace, ESLint, Prettier y el workflow de Pages con las rutas nuevas; documentación viva actualizada. `backend/` se crea en T14.
+
+Criterios de aceptación: formato, lint, tipos y build en verde, y los mismos tests que antes; ninguna referencia a las rutas antiguas fuera del CHANGELOG y de los ADR anteriores.
+
 ## Fase 3: inteligencia artificial
 
-### T13. Esqueleto del Worker
+Un agente con cinco tareas sobre el diagrama, detrás de un único endpoint `POST /v1/assist` (ADR 0022, en T35):
 
-Objetivo: API desplegable con sus contratos.
+| Tarea      | Entrada                               | Salida del modelo                                   | En el editor                          |
+| ---------- | ------------------------------------- | --------------------------------------------------- | ------------------------------------- |
+| `generate` | descripción, idioma, proveedor        | `{ summary, graph }`: grafo completo                | se abre como diagrama nuevo           |
+| `edit`     | instrucción y grafo actual            | `{ summary, operations }`: parche                   | se aplica y conserva la disposición   |
+| `improve`  | grafo actual y hallazgos del lint     | `{ proposals: [{ title, rationale, operations }] }` | panel con propuestas, Aplicar en cada |
+| `simplify` | grafo actual (e instrucción opcional) | `{ summary, rationale, graph }`: grafo completo     | panel con la propuesta y Aplicar      |
+| `extend`   | grafo actual (e instrucción opcional) | `{ summary, rationale, graph }`: grafo completo     | panel con la propuesta y Aplicar      |
 
-Entregables:
+Orden de trabajo: T14 → T15 → T18 → T35 → T13 → T20. Después, T19, T16 y T17.
 
-- `apps/api` con Hono y `wrangler.jsonc` (binding de Workers AI).
-- Rutas `GET /health` y `POST /v1/generate` (respuesta provisional mientras no exista el pipeline).
-- Middlewares: identificador de petición, CORS con lista permitida configurable, límite de tamaño del cuerpo, validación con Zod, manejador de errores con `application/problem+json` (RFC 9457).
-- Tests de rutas y middlewares.
-- Workflow `deploy-api.yml` que se salta si faltan los secretos de Cloudflare.
-
-Criterios de aceptación: tests en verde; `wrangler deploy --dry-run` correcto.
-
-Documentación: `docs/modulos/api.md` con el contrato de cada endpoint; ADR sobre Hono y el formato de errores.
-
-### T14. Interfaz y proveedores LLM
+### T14. Backend: interfaz y proveedores LLM
 
 Objetivo: invocar modelos sin acoplarse a un proveedor.
 
 Entregables:
 
-- `packages/ai` con la interfaz `LlmProvider` (mensajes, JSON Schema opcional, temperatura, tokens máximos, señal de cancelación).
-- Proveedor compatible con OpenAI con `fetch` inyectado, válido para GitHub Models y Groq. Comprobar en la documentación oficial los endpoints vigentes al implementarlo.
-- Taxonomía de errores: límite de uso, tiempo agotado, error del proveedor, respuesta inválida.
-- Adaptador del binding de Workers AI en `apps/api`.
+- Paquete `backend/` (`@archdraft/api`) con `package.json`, `tsconfig.json` y `vitest.config.ts` con los umbrales de `shared`, añadido al workspace.
+- `src/llm/provider.ts`: `LlmProvider { name; complete(request) }`, con mensajes, modo JSON, temperatura, tokens máximos y señal de cancelación.
+- `src/llm/errors.ts`: `LlmError` con `kind` `rate-limited`, `timeout`, `provider` o `invalid-response`, y `retryAfter`.
+- `src/llm/openai-compatible.ts` con `fetch` inyectado, válido para Groq y GitHub Models; `response_format: { type: 'json_object' }` en modo JSON. Comprobar en la documentación oficial los endpoints vigentes al implementarlo.
+- `src/llm/scripted-provider.ts`: proveedor guionizado para los tests.
 
-Criterios de aceptación: tests con `fetch` falso, incluidos errores HTTP y tiempos agotados.
+Criterios de aceptación: tests con `fetch` falso: éxito, 429 con y sin `Retry-After`, 500, respuesta sin `choices`, tiempo agotado y cancelación.
 
-Documentación: `docs/modulos/ai.md`.
+Documentación: `docs/modulos/backend.md`.
 
-### T15. Pipeline de generación y /v1/generate
+### T15. Backend: contrato, prompts, pipeline y tarea generate
 
 Objetivo: descripción en lenguaje natural a grafo válido.
 
 Entregables:
 
-- Constructor de prompt: resumen del catálogo, JSON Schema, reglas de modelado y dos ejemplos tomados de las plantillas.
-- `generateGraph`: llamada, extracción del JSON (bloques de código, texto alrededor), `parseArchitectureGraph`, hasta dos reintentos enviando los errores, resultado con número de intentos y avisos.
-- `/v1/generate` conectado al pipeline con Workers AI. Modelo provisional documentado; la elección definitiva se hace en T17.
+- `shared/src/assist/contract.ts`: esquemas Zod de la petición (unión por `task`, con `locale`, prompt de 4.000 caracteres como máximo y grafo donde aplica) y de la respuesta, que usan el backend y el editor.
+- `backend/src/agent/prompt/`: resumen del catálogo y de `CONTAINMENT_RULES` generado desde `shared`, reglas de modelado, dos plantillas como ejemplos y un constructor de mensajes por tarea con el JSON Schema de la salida.
+- `extract-json.ts`: el primer objeto JSON de la respuesta (bloques de código, texto alrededor).
+- `repair.ts`: `runWithRepair`, que llama, extrae, valida (Zod y validación semántica) y reintenta hasta dos veces enviando los errores; devuelve el valor, los intentos y los avisos.
+- `assist.ts`: `assist(provider, request)`, que despacha por tarea; aquí solo `generate`, validada con `parseArchitectureGraph`.
 
-Criterios de aceptación: tests con un proveedor falso que primero devuelve JSON inválido y luego válido; tests del extractor de JSON.
+Criterios de aceptación: tests del extractor; proveedor guionizado que devuelve texto, luego JSON inválido y luego válido; reintentos agotados; el prompt contiene todos los tipos del catálogo.
 
-Documentación: ampliar `docs/modulos/ai.md` con el diseño del prompt.
+Documentación: diseño del prompt en `docs/modulos/backend.md`; modelo provisional anotado, la elección definitiva es de T17.
 
 ### T16. Banco de evaluación: casos y métricas
 
-Objetivo: medir la calidad de generación con números.
+Objetivo: medir la calidad del agente con números.
 
 Entregables:
 
-- `evals/` con al menos 30 casos en español e inglés: descripción, tipos obligatorios, tipos opcionales, conexiones obligatorias por pares de tipos y elementos prohibidos.
-- Métricas: validez de esquema, precisión, exhaustividad y F1 de tipos, exhaustividad de conexiones, errores del motor de reglas, intentos y latencia.
+- `backend/evals/` con al menos 30 casos en español e inglés: descripción, tipos obligatorios, tipos opcionales, conexiones obligatorias por pares de tipos y elementos prohibidos. Casos de `edit`, `improve`, `simplify` y `extend` sobre las plantillas.
+- Métricas: validez de esquema, precisión, exhaustividad y F1 de tipos, exhaustividad de conexiones, errores del motor de reglas, intentos y latencia; en las tareas sobre un diagrama, que se conserven los ids y que la propuesta cumpla su objetivo.
 - CLI que ejecuta el conjunto contra un proveedor y modelo y genera un informe JSON y Markdown.
 
 Criterios de aceptación: el puntuador es puro y tiene tests; la CLI funciona con un proveedor falso.
@@ -380,13 +391,18 @@ Entregables: workflow `evals.yml` manual y semanal con `permissions: models: rea
 
 Criterios de aceptación: ADR con el modelo por defecto y su justificación numérica. Limitación conocida: desde Actions se evalúan modelos de GitHub Models; si el modelo de Workers AI no está allí, se evalúa el equivalente más cercano y se indica.
 
-### T18. Edición asistida con operaciones y /v1/edit
+### T18. Operaciones de edición y tarea edit
 
 Objetivo: pedir cambios en lenguaje natural sin regenerar el diagrama.
 
-Entregables: esquema `GraphPatch` y `applyPatch` en `core` (puro, valida el resultado); prompt y `editGraph` en `packages/ai`; endpoint `/v1/edit`.
+Entregables:
 
-Criterios de aceptación: tests de cada operación y de parches que dejarían el grafo inválido.
+- T18a, en `shared/src/patch.ts`: `GraphOperationSchema` (`addNode`, `updateNode`, `removeNode`, `addEdge`, `updateEdge`, `removeEdge`, `updateDiagram`), `GraphPatchSchema` y su JSON Schema; `applyPatch(graph, operations)`, puro, con errores por operación y validación final con `parseArchitectureGraph` (quitar un nodo quita sus aristas y el texto fijado a él; los hijos de un contenedor quitado suben a su padre); `diffGraphs(before, after)`.
+- T18b, en `backend/src/agent/`: prompt con el grafo actual y el esquema del parche; validación con `applyPatch` y respuesta con las operaciones, el grafo ya aplicado y los cambios.
+
+Criterios de aceptación: tests de cada operación y de parches que dejarían el grafo inválido; tests de la tarea con proveedor guionizado, incluido un id inexistente corregido al reintentar.
+
+Documentación: `docs/modelo-de-dominio.md`, `docs/modulos/shared.md` y `docs/modulos/backend.md`.
 
 ### T19. Límites de uso, protección y observabilidad
 
@@ -396,18 +412,57 @@ Entregables:
 
 - Límite diario por IP. Investigar qué opción está disponible en el plan gratuito (binding de rate limiting, Durable Objects, KV) y documentar la elección en un ADR.
 - Límites de tamaño de prompt y grafo, tiempos máximos por llamada al modelo.
-- Logs JSON con identificador de petición, latencia, intentos y resultado, sin el contenido del prompt.
 - Medición del tiempo de CPU de parseo y validación frente al límite de 10 ms.
 
 Criterios de aceptación: tests del límite de uso y de las respuestas 429 con `Retry-After`.
 
-### T20. Integración del editor con la API
+### T13. Backend: Worker con Hono y endpoint /v1/assist
 
-Objetivo: generar y editar con IA desde el editor.
+Objetivo: API desplegable que ejecuta el agente.
 
-Entregables: panel de prompt conectado a `/v1/generate` y `/v1/edit`; estados de carga y error traducidos desde los tipos de problema; resaltado de los cambios aplicados por un parche; URL de la API por variable de entorno; mocks con MSW en tests; mensaje claro cuando se agota la cuota.
+Entregables:
 
-Criterios de aceptación: tests de los flujos con la API simulada.
+- Hono y `wrangler.jsonc` en `backend/`: binding `AI`, variables `ALLOWED_ORIGINS` y `LLM_MODEL`, secretos opcionales `LLM_BASE_URL` y `LLM_API_KEY`.
+- `backend/src/http/`: `GET /health` y `POST /v1/assist`; middlewares de identificador de petición, CORS con lista permitida, cuerpo de 64 KB como máximo, validación con el contrato y errores `application/problem+json` (RFC 9457) con `type` estables (`invalid-request`, `rate-limited`, `model-timeout`, `model-error`, `invalid-model-output`).
+- `backend/src/llm/workers-ai.ts`: adaptador del binding. Comprobar en la documentación oficial la firma vigente, qué modelos admiten modo JSON y su coste en neurons.
+- Proveedor según el entorno: compatible con OpenAI si hay `LLM_BASE_URL` y `LLM_API_KEY`; si no, Workers AI.
+- Logs JSON por petición con identificador, tarea, latencia, intentos y resultado, nunca el prompt.
+- Workflow `deploy-api.yml` tras CI en verde, que se salta si faltan los secretos de Cloudflare; `make api` para `wrangler dev`.
+
+Criterios de aceptación: tests de rutas y middlewares con un proveedor guionizado; `wrangler deploy --dry-run` correcto.
+
+Documentación: contrato y errores en `docs/modulos/backend.md`; cuenta, token y secretos de Cloudflare en `docs/operaciones.md`.
+
+### T20. Editor: integración con el agente
+
+Objetivo: crear, editar, mejorar y rediseñar con IA desde el editor.
+
+Entregables:
+
+- `frontend/src/ai/`: cliente de `/v1/assist` con la URL en `VITE_API_URL`, que traduce los tipos de problema y valida la respuesta con el contrato; store del asistente (estado, cancelación, propuestas, nodos resaltados); ejecución de cada tarea como en `editor/open-document.ts`.
+- Crear abre el diagrama nuevo; editar y aplicar una propuesta vuelven a validar el grafo, colocan solo lo nuevo y añaden un paso al historial con una acción `replaceDocument` del store. Si el diagrama cambió mientras el modelo respondía, la respuesta no se aplica y se avisa.
+- Barra de descripción: con el diagrama vacío crea; con contenido edita, con un control para crear uno nuevo; menú con Sugerir mejoras, Simplificar y Completar; carga, cancelación con Escape y errores traducidos.
+- Panel del asistente en el lugar de la revisión, con las propuestas, su explicación, sus cambios y Aplicar o Descartar.
+- Resaltado en el lienzo de lo que cambió, como el de los hallazgos.
+- Sin `VITE_API_URL`, la IA se muestra como no disponible y el editor sigue funcionando.
+
+Criterios de aceptación: tests de los flujos con la API simulada (crear, editar, propuestas, cuota agotada, respuesta inválida, cancelación y diagrama cambiado durante la petición); capturas en escritorio y móvil, claro y oscuro, revisadas con la skill `design-critique`.
+
+Documentación: `docs/modulos/web.md` y `README.md`.
+
+### T35. Backend: tareas improve, simplify y extend del agente
+
+Objetivo: que el agente encuentre mejoras y proponga arquitecturas más simples o más completas.
+
+Entregables:
+
+- `improve`: el prompt incluye los hallazgos de `lintGraph` y pide de una a cinco propuestas independientes con título, explicación, operaciones y reglas que resuelve; cada una se valida con `applyPatch` por separado, se reintenta con los errores y al final se devuelven solo las válidas.
+- `simplify` y `extend`: criterios explícitos (menos piezas para la misma función; lo que falta para producción: alta disponibilidad, protección de la entrada, observabilidad, secretos, colas), reutilizando los ids de lo que se mantiene; respuesta con el grafo, la explicación y `diffGraphs`.
+- Avisos cuando la propuesta no cumple su objetivo: un `simplify` con más nodos, un `extend` con menos o un `improve` con más hallazgos.
+
+Criterios de aceptación: tests de cada tarea con proveedor guionizado, incluido el filtrado de propuestas inválidas, la conservación de ids y los avisos.
+
+Documentación: `docs/modulos/backend.md`; ADR 0022 sobre el agente con tareas tipadas y un único endpoint.
 
 ## Fase 4: calidad y lanzamiento
 

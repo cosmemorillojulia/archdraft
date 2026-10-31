@@ -12,7 +12,7 @@ Referencia:
 
 - [Guía de desarrollo](desarrollo.md): herramientas, configuración, CI y convenciones.
 - [Operaciones](operaciones.md): entornos, acciones manuales, límites de los planes gratuitos y secretos.
-- Módulos: [core](modulos/core.md), [motor de reglas de diseño](modulos/lint.md), [exportación e importación](modulos/exportacion.md), [disposición automática](modulos/layout.md), [plantillas de arquitectura](modulos/plantillas.md), [editor web](modulos/web.md).
+- Módulos: [shared](modulos/shared.md), [motor de reglas de diseño](modulos/lint.md), [exportación e importación](modulos/exportacion.md), [disposición automática](modulos/layout.md), [plantillas de arquitectura](modulos/plantillas.md), [editor web](modulos/web.md).
 
 ## Decisiones registradas
 
@@ -38,5 +38,6 @@ Referencia:
 | [0018](adr/0018-cambio-de-tema-con-transicion-de-vista.md) | Cambio de tema con un fundido cruzado de View Transitions                           |
 | [0019](adr/0019-enlaces-y-autoguardado-sin-servidor.md)    | Documento con disposición, enlaces comprimidos en el fragmento y autoguardado local |
 | [0020](adr/0020-interfaz-en-ingles-y-espanol.md)           | Interfaz en inglés y español                                                        |
+| [0021](adr/0021-estructura-frontend-backend-shared.md)     | Estructura en frontend, backend y shared                                            |
 
 Cada nueva página de módulo o ADR se añade a este índice.

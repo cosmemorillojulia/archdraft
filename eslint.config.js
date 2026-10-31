@@ -37,7 +37,7 @@ export default defineConfig(
     },
   },
   {
-    files: ['apps/web/**/*.{ts,tsx}'],
+    files: ['frontend/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat.recommended],
     languageOptions: {
       globals: { ...globals.browser },

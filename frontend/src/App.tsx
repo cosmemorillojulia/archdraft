@@ -1,0 +1,259 @@
+import type { NodeKind, Point, TemplateId } from '@archdraft/shared';
+import type { LayoutDirection } from './layout/compute-layout.ts';
+import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import { AnimatePresence, LazyMotion, m, MotionConfig } from 'motion/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DiagramCanvas } from './canvas/DiagramCanvas.tsx';
+import type { Insets } from './canvas/geometry.ts';
+import {
+  ComponentsPanel,
+  ComponentsSheet,
+  ComponentsSheetToggle,
+} from './components/ComponentsPanel.tsx';
+import { DiagramCard } from './components/DiagramCard.tsx';
+import { EditorNotice } from './components/EditorNotice.tsx';
+import { Header } from './components/Header.tsx';
+import { PanelSlot } from './components/PanelSlot.tsx';
+import { PromptDock } from './components/PromptDock.tsx';
+import {
+  clearLinkFromAddress,
+  openDocumentText,
+  openLink,
+  openTemplate,
+} from './editor/open-document.ts';
+import { readSavedDocument, startAutosave } from './persist/autosave.ts';
+import { usePaletteDrag, type DrawnBox } from './palette/palette-drag.ts';
+import { PaletteDiscard } from './palette/PaletteDiscard.tsx';
+import { PaletteDragGhost } from './palette/PaletteDragGhost.tsx';
+import { linkPayload } from './persist/share-link.ts';
+import { useEditorShortcuts } from './editor/shortcuts.ts';
+import { editorStore, useEditor } from './editor/store.ts';
+import { useMediaQuery, WIDE_SCREEN } from './media.ts';
+import { useReview } from './review/review-store.ts';
+import { EASE_OUT } from './motion.ts';
+import { useStrings } from './i18n/locale.ts';
+
+/** Width of the palette panel plus its margins, in pixels. */
+const PALETTE_WIDTH = 304;
+
+const DEFAULT_TEMPLATE: TemplateId = 'three-tier-web';
+
+/**
+ * The diagram of a shared link if the address has one; otherwise the work
+ * saved in this browser; otherwise the default template. When one cannot be
+ * opened the editor says why and tries the next.
+ */
+async function openFirstDiagram(direction: LayoutDirection): Promise<void> {
+  const payload = linkPayload(window.location.hash);
+  if (payload !== null) {
+    const opened = await openLink(payload, direction);
+    // Edits are saved in this browser; reloading should not go back to the link.
+    clearLinkFromAddress();
+    if (opened) return;
+  }
+  const saved = readSavedDocument();
+  if (saved !== null && (await openDocumentText(saved, 'saved', direction))) return;
+  await openTemplate(DEFAULT_TEMPLATE, direction);
+}
+
+/** Space taken by the floating interface around the canvas, in pixels. */
+function canvasInsets(wide: boolean, paletteOpen: boolean): Insets {
+  return wide
+    ? { top: 24, right: 24, bottom: 100, left: paletteOpen ? PALETTE_WIDTH + 16 : 24 }
+    : { top: 150, right: 16, bottom: 140, left: 16 };
+}
+
+const loadMotionFeatures = () => import('./motion-features.ts').then((module) => module.default);
+
+/**
+ * Editor: a fixed header over a full-size canvas, with the rest of the
+ * interface floating on the canvas. See docs/modulos/web.md.
+ *
+ * Motion's animation features (layout animations included) load in a separate
+ * chunk right after the first render, and every animation respects the
+ * reduced-motion setting of the system. The React Flow provider wraps the
+ * whole editor, so the palette can place components at the centre of the view.
+ */
+export function App() {
+  return (
+    <LazyMotion features={loadMotionFeatures} strict>
+      <MotionConfig reducedMotion="user">
+        <ReactFlowProvider>
+          <Editor />
+        </ReactFlowProvider>
+      </MotionConfig>
+    </LazyMotion>
+  );
+}
+
+/**
+ * The palette sits beside the diagram on wide screens and opens as a bottom
+ * sheet on narrow ones; while the sheet is open the rest of the page is
+ * inert. Selecting something opens the inspector, and the review status of
+ * the diagram card opens the design review, in the same place: beside the
+ * diagram card on wide screens, and in place of the prompt on narrow ones.
+ */
+function Editor() {
+  const strings = useStrings();
+  // The diagram is the first thing to see; the palette opens on demand.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const wide = useMediaQuery(WIDE_SCREEN);
+  const sheetToggleRef = useRef<HTMLButtonElement>(null);
+  const canvasRef = useRef<HTMLElement>(null);
+  const sheetOpen = paletteOpen && !wide;
+  const graph = useEditor((state) => state.current?.document.graph);
+  const selecting = useEditor((state) => state.selection !== null);
+  const reviewing = useReview((state) => state.open);
+  // On narrow screens a panel takes the place of the prompt.
+  const panelOpen = selecting || reviewing;
+  const flow = useReactFlow();
+  const insets = useMemo(() => canvasInsets(wide, paletteOpen), [wide, paletteOpen]);
+
+  useEditorShortcuts(!sheetOpen);
+
+  // Templates are laid out in the direction that suits the screen they are opened on.
+  const direction: LayoutDirection = wide ? 'LR' : 'TB';
+  const firstDirection = useRef(direction);
+  useEffect(() => {
+    const stopAutosave = startAutosave();
+    void openFirstDiagram(firstDirection.current);
+    // A link pasted into the address bar of an open editor opens too.
+    const onHashChange = () => {
+      const payload = linkPayload(window.location.hash);
+      if (payload === null) return;
+      void openLink(payload, firstDirection.current).then(clearLinkFromAddress);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => {
+      stopAutosave();
+      window.removeEventListener('hashchange', onHashChange);
+    };
+  }, []);
+
+  const addAtCentre = useCallback(
+    (kind: NodeKind) => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const centre = flow.screenToFlowPosition({
+        x: rect.left + insets.left + (rect.width - insets.left - insets.right) / 2,
+        y: rect.top + insets.top + (rect.height - insets.top - insets.bottom) / 2,
+      });
+      editorStore.getState().addNode(kind, centre);
+      if (!wide) setPaletteOpen(false);
+    },
+    [flow, insets, wide],
+  );
+
+  // A tile dragged from the palette lands where it is let go, if that is on the diagram.
+  const isOverCanvas = useCallback((point: Point) => {
+    const element = globalThis.document.elementFromPoint(point.x, point.y);
+    return element !== null && canvasRef.current?.contains(element) === true;
+  }, []);
+  const addAt = useCallback(
+    (kind: NodeKind, point: Point, drawn?: DrawnBox) => {
+      // What is put by hand stays exactly where it is put; a shape drawn takes the size dragged.
+      if (drawn === undefined) {
+        editorStore.getState().addNode(kind, flow.screenToFlowPosition(point), { exact: true });
+      } else {
+        const a = flow.screenToFlowPosition(drawn.from);
+        const b = flow.screenToFlowPosition(drawn.to);
+        editorStore
+          .getState()
+          .addNode(
+            kind,
+            { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+            { size: { width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) }, exact: true },
+          );
+      }
+      if (!wide) setPaletteOpen(false);
+    },
+    [flow, wide],
+  );
+  // While a tile is carried out of the sheet, the diagram under it must be reachable.
+  const carrying = usePaletteDrag((state) => state.drag !== null);
+
+  return (
+    <>
+      <div inert={sheetOpen && !carrying} className="flex h-full flex-col">
+        <Header />
+
+        <div className="relative min-h-0 flex-1 overflow-hidden bg-canvas">
+          <main ref={canvasRef} aria-label={strings.canvas.label} className="absolute inset-0">
+            <DiagramCanvas
+              insets={insets}
+              showMiniMap={wide}
+              controlsClassName={wide ? 'right-3 bottom-3' : 'right-3 bottom-24'}
+              inspectorPlacement={wide ? 'side' : 'bottom'}
+            />
+          </main>
+
+          {wide && (
+            <aside className="pointer-events-none absolute top-3 bottom-3 left-3 z-10 flex items-start">
+              <ComponentsPanel
+                open={paletteOpen}
+                onOpenChange={setPaletteOpen}
+                onAdd={addAtCentre}
+                onDrop={addAt}
+                isOverCanvas={isOverCanvas}
+              />
+            </aside>
+          )}
+
+          <div className="pointer-events-none absolute inset-x-3 top-3 bottom-24 z-10 flex flex-col items-end gap-3 md:bottom-37 md:left-auto md:w-80">
+            {graph && <DiagramCard graph={graph} />}
+            {wide && <PanelSlot placement="side" />}
+          </div>
+
+          <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex justify-center md:top-4">
+            <EditorNotice />
+          </div>
+
+          <AnimatePresence initial={false}>
+            {!(panelOpen && !wide) && (
+              <m.div
+                key="compose"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16, transition: { duration: 0.16, ease: EASE_OUT } }}
+                transition={{ duration: 0.25, ease: EASE_OUT }}
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-20"
+              >
+                {!wide && (
+                  <div className="pointer-events-none absolute bottom-24 left-3">
+                    <ComponentsSheetToggle
+                      open={paletteOpen}
+                      onOpenChange={setPaletteOpen}
+                      toggleRef={sheetToggleRef}
+                    />
+                  </div>
+                )}
+                <div className="pointer-events-none flex justify-center px-3 pb-4 md:justify-end md:pr-83 md:pl-78">
+                  <PromptDock />
+                </div>
+              </m.div>
+            )}
+          </AnimatePresence>
+
+          {!wide && (
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-30 flex justify-center">
+              <PanelSlot placement="bottom" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!wide && (
+        <ComponentsSheet
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+          toggleRef={sheetToggleRef}
+          onAdd={addAtCentre}
+          onDrop={addAt}
+          isOverCanvas={isOverCanvas}
+        />
+      )}
+      <PaletteDragGhost />
+      <PaletteDiscard />
+    </>
+  );
+}

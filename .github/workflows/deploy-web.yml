@@ -75,13 +75,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
         if: steps.pages.outputs.enabled == 'true'
 
-      - run: pnpm --filter web build
+      - run: pnpm --filter @archdraft/web build
         if: steps.pages.outputs.enabled == 'true'
 
       - uses: actions/upload-pages-artifact@v5
         if: steps.pages.outputs.enabled == 'true'
         with:
-          path: apps/web/dist
+          path: frontend/dist
 
   deploy:
     name: Deploy

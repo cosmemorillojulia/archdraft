@@ -1,6 +1,6 @@
 # Módulo: plantillas de arquitectura
 
-Vive en `packages/core/src/templates/`. Son seis arquitecturas de referencia escritas a mano con dos usos:
+Vive en `shared/src/templates/`. Son seis arquitecturas de referencia escritas a mano con dos usos:
 
 - La galería del editor (T23) y el diagrama que se carga por defecto (T08).
 - Los ejemplos del prompt de generación (few-shot, T15): el modelo aprende el formato y el nivel de detalle esperado viendo grafos completos y correctos.
@@ -10,7 +10,7 @@ Por eso cada plantilla tiene que ser a la vez realista, válida y una buena arqu
 ## Estructura
 
 ```
-packages/core/src/templates/
+shared/src/templates/
   index.ts                        # TEMPLATE_IDS, ARCHITECTURE_TEMPLATES, TemplateGraph
   three-tier-web.ts
   serverless-api.ts
@@ -78,7 +78,7 @@ Declarar los atributos tiene además valor didáctico para el few-shot: el model
 
 Los tests lo comprueban con igualdad exacta: el resultado de `parseArchitectureGraph` es el propio grafo con la lista de avisos vacía, de modo que la plantilla ya está normalizada (sin espacios que recortar ni propiedades desconocidas), y `lintGraph` devuelve una lista vacía. Una regla nueva que dispare sobre una plantilla hará fallar el test, y habrá que corregir la plantilla o justificar el hallazgo aquí.
 
-En `packages/layout` otro test calcula la disposición de las seis y comprueba que no hay solapes entre hermanos y que cada hijo queda dentro de su contenedor, que es el criterio del lienzo en T08. Además, las seis se exportaron a Mermaid y se renderizaron con `mmdc` para revisarlas a ojo antes de integrarlas.
+En `frontend/src/layout` otro test calcula la disposición de las seis y comprueba que no hay solapes entre hermanos y que cada hijo queda dentro de su contenedor, que es el criterio del lienzo en T08. Además, las seis se exportaron a Mermaid y se renderizaron con `mmdc` para revisarlas a ojo antes de integrarlas.
 
 ## Decisiones
 

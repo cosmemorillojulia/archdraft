@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- Repository layout (ADR 0021): `apps/web` is now `frontend/`, `packages/core` is now `shared/` and is published in the workspace as `@archdraft/shared`, and the ELK layout of `packages/layout` lives in `frontend/src/layout/`, the only place that uses it. The backend will go in `backend/`. Behaviour is unchanged.
+
 ### Added
 
 - `@archdraft/core`, `@archdraft/web`: connections can be drawn as curves or with right angles. A button in the view controls switches the whole diagram, and a selected connection has its own Line field (Auto, Curved or Square) in the inspector. The choice lives in the layout (`edgeStyle`, `edgeStyles`, `ownEdgeStyle`, `resolveEdgeStyle`), so it is saved, shared, undone and exported to SVG and PNG; diagrams without it stay curved.
