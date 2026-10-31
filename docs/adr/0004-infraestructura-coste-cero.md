@@ -48,4 +48,4 @@ GitHub Models se retiró por completo el 2026-07-30: ya no hay catálogo ni API 
 
 - El proveedor alternativo del Worker es cualquier API compatible con OpenAI. La comprobada es Groq (`https://api.groq.com/openai/v1`, modo `json_object` en todos sus modelos), con su clave como secreto del Worker (`LLM_BASE_URL`, `LLM_API_KEY`).
 - Las evaluaciones (T16, T17) no pueden usar el permiso `models: read` de Actions. Se ejecutarán contra Groq con una clave guardada en los secretos del repositorio, siempre que su plan gratuito siga sin pedir tarjeta; está pendiente de comprobar al hacer T17.
-- La cuota de Workers AI sigue siendo de 10.000 neurons al día; con el modelo de 70B da para unas quince generaciones (detalle en `docs/modulos/backend.md`).
+- La cuota de Workers AI sigue siendo de 10.000 neurons al día; con el modelo de 70B da para unas veinte generaciones (detalle en `docs/modulos/backend.md`).

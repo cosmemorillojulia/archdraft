@@ -99,7 +99,7 @@ Respuesta `200`, siempre con la misma forma:
 - `X-Request-Id`: se respeta el de la petición si es un slug de hasta 64 caracteres; si no, se genera uno. Vuelve en la respuesta.
 - CORS: solo los orígenes de `ALLOWED_ORIGINS` (separados por comas), con `X-Request-Id` y `Retry-After` expuestos.
 - Límite de cuerpo de 64 KB y validación con el contrato antes de llamar al modelo.
-- Un registro JSON por llamada al agente: identificador, tarea, proveedor, estado, duración, intentos y tipo de fallo. Nunca el prompt ni el diagrama.
+- Un registro JSON por llamada al agente: identificador, tarea, proveedor, estado, duración, intentos y, si falla, su tipo y su explicación. Nunca el prompt ni el diagrama.
 
 ## Proveedores
 
@@ -108,13 +108,15 @@ Respuesta `200`, siempre con la misma forma:
 | Proveedor             | Cuándo se usa                         | Modo JSON                                                              | Modelo por defecto                         |
 | --------------------- | ------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------ |
 | Workers AI (binding)  | Por defecto en el Worker              | `response_format: { type: 'json_schema', json_schema: <esquema> }`     | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` |
-| Compatible con OpenAI | Si hay `LLM_BASE_URL` y `LLM_API_KEY` | `response_format: { type: 'json_object' }`; el esquema va en el prompt | `llama-3.3-70b-versatile` (Groq)           |
+| Compatible con OpenAI | Si hay `LLM_BASE_URL` y `LLM_API_KEY` | `response_format: { type: 'json_object' }`; el esquema va en el prompt | `openai/gpt-oss-120b` (Groq)               |
 
 `LLM_MODEL` cambia el modelo de cualquiera de los dos. Datos comprobados en la documentación oficial el 2026-10-31:
 
 - Workers AI admite modo JSON en seis modelos; el de 70B es el más capaz de ellos. En modo JSON, `response` puede llegar ya como objeto: el adaptador lo convierte en texto. Si el modelo no consigue el esquema, el binding falla con «JSON Mode couldn't be met», que se trata como respuesta inválida. Los errores de cuota se tratan como límite de uso hasta las 00:00 UTC, cuando se reinicia la asignación diaria.
-- Coste del modelo de 70B: 26.668 neurons por millón de tokens de entrada y 204.805 por millón de salida. Con 10.000 neurons al día, una generación típica (unos 6.000 tokens de entrada y 2.000 de salida, unos 570 neurons) da para unas quince al día; una edición, menos. Por eso el límite por IP de T19 es necesario antes de abrir la API.
+- Coste del modelo de 70B: 26.668 neurons por millón de tokens de entrada y 204.805 por millón de salida. Con 10.000 neurons al día, una generación típica (unos 3.000 tokens de entrada, el prompt mide unos 10.400 caracteres, y 2.000 de salida: unos 490 neurons) da para unas veinte al día; una edición, menos. Por eso el límite por IP de T19 es necesario antes de abrir la API.
 - Groq acepta `json_object` en todos sus modelos; la URL base es `https://api.groq.com/openai/v1`.
+- Groq retiró `llama-3.3-70b-versatile` y `llama-3.1-8b-instant` para cuentas gratuitas el 2026-08-16 y recomienda `openai/gpt-oss-120b`, el modelo por defecto. Su plan gratuito admite 8.000 tokens por minuto y cuenta también los reservados para la respuesta, así que los límites de salida del agente (4.500 tokens para un grafo completo) dejan sitio para un prompt de unos 3.000. Los modelos y límites de Groq cambian a menudo: consultarlos en `console.groq.com/docs/models` y en la página Limits de la cuenta.
+- Cuando el proveedor rechaza una petición, el error lleva su estado y su explicación (por ejemplo, un modelo retirado o una clave inválida), y aparece en el `detail` de la respuesta y en el registro.
 - GitHub Models se retiró el 2026-07-30, así que deja de ser una opción (ver ADR 0004).
 
 ## El agente
@@ -136,7 +138,7 @@ Cada tarea es una llamada al modelo, más las reparaciones. No hay un bucle de h
 - `generate` lleva el JSON Schema del diagrama y un ejemplo, la plantilla de API serverless. Las tareas sobre un diagrama llevan el diagrama actual en JSON compacto, que ya hace de ejemplo, y no repiten la plantilla.
 - `improve` incluye los hallazgos del motor de reglas, con su sugerencia, para que el modelo parta de datos.
 - `simplify` y `extend` piden reutilizar los ids de lo que se mantiene, para que el editor conserve la disposición y muestre qué cambió.
-- Temperatura 0,2. Tokens de salida como mucho: 6.000 para un grafo completo, 3.000 para un parche y 4.000 para las mejoras. Un test limita el tamaño del mensaje de generación a 26.000 caracteres.
+- Temperatura 0,2. Tokens de salida como mucho: 4.500 para un grafo completo, 2.500 para un parche y 3.500 para las mejoras. Un test limita el tamaño del mensaje de generación a 26.000 caracteres.
 
 ## Desarrollo en local
 

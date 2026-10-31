@@ -59,7 +59,11 @@ export function createOpenAiCompatibleProvider(options: OpenAiCompatibleOptions)
         );
       }
       if (!response.ok) {
-        throw new LlmError('provider', `The model provider answered ${response.status}`);
+        const reason = await providerMessage(response);
+        throw new LlmError(
+          'provider',
+          `The model provider answered ${response.status}${reason === undefined ? '' : `: ${reason}`}`,
+        );
       }
 
       const parsed = CompletionSchema.safeParse(await response.json().catch(() => null));
@@ -70,6 +74,23 @@ export function createOpenAiCompatibleProvider(options: OpenAiCompatibleOptions)
       return content;
     },
   };
+}
+
+/** Longest part of the provider's own explanation kept in an error. */
+const MAX_REASON_LENGTH = 300;
+
+/**
+ * Why the provider refused, in its own words (`{"error":{"message":…}}`), so
+ * that a decommissioned model or a bad key can be told apart in the logs. It
+ * describes the request, never repeats its content.
+ */
+async function providerMessage(response: Response): Promise<string | undefined> {
+  const body: unknown = await response.json().catch(() => undefined);
+  const error =
+    typeof body === 'object' && body !== null && 'error' in body ? body.error : undefined;
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error ? error.message : undefined;
+  return typeof message === 'string' ? message.slice(0, MAX_REASON_LENGTH) : undefined;
 }
 
 function body(model: string, request: LlmRequest) {

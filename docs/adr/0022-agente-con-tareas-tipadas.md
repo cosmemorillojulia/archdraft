@@ -5,7 +5,7 @@
 
 ## Contexto
 
-El asistente de IA debe crear un diagrama desde cero, editar el diagrama abierto, encontrar mejoras y proponer una arquitectura más simple o más completa. Corre en el plan gratuito de Workers AI (ADR 0004): unos 10.000 neurons al día, que dan para unas quince generaciones con un modelo de 70B. Los modelos disponibles son pequeños para salida estructurada compleja. El roadmap preveía dos endpoints, `/v1/generate` y `/v1/edit`.
+El asistente de IA debe crear un diagrama desde cero, editar el diagrama abierto, encontrar mejoras y proponer una arquitectura más simple o más completa. Corre en el plan gratuito de Workers AI (ADR 0004): unos 10.000 neurons al día, que dan para unas veinte generaciones con un modelo de 70B. Los modelos disponibles son pequeños para salida estructurada compleja. El roadmap preveía dos endpoints, `/v1/generate` y `/v1/edit`.
 
 ## Decisión
 
@@ -19,7 +19,7 @@ El asistente de IA debe crear un diagrama desde cero, editar el diagrama abierto
 
 ## Alternativas consideradas
 
-- Un agente con herramientas en bucle (`add_node`, `connect`, `lint`…) que decide sus pasos: más flexible, pero cada paso es una llamada al modelo. Con quince generaciones al día, un bucle de cinco o diez pasos dejaría el asistente en un par de usos. Además, los modelos de 70B gratuitos encadenan herramientas con poca fiabilidad, y el coste y la latencia de una petición se vuelven impredecibles.
+- Un agente con herramientas en bucle (`add_node`, `connect`, `lint`…) que decide sus pasos: más flexible, pero cada paso es una llamada al modelo. Con unas veinte generaciones al día, un bucle de cinco o diez pasos dejaría el asistente en un par de usos. Además, los modelos de 70B gratuitos encadenan herramientas con poca fiabilidad, y el coste y la latencia de una petición se vuelven impredecibles.
 - Siempre grafo completo: el más sencillo de pedir, pero en un diagrama grande una edición pequeña reescribe todo, gasta tokens de salida (los caros) y arriesga cambios no pedidos.
 - Siempre operaciones: preciso para editar, pero crear un diagrama como una lista de `addNode` y `addEdge` es menos natural para el modelo y más propenso a referencias rotas.
 - Un endpoint por tarea (`/v1/generate`, `/v1/edit`, …): contratos y validaciones repetidos, y el límite de uso por IP (T19) habría que aplicarlo en cada uno.

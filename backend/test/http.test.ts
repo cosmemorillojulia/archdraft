@@ -109,7 +109,7 @@ describe('POST /v1/assist', () => {
       type: `/problems/${type}`,
       detail: error.message,
     });
-    expect(logs[0]).toMatchObject({ status, problem: error.kind });
+    expect(logs[0]).toMatchObject({ status, problem: error.kind, detail: error.message });
   });
 
   it('says when to come back after a rate limit', async () => {
@@ -193,7 +193,7 @@ describe('providerFromEnv', () => {
       LLM_BASE_URL: 'https://api.groq.com/openai/v1',
       LLM_API_KEY: 'key',
     });
-    expect(provider?.name).toBe('openai-compatible:llama-3.3-70b-versatile');
+    expect(provider?.name).toBe('openai-compatible:openai/gpt-oss-120b');
   });
 
   it('uses Workers AI otherwise, with the model asked for', () => {

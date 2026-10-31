@@ -101,6 +101,26 @@ describe('createOpenAiCompatibleProvider', () => {
     });
   });
 
+  it('keeps the explanation of the provider when it refuses', async () => {
+    const { provider } = providerAnswering(() =>
+      Promise.resolve(
+        Response.json(
+          {
+            error: {
+              message: 'The model `old` has been decommissioned',
+              type: 'invalid_request_error',
+            },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+    expect(await failure(provider.complete(REQUEST))).toMatchObject({
+      kind: 'provider',
+      message: 'The model provider answered 400: The model `old` has been decommissioned',
+    });
+  });
+
   it('reports a server error as a provider failure', async () => {
     const { provider } = providerAnswering(() =>
       Promise.resolve(new Response('', { status: 500 })),

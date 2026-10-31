@@ -18,8 +18,11 @@ export interface Env {
   readonly LLM_API_KEY?: string;
 }
 
-/** Default model of the OpenAI-compatible provider, which is Groq unless said otherwise. */
-export const DEFAULT_OPENAI_COMPATIBLE_MODEL = 'llama-3.3-70b-versatile';
+/**
+ * Default model of the OpenAI-compatible provider, which is Groq unless said otherwise.
+ * Groq shut down `llama-3.3-70b-versatile` for free accounts on 2026-08-16 and points to this one.
+ */
+export const DEFAULT_OPENAI_COMPATIBLE_MODEL = 'openai/gpt-oss-120b';
 
 /** Longest a call to the model may take; well within the wall time a Worker is given. */
 export const MODEL_TIMEOUT_MS = 60_000;

@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@archdraft/api`: the default Groq model is `openai/gpt-oss-120b`, since Groq shut down `llama-3.3-70b-versatile` for free accounts; answers reserve fewer tokens to fit the 8,000 tokens a minute of its free plan, and provider refusals carry the status and the explanation of the provider in the response and the log.
+
 - Local settings in two files at the root: `.env.defaults` (committed, no secrets: the API address of the editor and the Groq URL) and `.env.secrets` (ignored by git, template in `.env.secrets.example`: the Groq key). `make api` runs the API with Groq without a Cloudflare account; `make api-remote` runs it with Workers AI.
 
 - `@archdraft/web`: the AI assistant. The description bar creates a diagram when the canvas is empty (or with New diagram on) and changes the open one otherwise; the assistant menu asks for improvements, a simpler design or a more complete one, offered in a panel with Apply and Discard. What changes is outlined on the canvas, every change is one undo step, the layout of what stays is kept, and improvements made of edits apply on top of each other. Errors and warnings are worded in English and Spanish. The assistant only appears in builds with `VITE_API_URL`.

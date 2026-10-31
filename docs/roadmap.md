@@ -393,7 +393,7 @@ Objetivo: comparar modelos y elegir el de producción con datos.
 
 Entregables: workflow `evals.yml` manual y semanal contra Groq, con la clave en los secretos del repositorio; informe como artefacto y resumen del job; resultados de al menos dos modelos en `docs/evaluacion.md`.
 
-Criterios de aceptación: ADR con el modelo por defecto y su justificación numérica. Limitación conocida: GitHub Models se retiró el 2026-07-30, así que el permiso `models: read` ya no sirve. Desde Actions se evalúan modelos de Groq; si el modelo de Workers AI no está allí, se evalúa el equivalente más cercano (Llama 3.3 70B en los dos) y se indica. Antes, comprobar que el plan gratuito de Groq sigue sin pedir tarjeta.
+Criterios de aceptación: ADR con el modelo por defecto y su justificación numérica. Limitación conocida: GitHub Models se retiró el 2026-07-30, así que el permiso `models: read` ya no sirve. Desde Actions se evalúan modelos de Groq; si el modelo de Workers AI no está allí, se evalúa el equivalente más cercano y se indica. Groq retiró Llama 3.3 70B para cuentas gratuitas el 2026-08-16, así que el modelo de Workers AI y el de Groq ya no coinciden: hay que medir los dos. Antes, comprobar que el plan gratuito de Groq sigue sin pedir tarjeta.
 
 ### T18. Operaciones de edición y tarea edit
 

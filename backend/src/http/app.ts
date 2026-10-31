@@ -17,6 +17,8 @@ export interface AssistLogEntry {
   readonly durationMs: number;
   readonly attempts?: number;
   readonly problem?: string;
+  /** What failed, in the words of the agent or the provider; never the prompt. */
+  readonly detail?: string;
 }
 
 export interface AppDependencies {
@@ -117,6 +119,7 @@ export function createApp(dependencies: AppDependencies = {}) {
           status: response.status,
           durationMs: now() - started,
           problem: error.kind,
+          detail: error.message,
         });
         return response;
       }

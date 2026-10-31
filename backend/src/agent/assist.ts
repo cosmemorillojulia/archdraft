@@ -57,8 +57,12 @@ function jsonSchemaOf(schema: z.ZodType): object {
   return built;
 }
 
-/** A diagram is long; a list of edits is shorter. Limits keep a runaway answer in the quota. */
-const MAX_TOKENS = { graph: 6000, patch: 3000, improve: 4000 } as const;
+/**
+ * A diagram is long; a list of edits is shorter. Limits keep a runaway answer in the quota,
+ * and leave room for a prompt of some 3,000 tokens within the 8,000 tokens a minute of the
+ * free plan of Groq, which counts the tokens reserved for the answer too.
+ */
+const MAX_TOKENS = { graph: 4500, patch: 2500, improve: 3500 } as const;
 const TEMPERATURE = 0.2;
 
 export async function assist(
