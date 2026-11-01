@@ -1,4 +1,4 @@
-import { type LintSeverity, NODE_SIDES, type NodeSide } from '@archdraft/shared';
+import { isContainerKind, type LintSeverity, NODE_SIDES, type NodeSide } from '@archdraft/shared';
 import {
   Background,
   BackgroundVariant,
@@ -12,7 +12,15 @@ import {
   type XYPosition,
 } from '@xyflow/react';
 import { AnimatePresence, m } from 'motion/react';
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { containerAt, fitResize, subtreeOf } from '../editor/operations.ts';
 import { editorStore, isInspectorExpanded, type Snapshot, useEditor } from '../editor/store.ts';
 import { useAssistant } from '../ai/assistant-store.ts';
@@ -172,6 +180,10 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const dropTargetId = nodeDropTargetId ?? paletteDropTargetId;
   // Like a drag, a resize in progress lives here and reaches the store when it ends.
   const [resizing, setResizing] = useState<{ id: string; box: NodeBox } | null>(null);
+  // A box being drawn to choose the nodes inside it, in pixels of the canvas.
+  const [marquee, setMarquee] = useState<{ from: XYPosition; to: XYPosition } | null>(null);
+  /** Set when a box has just been drawn, so the click that ends it does not clear the choice. */
+  const marqueeDrawn = useRef(false);
   const resize = useCallback((id: string, box: NodeBox, done: boolean) => {
     if (done) {
       editorStore.getState().resizeNode(id, box);
@@ -563,6 +575,67 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     },
   );
 
+  // Ctrl, Cmd or Shift and a drag on the empty canvas draws a box: the nodes wholly inside it join
+  // the chosen ones. Groups do not, since they stay put when the chosen nodes move.
+  const onMarqueeStart = (event: ReactPointerEvent) => {
+    if (!(event.ctrlKey || event.metaKey || event.shiftKey)) return;
+    if (event.button !== 0 || event.pointerType === 'touch') return;
+    const element = containerRef.current;
+    if (!element || !(event.target as Element).classList.contains('react-flow__pane')) return;
+    // Before React Flow pans the view: without the mouse events that follow, it never starts.
+    event.preventDefault();
+    event.stopPropagation();
+    const origin = element.getBoundingClientRect();
+    const local = (point: { clientX: number; clientY: number }) => ({
+      x: point.clientX - origin.left,
+      y: point.clientY - origin.top,
+    });
+    const from = local(event);
+    let to = from;
+    const onMove = (move: PointerEvent) => {
+      to = local(move);
+      setMarquee({ from, to });
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      setMarquee(null);
+      if (Math.abs(to.x - from.x) < DRAG_THRESHOLD && Math.abs(to.y - from.y) < DRAG_THRESHOLD) {
+        return;
+      }
+      marqueeDrawn.current = true;
+      setTimeout(() => {
+        marqueeDrawn.current = false;
+      });
+      const start = flow.screenToFlowPosition({
+        x: origin.left + Math.min(from.x, to.x),
+        y: origin.top + Math.min(from.y, to.y),
+      });
+      const end = flow.screenToFlowPosition({
+        x: origin.left + Math.max(from.x, to.x),
+        y: origin.top + Math.max(from.y, to.y),
+      });
+      const inside = diagram.graph.nodes.filter((node) => {
+        const box = boxes.get(node.id);
+        return (
+          !isContainerKind(node.kind) &&
+          box !== undefined &&
+          box.x >= start.x &&
+          box.y >= start.y &&
+          box.x + box.width <= end.x &&
+          box.y + box.height <= end.y
+        );
+      });
+      if (inside.length === 0) return;
+      reviewStore.getState().setOpen(false);
+      editorStore.getState().selectNodes(inside.map((node) => node.id));
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
+
   // Enter or Space on a focused node or edge selects it, which opens the inspector.
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -585,6 +658,10 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
         className="absolute inset-0"
         onPointerDownCapture={(event) => {
           pointerType.current = event.pointerType;
+          onMarqueeStart(event);
+        }}
+        onClickCapture={(event) => {
+          if (marqueeDrawn.current) event.stopPropagation();
         }}
         onKeyDown={onKeyDown}
       >
@@ -644,6 +721,18 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
             />
           )}
         </ReactFlow>
+        {marquee && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute z-10 rounded-[2px] border border-accent bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+            style={{
+              left: Math.min(marquee.from.x, marquee.to.x),
+              top: Math.min(marquee.from.y, marquee.to.y),
+              width: Math.abs(marquee.to.x - marquee.from.x),
+              height: Math.abs(marquee.to.y - marquee.from.y),
+            }}
+          />
+        )}
         <div className={`pointer-events-none absolute z-10 ${controlsClassName}`}>
           <CanvasControls
             onFit={fit}

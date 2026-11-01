@@ -65,6 +65,13 @@ describe('choosing several nodes', () => {
     expect(store.getState().group).toEqual([]);
   });
 
+  it('adds the nodes inside a drawn box to the ones already chosen', () => {
+    const store = loaded();
+    store.getState().select({ type: 'node', id: 'user' });
+    store.getState().selectNodes(['api', 'user']);
+    expect(store.getState().group).toEqual(['user', 'api']);
+    expect(store.getState().selection).toEqual({ type: 'node', id: 'api' });
+  });
 });
 
 describe('moving with the arrow keys', () => {

@@ -142,6 +142,8 @@ export interface EditorActions {
   toggleSelected: (id: string) => void;
   /** Moves the nodes of the group, or any others, together. */
   moveNodes: (moves: readonly { id: string; position: Point }[]) => void;
+  /** Adds nodes to the group of chosen nodes, as a box drawn around them does. */
+  selectNodes: (ids: readonly string[]) => void;
   /**
    * Moves the selected node, or the group, by `delta`. A move that `continues` the last one,
    * as when an arrow key is held down, joins its step of the history.
@@ -365,6 +367,19 @@ export function createEditorStore() {
         });
       },
       moveNodes: (moves) => apply((document) => moveNodes(document, moves)),
+      selectNodes: (ids) => {
+        const { selection, group } = get();
+        const chosen = group.length > 1 ? group : selection?.type === 'node' ? [selection.id] : [];
+        const next = [...chosen, ...ids.filter((id) => !chosen.includes(id))];
+        const last = next.at(-1);
+        set({
+          selection: last === undefined ? null : { type: 'node', id: last },
+          group: next.length > 1 ? next : [],
+          connectingFrom: null,
+          renaming: null,
+          placed: null,
+        });
+      },
       nudgeSelection: (delta, continues) => {
         const { selection, group } = get();
         const ids = group.length > 1 ? group : selection?.type === 'node' ? [selection.id] : [];
