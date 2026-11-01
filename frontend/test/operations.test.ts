@@ -614,23 +614,23 @@ describe('text fixed to a box', () => {
 });
 
 describe('edge styles', () => {
-  const square = edited(setDefaultEdgeStyle(document, 'square'));
+  const curved = edited(setDefaultEdgeStyle(document, 'curved'));
 
   it('sets the style of the diagram, and stores the default one as nothing', () => {
-    expect(square.layout.edgeStyle).toBe('square');
-    const back = edited(setDefaultEdgeStyle(square, 'curved'));
+    expect(curved.layout.edgeStyle).toBe('curved');
+    const back = edited(setDefaultEdgeStyle(curved, 'square'));
     expect(back.layout).toEqual(document.layout);
     expect(back.layout).not.toHaveProperty('edgeStyle');
   });
 
   it('changes nothing when the diagram already has that style', () => {
-    expect(setDefaultEdgeStyle(document, 'curved')).toEqual({ ok: true, document });
-    expect(setDefaultEdgeStyle(square, 'square')).toEqual({ ok: true, document: square });
+    expect(setDefaultEdgeStyle(document, 'square')).toEqual({ ok: true, document });
+    expect(setDefaultEdgeStyle(curved, 'curved')).toEqual({ ok: true, document: curved });
   });
 
   it('gives one connection a style of its own, and takes it back', () => {
-    const own = edited(setEdgeStyle(document, 'api-db', 'square'));
-    expect(own.layout.edgeStyles).toEqual({ 'api-db': 'square' });
+    const own = edited(setEdgeStyle(document, 'api-db', 'curved'));
+    expect(own.layout.edgeStyles).toEqual({ 'api-db': 'curved' });
     expect(own.layout).not.toHaveProperty('edgeStyle');
     const followed = edited(setEdgeStyle(own, 'api-db', undefined));
     expect(followed.layout).toEqual(document.layout);
@@ -638,22 +638,22 @@ describe('edge styles', () => {
   });
 
   it('keeps the style of a connection when the diagram changes style', () => {
-    const own = edited(setEdgeStyle(document, 'api-db', 'curved'));
-    expect(edited(setDefaultEdgeStyle(own, 'square')).layout.edgeStyles).toEqual({
-      'api-db': 'curved',
+    const own = edited(setEdgeStyle(document, 'api-db', 'square'));
+    expect(edited(setDefaultEdgeStyle(own, 'curved')).layout.edgeStyles).toEqual({
+      'api-db': 'square',
     });
   });
 
   it('changes nothing for a connection that does not exist or has that style already', () => {
-    expect(setEdgeStyle(document, 'ghost', 'square')).toEqual({ ok: true, document });
+    expect(setEdgeStyle(document, 'ghost', 'curved')).toEqual({ ok: true, document });
     expect(setEdgeStyle(document, 'api-db', undefined)).toEqual({ ok: true, document });
-    const own = edited(setEdgeStyle(document, 'api-db', 'square'));
-    expect(setEdgeStyle(own, 'api-db', 'square')).toEqual({ ok: true, document: own });
+    const own = edited(setEdgeStyle(document, 'api-db', 'curved'));
+    expect(setEdgeStyle(own, 'api-db', 'curved')).toEqual({ ok: true, document: own });
   });
 
   it('survive the other edits of the layout', () => {
-    const styled = edited(setEdgeStyle(square, 'api-db', 'curved'));
-    const kept = { edgeStyle: 'square', edgeStyles: { 'api-db': 'curved' } };
+    const styled = edited(setEdgeStyle(curved, 'api-db', 'square'));
+    const kept = { edgeStyle: 'curved', edgeStyles: { 'api-db': 'square' } };
     expect(edited(addNode(styled, 'cache', { x: 100, y: 600 })).layout).toMatchObject(kept);
     expect(edited(moveNode(styled, 'api', { x: 80, y: 90 })).layout).toMatchObject(kept);
     expect(
@@ -665,13 +665,13 @@ describe('edge styles', () => {
 
   it('are forgotten with the connection, whether it is removed alone or with a component', () => {
     const both = edited(
-      setEdgeStyle(edited(setEdgeStyle(document, 'api-db', 'square')), 'user-api', 'square'),
+      setEdgeStyle(edited(setEdgeStyle(document, 'api-db', 'curved')), 'user-api', 'curved'),
     );
     expect(edited(remove(both, { type: 'edge', id: 'api-db' })).layout.edgeStyles).toEqual({
-      'user-api': 'square',
+      'user-api': 'curved',
     });
     expect(edited(remove(both, { type: 'node', id: 'db' })).layout.edgeStyles).toEqual({
-      'user-api': 'square',
+      'user-api': 'curved',
     });
     expect(edited(remove(both, { type: 'node', id: 'vpc' })).layout).not.toHaveProperty(
       'edgeStyles',
@@ -691,14 +691,14 @@ describe('edge styles', () => {
       layout: {
         positions: { ...document.layout.positions, worker: { x: 340, y: 48 } },
         sizes: { ...document.layout.sizes, worker: DEFAULT_NODE_SIZE },
-        edgeStyles: { 'api-worker': 'square', 'api-db': 'square' },
+        edgeStyles: { 'api-worker': 'curved', 'api-db': 'curved' },
       },
     };
     const next = edited(duplicate(withInner, 'vpc'));
     expect(next.layout.edgeStyles).toEqual({
-      'api-worker': 'square',
-      'api-db': 'square',
-      'api-2-worker-2': 'square',
+      'api-worker': 'curved',
+      'api-db': 'curved',
+      'api-2-worker-2': 'curved',
     });
   });
 });

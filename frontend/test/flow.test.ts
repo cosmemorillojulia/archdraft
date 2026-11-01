@@ -126,11 +126,11 @@ describe('toFlow', () => {
   it('gives each edge its own style, or else the one of the diagram', () => {
     const styles = (styled: DiagramLayout) =>
       toFlow({ graph, layout: styled }, 'LR').edges.map((edge) => edge.data?.style);
-    expect(styles(layout)).toEqual(['curved', 'curved', 'curved']);
-    expect(styles({ ...layout, edgeStyle: 'square', edgeStyles: { e2: 'curved' } })).toEqual([
-      'square',
+    expect(styles(layout)).toEqual(['square', 'square', 'square']);
+    expect(styles({ ...layout, edgeStyle: 'curved', edgeStyles: { e2: 'square' } })).toEqual([
       'curved',
       'square',
+      'curved',
     ]);
   });
 

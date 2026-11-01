@@ -172,21 +172,21 @@ describe('Inspector', () => {
     // The mode has an Auto option too, so the choice is looked up in its own group.
     const line = within(panel).getByRole('radiogroup', { name: strings.inspector.edgeStyle });
     expect(
-      within(panel).getByText(strings.inspector.edgeStyleFollows('curved')),
-    ).toBeInTheDocument();
-
-    act(() => editorStore.getState().setDefaultEdgeStyle('square'));
-    expect(
       within(panel).getByText(strings.inspector.edgeStyleFollows('square')),
     ).toBeInTheDocument();
 
-    await user.click(within(line).getByLabelText(strings.inspector.edgeStyles.curved));
-    expect(layout()?.edgeStyles).toEqual({ 'api-db': 'curved' });
+    act(() => editorStore.getState().setDefaultEdgeStyle('curved'));
+    expect(
+      within(panel).getByText(strings.inspector.edgeStyleFollows('curved')),
+    ).toBeInTheDocument();
+
+    await user.click(within(line).getByLabelText(strings.inspector.edgeStyles.square));
+    expect(layout()?.edgeStyles).toEqual({ 'api-db': 'square' });
     expect(within(panel).queryByText(/Follows the diagram/)).not.toBeInTheDocument();
 
     await user.click(within(line).getByLabelText(strings.inspector.edgeStyles.auto));
     expect(layout()?.edgeStyles).toBeUndefined();
-    expect(layout()?.edgeStyle).toBe('square');
+    expect(layout()?.edgeStyle).toBe('curved');
   });
 
   it('deletes the selection and closes', async () => {

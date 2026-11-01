@@ -141,24 +141,24 @@ describe('the style of connections in the layout', () => {
   });
 
   describe('resolveEdgeStyle', () => {
-    it('is curved when nothing says otherwise', () => {
-      expect(resolveEdgeStyle(base, 'api-db')).toBe('curved');
+    it('is square when nothing says otherwise', () => {
+      expect(resolveEdgeStyle(base, 'api-db')).toBe('square');
     });
 
     it('follows the style of the diagram', () => {
-      expect(resolveEdgeStyle({ ...base, edgeStyle: 'square' }, 'api-db')).toBe('square');
+      expect(resolveEdgeStyle({ ...base, edgeStyle: 'curved' }, 'api-db')).toBe('curved');
     });
 
     it('prefers the style of the connection to the one of the diagram', () => {
-      const layout = { ...base, edgeStyle: 'square', edgeStyles: { 'api-db': 'curved' } } as const;
-      expect(resolveEdgeStyle(layout, 'api-db')).toBe('curved');
-      expect(resolveEdgeStyle(layout, 'other')).toBe('square');
+      const layout = { ...base, edgeStyle: 'curved', edgeStyles: { 'api-db': 'square' } } as const;
+      expect(resolveEdgeStyle(layout, 'api-db')).toBe('square');
+      expect(resolveEdgeStyle(layout, 'other')).toBe('curved');
     });
 
     it.each(['constructor', 'toString', '__proto__'])(
       'ignores what an id such as %s inherits from Object.prototype',
       (id) => {
-        expect(resolveEdgeStyle({ ...base, edgeStyles: {} }, id)).toBe('curved');
+        expect(resolveEdgeStyle({ ...base, edgeStyles: {} }, id)).toBe('square');
       },
     );
   });

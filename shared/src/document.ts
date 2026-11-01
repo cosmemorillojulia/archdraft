@@ -27,7 +27,7 @@ export type EdgeStyle = (typeof EDGE_STYLES)[number];
 export const EdgeStyleSchema = z.enum(EDGE_STYLES);
 
 /** The style of a diagram that does not choose one. */
-export const DEFAULT_EDGE_STYLE: EdgeStyle = 'curved';
+export const DEFAULT_EDGE_STYLE: EdgeStyle = 'square';
 
 /** A side of a node, which a connection can leave from or arrive at. */
 export const NODE_SIDES = ['left', 'right', 'top', 'bottom'] as const;

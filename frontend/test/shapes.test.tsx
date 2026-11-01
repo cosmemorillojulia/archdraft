@@ -133,18 +133,18 @@ describe('edge style', () => {
     const view = screen.getByRole('group', { name: strings.canvas.shortcuts.label });
     const layout = () => editorStore.getState().current?.document.layout;
     await waitFor(() => expect(lines(diagram).length).toBeGreaterThan(0));
-    expect(lines(diagram).every((d) => d.includes('C'))).toBe(true);
-
-    await user.click(within(view).getByRole('button', { name: strings.canvas.edgeStyle.toSquare }));
-    expect(layout()?.edgeStyle).toBe('square');
-    await waitFor(() => expect(lines(diagram).some((d) => d.includes('C'))).toBe(false));
+    expect(lines(diagram).some((d) => d.includes('C'))).toBe(false);
 
     await user.click(within(view).getByRole('button', { name: strings.canvas.edgeStyle.toCurved }));
-    expect(layout()).not.toHaveProperty('edgeStyle');
+    expect(layout()?.edgeStyle).toBe('curved');
     await waitFor(() => expect(lines(diagram).every((d) => d.includes('C'))).toBe(true));
 
+    await user.click(within(view).getByRole('button', { name: strings.canvas.edgeStyle.toSquare }));
+    expect(layout()).not.toHaveProperty('edgeStyle');
+    await waitFor(() => expect(lines(diagram).some((d) => d.includes('C'))).toBe(false));
+
     act(() => editorStore.getState().undo());
-    expect(layout()?.edgeStyle).toBe('square');
+    expect(layout()?.edgeStyle).toBe('curved');
   });
 });
 

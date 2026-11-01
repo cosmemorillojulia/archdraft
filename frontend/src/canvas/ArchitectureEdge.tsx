@@ -1,5 +1,5 @@
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
-import { AnimatePresence, m, useReducedMotion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { memo, useState } from 'react';
 import { EASE_OUT } from '../motion.ts';
 import { useStrings } from '../i18n/locale.ts';
@@ -40,7 +40,6 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
 }: EdgeProps<ArchitectureFlowEdge>) {
   const strings = useStrings();
   const canvas = useCanvas();
-  const reduceMotion = useReducedMotion() === true;
   // Drawing in uses a normalised dash, which Chromium does not rescale when the path changes
   // length (a node moved); once drawn, the line is a plain path.
   const [drawn, setDrawn] = useState(false);
@@ -131,7 +130,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.15, delay: delay + (canvas.building ? DRAW_S * 0.8 : 0) }}
         />
-        {canvas.particles && !reduceMotion && (
+        {canvas.particles && (
           <m.circle
             r={async ? 2.25 : 2.5}
             style={{ fill: `var(--cat-${sourceCategory})` }}

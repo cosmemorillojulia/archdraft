@@ -70,7 +70,10 @@ describe('the handles of a selected connection', () => {
   });
 
   it('bend a curve through the point the middle dot is let go at, as one edit that can be undone', async () => {
-    const diagram = await openSelected();
+    const diagram = await openSelected({
+      ...pair,
+      layout: { ...pair.layout, edgeStyle: 'curved' },
+    });
     const dot = await handle(strings.canvas.edgeHandles.bend);
     drag(dot, onScreen(diagram, { x: 300, y: 40 }));
 
