@@ -7,6 +7,7 @@ import {
   type EdgeStyle,
   isContainerKind,
   type NodeKind,
+  type NodeSide,
   type Point,
   type Size,
   type TemplateId,
@@ -34,6 +35,7 @@ import {
   removeNodes,
   type Selection,
   setDefaultEdgeStyle,
+  reconnect,
   setEdgeRoute,
   setEdgeStyle,
   type DiagramPatch,
@@ -111,6 +113,8 @@ export interface EditorActions {
   addNode: (kind: NodeKind, centre: Point, options?: { size?: Size; exact?: boolean }) => void;
   /** Connects two nodes; `sides` keeps the sides the connection was drawn from and to. */
   connect: (source: string, target: string, sides?: ConnectionSides) => void;
+  /** Moves one end of a connection to another node, by `side` of it or the one that fits best. */
+  reconnect: (id: string, end: 'source' | 'target', node: string, side?: NodeSide) => void;
   moveNode: (id: string, position: Point) => void;
   resizeNode: (id: string, box: Point & Size) => void;
   updateNode: (id: string, patch: NodePatch) => void;
@@ -305,6 +309,8 @@ export function createEditorStore() {
       },
       connect: (source, target, sides) =>
         apply((document) => connect(document, source, target, sides)),
+      reconnect: (id, end, node, side) =>
+        apply((document) => reconnect(document, id, end, node, side)),
       moveNode: (id, position) => apply((document) => moveNode(document, id, position)),
       resizeNode: (id, box) => apply((document) => resizeNode(document, id, box)),
       updateNode: (id, patch) => apply((document) => updateNode(document, id, patch)),

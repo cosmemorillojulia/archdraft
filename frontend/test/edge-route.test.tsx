@@ -54,50 +54,88 @@ function drag(element: HTMLElement, to: { clientX: number; clientY: number }) {
 }
 
 describe('the handles of a selected connection', () => {
-  it('show a dot at each end and one in the middle, only while it is selected', async () => {
+  it('show a dot at each end and one on each part of a right-angled line, only while it is selected', async () => {
     const diagram = await openSelected();
     expect(await handle(strings.canvas.edgeHandles.source)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: strings.canvas.edgeHandles.target })).toBeVisible();
-    expect(screen.getByRole('button', { name: strings.canvas.edgeHandles.bend })).toBeVisible();
+    // Out of `web`, across, and into `api`.
+    expect(
+      screen.getAllByRole('button', { name: strings.canvas.edgeHandles.segment }),
+    ).toHaveLength(3);
 
     act(() => editorStore.getState().select(null));
     await waitFor(() =>
       expect(
-        screen.queryByRole('button', { name: strings.canvas.edgeHandles.bend }),
+        screen.queryByRole('button', { name: strings.canvas.edgeHandles.segment }),
       ).not.toBeInTheDocument(),
     );
     expect(diagram.querySelectorAll('.react-flow__edge')).toHaveLength(1);
   });
 
-  it('bend a curve through the point the middle dot is let go at, as one edit that can be undone', async () => {
+  it('bend a curve through a new point where the middle dot is let go, as one edit that can be undone', async () => {
     const diagram = await openSelected({
       ...pair,
       layout: { ...pair.layout, edgeStyle: 'curved' },
     });
-    const dot = await handle(strings.canvas.edgeHandles.bend);
+    const dot = await handle(strings.canvas.edgeHandles.addPoint);
     drag(dot, onScreen(diagram, { x: 300, y: 40 }));
 
-    const bend = route()?.bend;
-    expect(bend).toBeDefined();
-    expect(Math.hypot(bend?.x ?? 0, bend?.y ?? 0)).toBeGreaterThan(1);
+    const [point] = route()?.points ?? [];
+    expect(point?.x).toBeCloseTo(300, 0);
+    expect(point?.y).toBeCloseTo(40, 0);
     const path = diagram.querySelector('.react-flow__edge path[fill="none"]');
     // Two parts of a curve now meet at the point, instead of the one the default curve has.
     expect(path?.getAttribute('d')?.match(/C/g)).toHaveLength(2);
+    // The point can be moved, and there is a place to add another on each side of it.
+    expect(await handle(strings.canvas.edgeHandles.point)).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('button', { name: strings.canvas.edgeHandles.addPoint }),
+    ).toHaveLength(2);
 
     act(() => editorStore.getState().undo());
     expect(route()).toBeUndefined();
   });
 
-  it('move the crossing segment of a right-angled connection, and only along its direction', async () => {
+  it('take a point of a curve away with a double click', async () => {
+    await openSelected({
+      ...pair,
+      layout: {
+        ...pair.layout,
+        edgeStyle: 'curved',
+        edgeRoutes: { 'web-api': { points: [{ x: 300, y: 40 }] } },
+      },
+    });
+    fireEvent.doubleClick(await handle(strings.canvas.edgeHandles.point));
+    expect(route()).toBeUndefined();
+  });
+
+  it('move a part of a right-angled connection, and only across its direction', async () => {
     const diagram = await openSelected({
       ...pair,
       layout: { ...pair.layout, edgeStyle: 'square' },
     });
-    const dot = await handle(strings.canvas.edgeHandles.bend);
-    drag(dot, onScreen(diagram, { x: 330, y: 500 }));
-    // `web` leaves by the right and `api` is entered from the left, so the segment moves sideways.
-    expect(route()?.bend?.y).toBe(0);
-    expect(route()?.bend?.x).toBeGreaterThan(0);
+    const [, across] = await screen.findAllByRole('button', {
+      name: strings.canvas.edgeHandles.segment,
+    });
+    if (!across) throw new Error('No handle for the middle part');
+    drag(across, onScreen(diagram, { x: 330, y: 500 }));
+    // `web` leaves by the right and `api` is entered from the left, so the part moves sideways.
+    // jsdom does not lay out the connection points, so only the moved coordinate is certain.
+    const points = route()?.points ?? [];
+    expect(points.map((point) => point.x)).toEqual([330, 330]);
+    expect(points[0]?.y).not.toBe(points[1]?.y);
+  });
+
+  it('change nothing when a handle is pressed without being dragged', async () => {
+    const diagram = await openSelected();
+    const [, across] = await screen.findAllByRole('button', {
+      name: strings.canvas.edgeHandles.segment,
+    });
+    if (!across) throw new Error('No handle for the middle part');
+    const at = onScreen(diagram, { x: 0, y: 0 });
+    fireEvent.pointerDown(across, { button: 0, pointerId: 1, ...at });
+    fireEvent.pointerUp(across, { pointerId: 1, ...at });
+    expect(route()).toBeUndefined();
   });
 
   it('attach an end to the side of its node the dot is let go nearest to', async () => {
@@ -139,6 +177,40 @@ describe('the handles of a selected connection', () => {
     expect(route()).toEqual({ bend: { x: 20, y: 20 } });
     drag(await handle(strings.canvas.edgeHandles.source), onScreen(diagram, { x: 90, y: -40 }));
     expect(route()).toEqual({ source: 'top' });
+  });
+
+  it('move an end onto another node, arriving by the side that fits or the one it is let go at', async () => {
+    const third: DiagramDocument = {
+      graph: {
+        ...pair.graph,
+        nodes: [...pair.graph.nodes, { id: 'db', kind: 'service', label: 'Db' }],
+      },
+      layout: {
+        positions: { ...pair.layout.positions, db: { x: 800, y: 0 } },
+        sizes: { ...pair.layout.sizes, db: { width: 180, height: 64 } },
+      },
+    };
+    const diagram = await openSelected(third);
+    const edge = () =>
+      editorStore.getState().current?.document.graph.edges.find((item) => item.id === 'web-api');
+    // The middle of `db`: the side is left to choose.
+    drag(await handle(strings.canvas.edgeHandles.target), onScreen(diagram, { x: 890, y: 32 }));
+    expect(edge()).toMatchObject({ source: 'web', target: 'db' });
+    expect(route()).toBeUndefined();
+    expect(editorStore.getState().selection).toEqual({ type: 'edge', id: 'web-api' });
+
+    // Back to `api`, by the middle of its top side.
+    drag(await handle(strings.canvas.edgeHandles.target), onScreen(diagram, { x: 492, y: 204 }));
+    expect(edge()).toMatchObject({ source: 'web', target: 'api' });
+    expect(route()).toEqual({ target: 'top' });
+  });
+
+  it('do not connect a node to itself', async () => {
+    const diagram = await openSelected();
+    drag(await handle(strings.canvas.edgeHandles.target), onScreen(diagram, { x: 90, y: 32 }));
+    const edges = editorStore.getState().current?.document.graph.edges;
+    expect(edges).toEqual([{ id: 'web-api', source: 'web', target: 'api' }]);
+    expect(route()).toBeUndefined();
   });
 
   it('can all be taken back from the inspector', async () => {

@@ -21,6 +21,7 @@ import {
   duplicate,
   type Edit,
   moveNode,
+  reconnect,
   fitResize,
   MIN_SIZES,
   minSizeOf,
@@ -265,6 +266,44 @@ describe('connect', () => {
   it('leaves connections to groups for validation to reject', () => {
     const next = edited(connect(document, 'user', 'vpc'));
     expect(errorsOf(next).map((issue) => issue.code)).toEqual(['EDGE_ENDPOINT_IS_CONTAINER']);
+  });
+});
+
+describe('reconnect', () => {
+  it('moves one end to another node, keeping the connection and its other side', () => {
+    const routed = edited(
+      setEdgeRoute(document, 'api-db', {
+        source: 'top',
+        target: 'left',
+        points: [{ x: 5, y: 5 }],
+      }),
+    );
+    const edit = reconnect(routed, 'api-db', 'target', 'user');
+    const next = edited(edit);
+    expect(next.graph.edges.find((edge) => edge.id === 'api-db')).toMatchObject({
+      source: 'api',
+      target: 'user',
+      protocol: 'sql',
+    });
+    // The points were put for the old end; the side of the end that moved is chosen again.
+    expect(next.layout.edgeRoutes).toEqual({ 'api-db': { source: 'top' } });
+    expect(edit.ok && edit.selection).toEqual({ type: 'edge', id: 'api-db' });
+  });
+
+  it('arrives by the side it was let go at', () => {
+    const next = edited(reconnect(document, 'api-db', 'source', 'user', 'bottom'));
+    expect(next.graph.edges.find((edge) => edge.id === 'api-db')?.source).toBe('user');
+    expect(next.layout.edgeRoutes).toEqual({ 'api-db': { source: 'bottom' } });
+  });
+
+  it('refuses to repeat a connection, and does not connect a node to itself', () => {
+    const withUserDb = edited(connect(document, 'user', 'db'));
+    expect(reconnect(withUserDb, 'api-db', 'source', 'user')).toEqual({
+      ok: false,
+      reason: strings.edit.alreadyConnected,
+    });
+    expect(reconnect(document, 'api-db', 'target', 'api')).toEqual({ ok: true, document });
+    expect(reconnect(document, 'ghost', 'target', 'db')).toEqual({ ok: true, document });
   });
 });
 
@@ -783,6 +822,53 @@ describe('edge routes', () => {
     ).toMatchObject(kept);
     expect(edited(setEdgeStyle(routed, 'api-db', 'square')).layout).toMatchObject(kept);
     expect(edited(remove(routed, { type: 'node', id: 'user' })).layout).toMatchObject(kept);
+  });
+
+  it('keep the points a connection passes through, to the half pixel, and none as nothing', () => {
+    const routed = edited(
+      setEdgeRoute(document, 'api-db', {
+        points: [
+          { x: 10.26, y: 20 },
+          { x: 30, y: 40.7 },
+        ],
+      }),
+    );
+    expect(routed.layout.edgeRoutes?.['api-db']).toEqual({
+      points: [
+        { x: 10.5, y: 20 },
+        { x: 30, y: 40.5 },
+      ],
+    });
+    expect(edited(setEdgeRoute(routed, 'api-db', { points: [] })).layout).toEqual(document.layout);
+  });
+
+  it('move their points with a connection whose two ends move together', () => {
+    const routed = edited(setEdgeRoute(document, 'api-db', { points: [{ x: 700, y: 500 }] }));
+    const points = (doc: DiagramDocument) => doc.layout.edgeRoutes?.['api-db']?.points;
+    // One end alone: the points stay where they were put.
+    expect(points(edited(moveNode(routed, 'db', { x: 1100, y: 100 })))).toEqual([
+      { x: 700, y: 500 },
+    ]);
+    // `api` is inside `region`, so moving both ends together moves them the same distance.
+    const together = edited(
+      moveNodes(routed, [
+        { id: 'region', position: { x: 350, y: 20 } },
+        { id: 'db', position: { x: 1050, y: 120 } },
+      ]),
+    );
+    expect(points(together)).toEqual([{ x: 750, y: 520 }]);
+  });
+
+  it('lose their points, not their sides, when the connection changes style', () => {
+    const routed = edited(
+      setEdgeRoute(document, 'api-db', { source: 'top', points: [{ x: 700, y: 500 }] }),
+    );
+    expect(edited(setEdgeStyle(routed, 'api-db', 'curved')).layout.edgeRoutes).toEqual({
+      'api-db': { source: 'top' },
+    });
+    expect(edited(setDefaultEdgeStyle(routed, 'curved')).layout.edgeRoutes).toEqual({
+      'api-db': { source: 'top' },
+    });
   });
 
   it('are forgotten with the connection, whether it is removed alone or with a component', () => {

@@ -18,7 +18,7 @@ import {
 } from '@archdraft/shared';
 import type { LayoutDirection } from '../layout/compute-layout.ts';
 import { groupTint } from '../canvas/appearance.ts';
-import { connectionPath } from '../canvas/edge-path.ts';
+import { connectionPath, routePoints } from '../canvas/edge-path.ts';
 import {
   absoluteBoxes,
   stackingOrder,
@@ -301,18 +301,15 @@ function connection(
   const from = sidePoint(source, sides.source);
   const to = sidePoint(target, sides.target);
   const arrow = arrowhead(to.x, to.y, sides.target);
-  const { path, labelX, labelY } = connectionPath(
-    style,
-    {
-      sourceX: from.x,
-      sourceY: from.y,
-      targetX: arrow.base.x,
-      targetY: arrow.base.y,
-      sourcePosition: sides.source,
-      targetPosition: sides.target,
-    },
-    route?.bend,
-  );
+  const ends = {
+    sourceX: from.x,
+    sourceY: from.y,
+    targetX: arrow.base.x,
+    targetY: arrow.base.y,
+    sourcePosition: sides.source,
+    targetPosition: sides.target,
+  };
+  const { path, labelX, labelY } = connectionPath(style, ends, routePoints(style, ends, route));
   const dashed = resolveEdgeMode(edge) === 'async' ? ' stroke-dasharray="5 5"' : '';
   const line =
     `<path d="${path}" fill="none" stroke="${palette.edge}" stroke-width="1.5"${dashed}/>` +

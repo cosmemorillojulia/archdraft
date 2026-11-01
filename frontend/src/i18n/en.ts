@@ -274,9 +274,11 @@ export const en = {
       toCurved: 'Draw connections as curves',
     },
     edgeHandles: {
-      source: 'Move where the connection leaves: drag it to another side',
-      target: 'Move where the connection arrives: drag it to another side',
-      bend: 'Move the middle of the connection',
+      source: 'Move where the connection leaves: drag it to another side or onto another box',
+      target: 'Move where the connection arrives: drag it to another side or onto another box',
+      segment: 'Move this part of the connection',
+      point: 'Move this point of the connection; double-click to remove it',
+      addPoint: 'Drag to bend the connection through a new point',
     },
     zoom: {
       label: 'View',

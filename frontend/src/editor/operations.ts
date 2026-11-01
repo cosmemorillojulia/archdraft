@@ -21,7 +21,9 @@ import {
   type NodeSide,
   ownEdgeRoute,
   ownEdgeStyle,
+  MAX_ROUTE_POINTS,
   type Point,
+  resolveEdgeStyle,
   type Size,
 } from '@archdraft/shared';
 import { absoluteBoxes, type Box, nestingDepths, stackingOrder } from '../canvas/geometry.ts';
@@ -495,6 +497,11 @@ export function connect(
  * new neighbours.
  */
 export function moveNode(document: DiagramDocument, id: string, position: Point): Edit {
+  const edit = moveOneNode(document, id, position);
+  return edit.ok ? { ...edit, document: carryRoutes(document, edit.document) } : edit;
+}
+
+function moveOneNode(document: DiagramDocument, id: string, position: Point): Edit {
   const { graph, layout } = document;
   const node = graph.nodes.find((candidate) => candidate.id === id);
   if (!node) return unchanged(document);
@@ -566,10 +573,45 @@ export function moveNodes(
     // Text fixed to a box that moves too goes with the box, not by itself.
     const host = document.graph.nodes.find((node) => node.id === id)?.attachedTo;
     if (host !== undefined && ids.has(host)) continue;
-    const edit = moveNode(next, id, position);
+    const edit = moveOneNode(next, id, position);
     if (edit.ok) next = edit.document;
   }
-  return next === document ? unchanged(document) : { ok: true, document: next };
+  return next === document
+    ? unchanged(document)
+    : { ok: true, document: carryRoutes(document, next) };
+}
+
+/**
+ * The points a connection was routed through are where they were put on the diagram, so they
+ * stay when one of its ends moves. When both ends move the same distance, as when they are
+ * moved together or with their group, the points go with them.
+ */
+function carryRoutes(before: DiagramDocument, after: DiagramDocument): DiagramDocument {
+  const routes = after.layout.edgeRoutes;
+  if (routes === undefined) return after;
+  const was = absoluteBoxes(before.graph, before.layout);
+  const is = absoluteBoxes(after.graph, after.layout);
+  const shift = (id: string): Point | undefined => {
+    const from = was.get(id);
+    const to = is.get(id);
+    return from && to ? { x: to.x - from.x, y: to.y - from.y } : undefined;
+  };
+  let changed = false;
+  const carried: Record<string, EdgeRoute> = { ...routes };
+  for (const edge of after.graph.edges) {
+    const route = ownEdgeRoute(after.layout, edge.id);
+    if (route?.points === undefined) continue;
+    const source = shift(edge.source);
+    const target = shift(edge.target);
+    if (!source || !target || source.x !== target.x || source.y !== target.y) continue;
+    if (source.x === 0 && source.y === 0) continue;
+    carried[edge.id] = {
+      ...route,
+      points: route.points.map((point) => ({ x: point.x + source.x, y: point.y + source.y })),
+    };
+    changed = true;
+  }
+  return changed ? { ...after, layout: withEdgeRoutes(after.layout, carried) } : after;
 }
 
 /** Smallest size a node can be resized to, by what it is, in diagram pixels. */
@@ -884,14 +926,20 @@ export function updateEdge(document: DiagramDocument, id: string, patch: EdgePat
  * style is stored as nothing, so a diagram that never chose one is unchanged.
  */
 export function setDefaultEdgeStyle(document: DiagramDocument, style: EdgeStyle): Edit {
-  const { layout } = document;
+  const { graph, layout } = document;
   if ((layout.edgeStyle ?? DEFAULT_EDGE_STYLE) === style) return unchanged(document);
   const { edgeStyle: _previous, ...rest } = layout;
+  const following = graph.edges
+    .filter((edge) => ownEdgeStyle(layout, edge.id) === undefined)
+    .map((edge) => edge.id);
   return {
     ok: true,
     document: {
       ...document,
-      layout: style === DEFAULT_EDGE_STYLE ? rest : { ...rest, edgeStyle: style },
+      layout: withoutRoutePoints(
+        style === DEFAULT_EDGE_STYLE ? rest : { ...rest, edgeStyle: style },
+        following,
+      ),
     },
   };
 }
@@ -906,13 +954,30 @@ export function setEdgeStyle(
   if (!graph.edges.some((edge) => edge.id === id)) return unchanged(document);
   if (ownEdgeStyle(layout, id) === style) return unchanged(document);
   const others = withoutKeys(layout.edgeStyles ?? {}, new Set([id]));
+  const styled = withEdgeStyles(layout, style === undefined ? others : { ...others, [id]: style });
+  const restyled = resolveEdgeStyle(styled, id) !== resolveEdgeStyle(layout, id);
   return {
     ok: true,
-    document: {
-      ...document,
-      layout: withEdgeStyles(layout, style === undefined ? others : { ...others, [id]: style }),
-    },
+    document: { ...document, layout: restyled ? withoutRoutePoints(styled, [id]) : styled },
   };
+}
+
+/**
+ * The layout without the points of these connections: the points of a curve are no corners
+ * for right angles, nor the other way round, so a connection that changes style takes its
+ * default course again. The sides it was given stay.
+ */
+function withoutRoutePoints(layout: DiagramLayout, ids: readonly string[]): DiagramLayout {
+  if (layout.edgeRoutes === undefined) return layout;
+  const routes: Record<string, EdgeRoute> = { ...layout.edgeRoutes };
+  for (const id of ids) {
+    const route = ownEdgeRoute(layout, id);
+    if (route === undefined) continue;
+    const { points: _points, bend: _bend, ...sides } = route;
+    if (Object.keys(sides).length === 0) delete routes[id];
+    else routes[id] = sides;
+  }
+  return withEdgeRoutes(layout, routes);
 }
 
 /**
@@ -922,6 +987,8 @@ export function setEdgeStyle(
 export interface EdgeRoutePatch {
   readonly source?: EdgeRoute['source'];
   readonly target?: EdgeRoute['target'];
+  /** The points the line passes through; none makes it take its default course. */
+  readonly points?: readonly Point[] | undefined;
   readonly bend?: EdgeRoute['bend'];
 }
 
@@ -932,9 +999,9 @@ export interface ConnectionSides {
 }
 
 /**
- * Changes how one connection runs: the sides it leaves from and arrives at, and where its
- * middle falls. `null` makes it fully automatic again. A route with nothing left in it is
- * stored as nothing, so a diagram nobody routed by hand is unchanged.
+ * Changes how one connection runs: the sides it leaves from and arrives at, and the points it
+ * passes through, kept to the half pixel. `null` makes it fully automatic again. A route with
+ * nothing left in it is stored as nothing, so a diagram nobody routed by hand is unchanged.
  */
 export function setEdgeRoute(
   document: DiagramDocument,
@@ -950,10 +1017,18 @@ export function setEdgeRoute(
     merged.bend !== undefined && merged.bend.x === 0 && merged.bend.y === 0
       ? undefined
       : merged.bend;
+  const half = (value: number) => Math.round(value * 2) / 2;
+  const points =
+    merged.points === undefined || merged.points.length === 0
+      ? undefined
+      : merged.points
+          .slice(0, MAX_ROUTE_POINTS)
+          .map((point) => ({ x: half(point.x), y: half(point.y) }));
   // Written in the order of the schema, so that the saved text is stable.
   const next: EdgeRoute = {
     ...(merged.source === undefined ? {} : { source: merged.source }),
     ...(merged.target === undefined ? {} : { target: merged.target }),
+    ...(points === undefined ? {} : { points }),
     ...(bend === undefined ? {} : { bend }),
   };
   if (JSON.stringify(next) === JSON.stringify(current ?? {})) return unchanged(document);
@@ -967,6 +1042,54 @@ export function setEdgeRoute(
         Object.keys(next).length === 0 ? others : { ...others, [id]: next },
       ),
     },
+  };
+}
+
+/**
+ * Moves one end of a connection to another node, where it arrives or leaves by `side` or,
+ * without one, by the side that makes the shortest line. The points it was routed through
+ * were put for the old end, so they go; the side of the other end stays. The connection
+ * stays selected.
+ */
+export function reconnect(
+  document: DiagramDocument,
+  id: string,
+  end: 'source' | 'target',
+  node: string,
+  side?: NodeSide,
+): Edit {
+  const { graph, layout } = document;
+  const edge = graph.edges.find((candidate) => candidate.id === id);
+  if (!edge || !graph.nodes.some((candidate) => candidate.id === node)) return unchanged(document);
+  const next = { ...edge, [end]: node };
+  const route = ownEdgeRoute(layout, id);
+  if (next.source === next.target || (edge[end] === node && route?.[end] === side)) {
+    return unchanged(document);
+  }
+  const repeated = graph.edges.some(
+    (other) => other.id !== id && other.source === next.source && other.target === next.target,
+  );
+  if (repeated) return reject(currentStrings().edit.alreadyConnected);
+  const source = end === 'source' ? side : route?.source;
+  const target = end === 'target' ? side : route?.target;
+  const kept: EdgeRoute = {
+    ...(source === undefined ? {} : { source }),
+    ...(target === undefined ? {} : { target }),
+  };
+  const others = withoutKeys(layout.edgeRoutes ?? {}, new Set([id]));
+  return {
+    ok: true,
+    document: {
+      graph: {
+        ...graph,
+        edges: graph.edges.map((candidate) => (candidate.id === id ? next : candidate)),
+      },
+      layout: withEdgeRoutes(
+        layout,
+        Object.keys(kept).length === 0 ? others : { ...others, [id]: kept },
+      ),
+    },
+    selection: { type: 'edge', id },
   };
 }
 

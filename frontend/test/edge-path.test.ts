@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { type ConnectionEnds, connectionPath, CORNER_RADIUS } from '../src/canvas/edge-path.ts';
+import {
+  type ConnectionEnds,
+  connectionPath,
+  CORNER_RADIUS,
+  moveSegment,
+  routePoints,
+} from '../src/canvas/edge-path.ts';
 import { OUTWARD, type Side } from '../src/canvas/geometry.ts';
 
 const ends = (source: [number, number, Side], target: [number, number, Side]): ConnectionEnds => ({
@@ -10,6 +16,10 @@ const ends = (source: [number, number, Side], target: [number, number, Side]): C
   targetY: target[1],
   targetPosition: target[2],
 });
+
+/** The points of a right-angled line whose middle an older route shifted by `bend`. */
+const bent = (line: ConnectionEnds, bend: { x: number; y: number }) =>
+  routePoints('square', line, { bend });
 
 /** The numbers of an SVG path, two by two. */
 function pointsOf(path: string): { x: number; y: number }[] {
@@ -37,48 +47,137 @@ function corners(path: string): { x: number; y: number }[] {
   return found;
 }
 
+/** Whether every part of a line runs across or down. */
+function rightAngled(points: readonly { x: number; y: number }[]): boolean {
+  return points.slice(1).every((b, i) => {
+    const a = points[i];
+    return a !== undefined && (a.x === b.x || a.y === b.y);
+  });
+}
+
 describe('connectionPath, curved', () => {
   const across = ends([100, 50, 'right'], [300, 150, 'left']);
 
-  it('is the default curve without a bend, and the handle of the middle sits on it', () => {
+  it('is the default curve without points, with a place to add one in its middle', () => {
     const shape = connectionPath('curved', across);
     expect(shape.path).toMatch(/^M ?100,?50 ?C/);
-    expect(shape.bend).toEqual({ x: shape.labelX, y: shape.labelY, axes: 'both' });
-    expect(connectionPath('curved', across, { x: 0, y: 0 }).path).toBe(shape.path);
+    expect(shape.corners).toEqual([
+      { x: 100, y: 50 },
+      { x: 300, y: 150 },
+    ]);
+    expect(shape.midpoints).toEqual([{ x: shape.labelX, y: shape.labelY }]);
+    expect(connectionPath('curved', across, []).path).toBe(shape.path);
   });
 
-  it('passes through the middle moved by the bend, and puts the label there', () => {
-    const home = connectionPath('curved', across);
-    const bent = connectionPath('curved', across, { x: 10, y: -80 });
-    const through = { x: home.labelX + 10, y: home.labelY - 80 };
-    expect(bent.labelX).toBeCloseTo(through.x);
-    expect(bent.labelY).toBeCloseTo(through.y);
-    expect(bent.bend).toEqual({ ...through, axes: 'both' });
-    // The curve is made of two parts that meet at the moved point.
-    const numbers = pointsOf(bent.path);
-    expect(numbers).toHaveLength(7);
-    expect(numbers[3]).toEqual(through);
+  it('passes through each point, in order, with one part between each two', () => {
+    const shape = connectionPath('curved', across, [
+      { x: 160, y: -20 },
+      { x: 240, y: 220 },
+    ]);
+    expect(shape.path.match(/C/g)).toHaveLength(3);
+    const numbers = pointsOf(shape.path);
+    expect(numbers[3]).toEqual({ x: 160, y: -20 });
+    expect(numbers[6]).toEqual({ x: 240, y: 220 });
+    expect(shape.corners).toHaveLength(4);
+    expect(shape.midpoints).toHaveLength(3);
+  });
+
+  it('puts the label on the middle point, or in the middle of the middle part', () => {
+    const one = connectionPath('curved', across, [{ x: 200, y: 20 }]);
+    expect([one.labelX, one.labelY]).toEqual([200, 20]);
+    const two = connectionPath('curved', across, [
+      { x: 160, y: 0 },
+      { x: 240, y: 200 },
+    ]);
+    expect({ x: two.labelX, y: two.labelY }).toEqual(two.midpoints[1]);
   });
 
   it('still leaves its side and reaches the other one in a straight line', () => {
-    for (const bend of [
-      { x: 0, y: 90 },
-      { x: -40, y: -60 },
-      { x: 150, y: 0 },
+    for (const points of [
+      [{ x: 100, y: 140 }],
+      [{ x: 60, y: -10 }],
+      [
+        { x: 250, y: 50 },
+        { x: 260, y: 300 },
+      ],
     ]) {
-      const p = pointsOf(connectionPath('curved', across, bend).path);
+      const p = pointsOf(connectionPath('curved', across, points).path);
       // First control point straight out of the right side, last straight into the left one.
       expect(p[1]?.y).toBeCloseTo(50);
       expect(p[1]?.x).toBeGreaterThan(100);
-      expect(p[5]?.y).toBeCloseTo(150);
-      expect(p[5]?.x).toBeLessThan(300);
+      expect(p[p.length - 2]?.y).toBeCloseTo(150);
+      expect(p[p.length - 2]?.x).toBeLessThan(300);
     }
   });
 
-  it('copes with a bend on top of an end', () => {
-    expect(() => connectionPath('curved', across, { x: -300, y: 100 })).not.toThrow();
-    const shape = connectionPath('curved', ends([0, 0, 'right'], [0, 0, 'left']), { x: 5, y: 5 });
-    expect(shape.path).not.toContain('NaN');
+  it('copes with a point on top of an end', () => {
+    expect(connectionPath('curved', across, [{ x: 100, y: 50 }]).path).not.toContain('NaN');
+    const still = connectionPath('curved', ends([0, 0, 'right'], [0, 0, 'left']), [{ x: 0, y: 0 }]);
+    expect(still.path).not.toContain('NaN');
+  });
+});
+
+describe('routePoints', () => {
+  const across = ends([100, 50, 'right'], [300, 150, 'left']);
+
+  it('are the points of the route, or none', () => {
+    expect(routePoints('curved', across, undefined)).toEqual([]);
+    expect(routePoints('square', across, { source: 'top' })).toEqual([]);
+    expect(routePoints('curved', across, { points: [{ x: 1, y: 2 }] })).toEqual([{ x: 1, y: 2 }]);
+  });
+
+  it('turn the shifted middle of an older route into the points it stood for', () => {
+    const home = connectionPath('curved', across);
+    expect(routePoints('curved', across, { bend: { x: 10, y: -80 } })).toEqual([
+      { x: home.labelX + 10, y: home.labelY - 80 },
+    ]);
+    // Right angles: the crossing segment, moved along its one direction only.
+    expect(routePoints('square', across, { bend: { x: 40, y: 500 } })).toEqual([
+      { x: 240, y: 50 },
+      { x: 240, y: 150 },
+    ]);
+  });
+});
+
+describe('moveSegment', () => {
+  const across = ends([100, 50, 'right'], [300, 150, 'left']);
+  const line = connectionPath('square', across).corners;
+
+  it('moves a middle part across its direction only, and the parts beside it follow', () => {
+    expect(moveSegment(across, line, 1, { x: 240, y: 999 })).toEqual([
+      { x: 240, y: 50 },
+      { x: 240, y: 150 },
+    ]);
+  });
+
+  it('keeps a short run out of the side when the first part moves', () => {
+    expect(moveSegment(across, line, 0, { x: 150, y: 20 })).toEqual([
+      { x: 120, y: 50 },
+      { x: 120, y: 20 },
+      { x: 200, y: 20 },
+      { x: 200, y: 150 },
+    ]);
+  });
+
+  it('bends a straight line with a run kept at each end, and straightens it back', () => {
+    const straight = ends([100, 50, 'right'], [300, 50, 'left']);
+    const flat = connectionPath('square', straight).corners;
+    expect(moveSegment(straight, flat, 0, { x: 200, y: 90 })).toEqual([
+      { x: 120, y: 50 },
+      { x: 120, y: 90 },
+      { x: 280, y: 90 },
+      { x: 280, y: 50 },
+    ]);
+    expect(moveSegment(straight, flat, 0, { x: 200, y: 50 })).toEqual([]);
+  });
+
+  it('gives points that draw the same line again', () => {
+    const points = moveSegment(across, line, 0, { x: 150, y: 20 });
+    expect(connectionPath('square', across, points).corners).toEqual([
+      { x: 100, y: 50 },
+      ...points,
+      { x: 300, y: 150 },
+    ]);
   });
 });
 
@@ -91,59 +190,61 @@ describe('connectionPath, right angles', () => {
       { x: 200, y: 150 },
       { x: 300, y: 150 },
     ]);
-    expect(shape.bend).toEqual({ x: 200, y: 100, axes: 'x' });
+    expect(shape.midpoints[1]).toEqual({ x: 200, y: 100 });
     expect(shape.labelX).toBe(200);
     expect(shape.labelY).toBe(100);
   });
 
-  it('moves the crossing segment with the bend, along its one direction only', () => {
-    const base = ends([100, 50, 'right'], [300, 150, 'left']);
-    const moved = connectionPath('square', base, { x: 40, y: 500 });
-    expect(corners(moved.path)[1]).toEqual({ x: 240, y: 50 });
-    expect(moved.bend).toEqual({ x: 240, y: 100, axes: 'x' });
-    const vertical = connectionPath('square', ends([50, 100, 'bottom'], [150, 300, 'top']), {
-      x: 500,
-      y: -30,
-    });
-    expect(corners(vertical.path)[1]).toEqual({ x: 50, y: 170 });
-    expect(vertical.bend?.axes).toBe('y');
+  it('reads the crossing segment of an older route moved along its one direction only', () => {
+    const vertical = ends([50, 100, 'bottom'], [150, 300, 'top']);
+    const moved = connectionPath('square', vertical, bent(vertical, { x: 500, y: -30 }));
+    expect(corners(moved.path)[1]).toEqual({ x: 50, y: 170 });
   });
 
-  it('keeps the crossing segment clear of both sides', () => {
+  it('keeps the crossing segment of an older route clear of both sides', () => {
     const base = ends([100, 50, 'right'], [300, 150, 'left']);
-    const far = connectionPath('square', base, { x: 1000, y: 0 });
+    const far = connectionPath('square', base, bent(base, { x: 1000, y: 0 }));
     expect(corners(far.path)[1]?.x).toBe(300 - 12);
-    const near = connectionPath('square', base, { x: -1000, y: 0 });
+    const near = connectionPath('square', base, bent(base, { x: -1000, y: 0 }));
     expect(corners(near.path)[1]?.x).toBe(100 + 12);
   });
 
+  it('turns at the points it is routed through, adding the corners it needs', () => {
+    const base = ends([100, 50, 'right'], [300, 150, 'left']);
+    expect(connectionPath('square', base, [{ x: 200, y: 100 }]).corners).toEqual([
+      { x: 100, y: 50 },
+      { x: 200, y: 50 },
+      { x: 200, y: 150 },
+      { x: 300, y: 150 },
+    ]);
+    // A point behind the source: out a short run first, then round to it, at right angles.
+    const behind = connectionPath('square', base, [{ x: 50, y: 200 }]).corners;
+    expect(behind[1]).toEqual({ x: 120, y: 50 });
+    expect(behind).toContainEqual({ x: 50, y: 200 });
+    expect(rightAngled(behind)).toBe(true);
+    expect(behind[behind.length - 1]).toEqual({ x: 300, y: 150 });
+  });
+
   it('goes round when both sides face the same way, with the channel beyond both nodes', () => {
-    const shape = connectionPath('square', ends([100, 50, 'right'], [160, 150, 'right']));
-    expect(corners(shape.path)).toEqual([
+    const same = ends([100, 50, 'right'], [160, 150, 'right']);
+    expect(corners(connectionPath('square', same).path)).toEqual([
       { x: 100, y: 50 },
       { x: 180, y: 50 },
       { x: 180, y: 150 },
       { x: 160, y: 150 },
     ]);
-    expect(shape.bend?.axes).toBe('x');
-    const moved = connectionPath('square', ends([100, 50, 'right'], [160, 150, 'right']), {
-      x: 60,
-      y: 0,
-    });
+    const moved = connectionPath('square', same, bent(same, { x: 60, y: 0 }));
     expect(corners(moved.path)[1]?.x).toBe(240);
   });
 
-  it('makes a single corner between sides on different axes, with nothing in the middle to move', () => {
+  it('makes a single corner between sides on different axes', () => {
     const shape = connectionPath('square', ends([100, 50, 'right'], [300, 150, 'top']));
     expect(corners(shape.path)).toEqual([
       { x: 100, y: 50 },
       { x: 300, y: 50 },
       { x: 300, y: 150 },
     ]);
-    expect(shape.bend).toBeNull();
-    expect(
-      connectionPath('square', ends([100, 50, 'right'], [300, 150, 'top']), { x: 90, y: 90 }).path,
-    ).toBe(shape.path);
+    expect(shape.midpoints).toHaveLength(2);
   });
 
   it('detours when a corner would make the line turn back on a node', () => {
@@ -156,22 +257,18 @@ describe('connectionPath, right angles', () => {
   });
 
   it('goes across a lane when the sides face each other but the nodes overlap', () => {
-    const shape = connectionPath('square', ends([300, 50, 'right'], [100, 150, 'left']));
-    const turns = corners(shape.path);
+    const overlap = ends([300, 50, 'right'], [100, 150, 'left']);
+    const turns = corners(connectionPath('square', overlap).path);
     expect(turns.map((point) => point.x)).toEqual([300, 320, 320, 80, 80, 100]);
     expect(turns[1]?.y).toBe(turns[0]?.y);
-    expect(shape.bend?.axes).toBe('y');
-    const lowered = connectionPath('square', ends([300, 50, 'right'], [100, 150, 'left']), {
-      x: 70,
-      y: 60,
-    });
+    const lowered = connectionPath('square', overlap, bent(overlap, { x: 70, y: 60 }));
     expect(corners(lowered.path)[2]?.y).toBe(160);
   });
 
-  it('is a straight line, with nothing to move, between aligned nodes', () => {
+  it('is a straight line between aligned nodes, which can still be moved', () => {
     const shape = connectionPath('square', ends([100, 50, 'right'], [300, 50, 'left']));
     expect(shape.path).toBe('M 100 50 L 300 50');
-    expect(shape.bend).toBeNull();
+    expect(shape.midpoints).toEqual([{ x: 200, y: 50 }]);
   });
 
   it('swings out sideways when aligned nodes cannot see each other through their sides', () => {
@@ -207,23 +304,18 @@ describe('connectionPath, right angles', () => {
         [100, 100, 'right'],
         [700, 500, 'top'],
       ] as const) {
-        const shape = connectionPath('square', ends([sx, sy, from], [target.x, target.y, side]), {
-          x: 7,
-          y: 7,
-        });
-        const turns = corners(shape.path);
-        const last = turns[turns.length - 1];
-        const before = turns[turns.length - 2];
-        expect(last).toEqual(target);
-        if (!before || !last) continue;
-        const out = OUTWARD[side];
-        // The final run goes along the axis of the side, coming from outside the node.
-        expect(Math.sign(before.x - last.x)).toBe(out.x === 0 ? 0 : Math.sign(out.x));
-        expect(Math.sign(before.y - last.y)).toBe(out.y === 0 ? 0 : Math.sign(out.y));
-        for (let i = 1; i < turns.length; i++) {
-          const a = turns[i - 1];
-          const b = turns[i];
-          expect(a && b && (a.x === b.x || a.y === b.y)).toBe(true);
+        const line = ends([sx, sy, from], [target.x, target.y, side]);
+        for (const points of [bent(line, { x: 7, y: 7 }), [{ x: 250, y: 420 }]]) {
+          const turns = corners(connectionPath('square', line, points).path);
+          const last = turns[turns.length - 1];
+          const before = turns[turns.length - 2];
+          expect(last).toEqual(target);
+          if (!before || !last) continue;
+          const out = OUTWARD[side];
+          // The final run goes along the axis of the side, coming from outside the node.
+          expect(Math.sign(before.x - last.x)).toBe(out.x === 0 ? 0 : Math.sign(out.x));
+          expect(Math.sign(before.y - last.y)).toBe(out.y === 0 ? 0 : Math.sign(out.y));
+          expect(rightAngled(turns)).toBe(true);
         }
       }
     },

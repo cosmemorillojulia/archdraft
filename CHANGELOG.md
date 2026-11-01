@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - Repository layout (ADR 0021): `apps/web` is now `frontend/`, `packages/core` is now `shared/` and is published in the workspace as `@archdraft/shared`, and the ELK layout of `packages/layout` lives in `frontend/src/layout/`, the only place that uses it. The backend will go in `backend/`. Behaviour is unchanged.
+- `@archdraft/shared`, `@archdraft/web`: connections are edited as in draw.io. Drag an end of a selected connection onto another box to reconnect it, by the side whose middle it is let go at or else the one that fits. A right-angled connection has a handle on every part, which moves that part across its direction; a curve shows the points it passes through, which move freely and go with a double click, and a dot in the middle of each part to add another. Routes keep these points (`points` in `edgeRoutes`, in diagram coordinates), which move with a connection whose two ends move together and go when it changes style; routes saved with the older `bend` are still drawn as before.
 - `@archdraft/web`: connection points work as in draw.io. Every side of a component or shape shows a dot on hover to drag a connection from, and the connection leaves by that side; let go on a dot of the other node and it arrives by that side, anywhere else on it and the side is chosen. Automatic connections can leave and arrive by any side, so a node behind or above is reached directly instead of the line going round it.
 
 ### Added

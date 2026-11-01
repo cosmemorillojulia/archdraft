@@ -4,7 +4,7 @@ import { memo, useState } from 'react';
 import { EASE_OUT } from '../motion.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { isSelected, useCanvas } from './canvas-context.ts';
-import { connectionPath } from './edge-path.ts';
+import { connectionPath, routePoints } from './edge-path.ts';
 import { EdgeRouteHandles, type RoutePreview } from './EdgeRouteHandles.tsx';
 import type { ArchitectureFlowEdge } from './flow.ts';
 import { arrowhead, type EdgeSides, sidePoint } from './geometry.ts';
@@ -58,12 +58,16 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
     sourceCategory,
     appearDelay,
   } = data;
-  // The sides come from the handles React Flow measured, except while another side is being tried.
+  // The sides come from the handles React Flow measured, except while another side, or another
+  // node, is being tried.
   const settled: EdgeSides = { source: sourcePosition, target: targetPosition };
-  const trying = preview?.kind === 'sides' ? preview.sides : null;
+  const reconnecting = preview?.kind === 'reconnect' ? preview : null;
+  const trying = preview?.kind === 'sides' ? preview.sides : (reconnecting?.sides ?? null);
+  const fromBox = reconnecting?.end === 'source' ? reconnecting.box : sourceBox;
+  const toBox = reconnecting?.end === 'target' ? reconnecting.box : targetBox;
   const sides = trying ?? settled;
-  const start = trying ? sidePoint(sourceBox, trying.source) : { x: sourceX, y: sourceY };
-  const tip = trying ? sidePoint(targetBox, trying.target) : { x: targetX, y: targetY };
+  const start = trying ? sidePoint(fromBox, trying.source) : { x: sourceX, y: sourceY };
+  const tip = trying ? sidePoint(toBox, trying.target) : { x: targetX, y: targetY };
   const arrow = arrowhead(tip.x, tip.y, sides.target);
   const ends = {
     sourceX: start.x,
@@ -73,10 +77,11 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
     sourcePosition: sides.source,
     targetPosition: sides.target,
   };
-  // A bend was made for the sides it was stored with, so it is not applied to other ones.
-  const stored = trying ? undefined : route?.bend;
-  const bend = preview?.kind === 'bend' ? preview.bend : stored;
-  const { path, labelX, labelY, bend: bendHandle } = connectionPath(style, ends, bend);
+  const stored = routePoints(style, ends, route);
+  // Another node has no use for the points put for this one.
+  const points = preview?.kind === 'points' ? preview.points : reconnecting ? [] : stored;
+  const shape = connectionPath(style, ends, points);
+  const { path, labelX, labelY } = shape;
   const selected = isSelected(canvas.selection, 'edge', id);
   const active = selected || canvas.edges.has(id);
   const dimmed = canvas.dimOthers && !active;
@@ -165,11 +170,15 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
         {selected && (
           <EdgeRouteHandles
             id={id}
+            style={style}
             sides={settled}
             source={start}
             target={tip}
-            home={connectionPath(style, ends).bend}
-            bend={bendHandle}
+            ends={ends}
+            shape={shape}
+            points={stored}
+            sourceId={edge.source}
+            targetId={edge.target}
             sourceBox={sourceBox}
             targetBox={targetBox}
             direction={direction}

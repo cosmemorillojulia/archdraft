@@ -450,9 +450,11 @@ export const es: Strings = {
       toCurved: 'Dibujar las conexiones como curvas',
     },
     edgeHandles: {
-      source: 'Mover por dónde sale la conexión: arrástrala a otro lado',
-      target: 'Mover por dónde llega la conexión: arrástrala a otro lado',
-      bend: 'Mover el centro de la conexión',
+      source: 'Mover por dónde sale la conexión: arrástrala a otro lado o a otra caja',
+      target: 'Mover por dónde llega la conexión: arrástrala a otro lado o a otra caja',
+      segment: 'Mover este tramo de la conexión',
+      point: 'Mover este punto de la conexión; doble clic para quitarlo',
+      addPoint: 'Arrastra para curvar la conexión por un punto nuevo',
     },
     zoom: {
       label: 'Vista',
