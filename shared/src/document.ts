@@ -34,16 +34,30 @@ export const NODE_SIDES = ['left', 'right', 'top', 'bottom'] as const;
 export type NodeSide = (typeof NODE_SIDES)[number];
 export const NodeSideSchema = z.enum(NODE_SIDES);
 
+/** Most points one connection can be routed through. */
+export const MAX_ROUTE_POINTS = 32;
+
 /**
  * How one connection departs from what the diagram would draw by itself. Every field is
  * optional, and the missing ones stay automatic: the sides are the ones that make the shortest
- * line, and the bend is where the middle of the connection falls.
+ * line, and without points the line takes the course it falls into by default.
+ *
+ * `points` are the points the connection passes through, in diagram coordinates: the ones a
+ * curve goes through, or the corners of a right-angled line. `bend` is how routes were kept
+ * before them, a shift of the middle of the connection; it is still read, and points replace
+ * it as soon as the route is edited.
  */
 export const EdgeRouteSchema = z.strictObject({
   source: NodeSideSchema.optional().describe('Side of the source the connection leaves from'),
   target: NodeSideSchema.optional().describe('Side of the target the connection arrives at'),
+  points: z
+    .array(PointSchema)
+    .min(1)
+    .max(MAX_ROUTE_POINTS)
+    .optional()
+    .describe('Points the connection passes through, in order, in diagram coordinates'),
   bend: PointSchema.optional().describe(
-    'How far the middle of the connection is moved from where it falls by default',
+    'Older routes: how far the middle of the connection is moved from where it falls by default',
   ),
 });
 
@@ -58,7 +72,7 @@ export const DiagramLayoutSchema = z.strictObject({
     .describe('Style of single connections that differ from the diagram, per edge id'),
   edgeRoutes: boundedRecord(EdgeRouteSchema, LIMITS.maxEdges)
     .optional()
-    .describe('Sides and bend of single connections that were routed by hand, per edge id'),
+    .describe('Sides and points of single connections that were routed by hand, per edge id'),
 });
 
 /** What the editor stores, shares and restores: the graph plus how it is drawn. */
