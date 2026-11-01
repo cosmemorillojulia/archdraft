@@ -582,6 +582,24 @@ export function moveNodes(
 }
 
 /**
+ * Moves nodes by `delta`, as the arrow keys do. Among several, groups stay where they are, as
+ * when they are dragged together; a group on its own moves with what it contains.
+ */
+export function nudgeNodes(document: DiagramDocument, ids: readonly string[], delta: Point): Edit {
+  const { graph, layout } = document;
+  const moving = graph.nodes.filter(
+    (node) => ids.includes(node.id) && (ids.length < 2 || !isContainerKind(node.kind)),
+  );
+  return moveNodes(
+    document,
+    moving.map((node) => {
+      const position = layoutEntry(layout.positions, node.id) ?? ORIGIN;
+      return { id: node.id, position: { x: position.x + delta.x, y: position.y + delta.y } };
+    }),
+  );
+}
+
+/**
  * The points a connection was routed through are where they were put on the diagram, so they
  * stay when one of its ends moves. When both ends move the same distance, as when they are
  * moved together or with their group, the points go with them.

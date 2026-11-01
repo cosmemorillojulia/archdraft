@@ -30,6 +30,7 @@ import {
   moveNode,
   moveNodes,
   type NodePatch,
+  nudgeNodes,
   resizeNode,
   remove,
   removeNodes,
@@ -141,6 +142,11 @@ export interface EditorActions {
   toggleSelected: (id: string) => void;
   /** Moves the nodes of the group, or any others, together. */
   moveNodes: (moves: readonly { id: string; position: Point }[]) => void;
+  /**
+   * Moves the selected node, or the group, by `delta`. A move that `continues` the last one,
+   * as when an arrow key is held down, joins its step of the history.
+   */
+  nudgeSelection: (delta: Point, continues?: boolean) => void;
   /** Expands or collapses the inspector of the current selection on narrow screens. */
   expandInspector: (expanded: boolean) => void;
   /** Selects a node and edits its name in place. */
@@ -222,8 +228,11 @@ export function createEditorStore() {
   return createStore<EditorStore>()((set, get) => {
     const notify = (text: string) => set({ message: { id: ++messages, text } });
 
-    /** Records `edit` as a new step of the history, unless it fails or changes nothing. */
-    const apply = (edit: (document: DiagramDocument) => Edit) => {
+    /**
+     * Records `edit` as a new step of the history, unless it fails or changes nothing. An edit
+     * that `continues` the last one changes that step instead of adding another.
+     */
+    const apply = (edit: (document: DiagramDocument) => Edit, continues = false) => {
       const { current, past, selection, group } = get();
       if (!current) return;
       const result = edit(current.document);
@@ -241,7 +250,7 @@ export function createEditorStore() {
       }
       set({
         current: { ...current, document: result.document },
-        past: [...past, current].slice(-HISTORY_LIMIT),
+        past: continues && past.length > 0 ? past : [...past, current].slice(-HISTORY_LIMIT),
         future: [],
         selection: result.selection === undefined ? selection : result.selection,
         // An edit that chooses something else ends the group; one that keeps the choice keeps it.
@@ -356,6 +365,11 @@ export function createEditorStore() {
         });
       },
       moveNodes: (moves) => apply((document) => moveNodes(document, moves)),
+      nudgeSelection: (delta, continues) => {
+        const { selection, group } = get();
+        const ids = group.length > 1 ? group : selection?.type === 'node' ? [selection.id] : [];
+        if (ids.length > 0) apply((document) => nudgeNodes(document, ids, delta), continues);
+      },
       startRename: (id) =>
         set({ selection: { type: 'node', id }, group: [], connectingFrom: null, renaming: id }),
       stopRename: () => set({ renaming: null }),

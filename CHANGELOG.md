@@ -12,6 +12,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@archdraft/web`: Alt and the arrow keys move the selected box, or the chosen ones, 10 px at a time (1 px with Shift), and holding the key down is one undo step.
 - `@archdraft/api`: the default Groq model is `openai/gpt-oss-120b`, since Groq shut down `llama-3.3-70b-versatile` for free accounts; answers reserve fewer tokens to fit the 8,000 tokens a minute of its free plan, and provider refusals carry the status and the explanation of the provider in the response and the log.
 
 - Local settings in two files at the root: `.env.defaults` (committed, no secrets: the API address of the editor and the Groq URL) and `.env.secrets` (ignored by git, template in `.env.secrets.example`: the Groq key). `make api` runs the API with Groq without a Cloudflare account; `make api-remote` runs it with Workers AI.
