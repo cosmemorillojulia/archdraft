@@ -233,10 +233,11 @@
 }
 
 /*
- * Connection points. React Flow starts and ends edges at the outer edge of a
- * handle, so handles have no size and sit on the border of the node: edges
- * touch the card. The visible dot of the outgoing handle is drawn by ::before,
- * shown on hover, focus or selection, and ::after widens the area to grab.
+ * Connection points, one on each side. React Flow starts and ends edges at the
+ * outer edge of a handle, so handles have no size and sit on the border of the
+ * node: edges touch the card. The visible dot is drawn by ::before, shown on
+ * hover, focus or selection, and ::after widens the area to grab. While a
+ * connection is dragged, the point it would arrive at grows into a ring.
  */
 .archdraft-flow .flow-handle {
   width: 0;
@@ -247,7 +248,8 @@
   background: none;
 }
 
-.archdraft-flow .connect-handle::before {
+.archdraft-flow .connect-handle::before,
+.archdraft-flow .arrive-handle::before {
   content: '';
   position: absolute;
   top: -6px;
@@ -258,7 +260,9 @@
   border-radius: 9999px;
   background-color: var(--accent);
   opacity: 0;
-  transition: opacity 150ms ease-out;
+  transition:
+    opacity 150ms ease-out,
+    transform 150ms ease-out;
 }
 
 .archdraft-flow .connect-handle::after {
@@ -276,6 +280,12 @@
 .archdraft-flow .connect-handle[data-selected]::before,
 .archdraft-flow .connect-handle.connectingfrom::before {
   opacity: 1;
+}
+
+.archdraft-flow .flow-handle.connectingto::before {
+  opacity: 1;
+  transform: scale(1.5);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .archdraft-flow .react-flow__connectionline {

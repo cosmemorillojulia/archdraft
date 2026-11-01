@@ -83,15 +83,11 @@ describe('toFlow', () => {
     expect(nodes.find((node) => node.id === 'api')?.data).not.toHaveProperty('providerBadge');
   });
 
-  it('joins each edge from the right or bottom of its source to the left or top of its target', () => {
-    // user → api (api is inside the VPC, to the right) and api → payments (down and right).
+  it('joins each edge by the sides of its nodes that face each other', () => {
+    // user → api: api is inside the VPC, to the right.
     const { edges } = toFlow({ graph, layout }, 'LR');
     const byId = new Map(edges.map((edge) => [edge.id, edge]));
     expect(byId.get('e1')).toMatchObject({ sourceHandle: 'right', targetHandle: 'left' });
-    for (const edge of edges) {
-      expect(['right', 'bottom']).toContain(edge.sourceHandle);
-      expect(['left', 'top']).toContain(edge.targetHandle);
-    }
   });
 
   it('leaves out of the nodes the old per-direction connection points', () => {

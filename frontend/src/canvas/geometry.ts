@@ -217,7 +217,7 @@ export function sidePoint(box: Box, side: Side): { x: number; y: number } {
   }
 }
 
-/** The sides edges leave from and arrive at unless they are told otherwise: out by right or bottom, in by left or top. */
+/** The sides a connection leaves its source from and arrives at its target by. */
 export interface EdgeSides {
   readonly source: Side;
   readonly target: Side;
@@ -231,7 +231,7 @@ export interface FixedSides {
 
 const ALL_SIDES: readonly Side[] = ['right', 'bottom', 'left', 'top'];
 
-/** The four ways to join two nodes, in the order they win a tie for each flow direction. */
+/** The ways to join two nodes that follow each flow direction, in the order they win a tie. */
 const ACROSS = { source: 'right', target: 'left' } as const;
 const DOWN = { source: 'bottom', target: 'top' } as const;
 const COMBINATIONS: Record<'horizontal' | 'vertical', readonly EdgeSides[]> = {
@@ -248,6 +248,10 @@ const COMBINATIONS: Record<'horizontal' | 'vertical', readonly EdgeSides[]> = {
     { source: 'right', target: 'top' },
   ],
 };
+
+/** Every pair of a side of the source and a side of the target. */
+const pairs = (sources: readonly Side[], targets: readonly Side[]): EdgeSides[] =>
+  sources.flatMap((source) => targets.map((target) => ({ source, target })));
 
 /** How much a pixel of going against the side an edge leaves or arrives at costs, in pixels of length. */
 const AGAINST_COST = 3;
@@ -267,15 +271,15 @@ function againstSides(from: Point, to: Point, sides: EdgeSides): number {
 type Point = { x: number; y: number };
 
 /**
- * Sides an edge connects, from the position of its two nodes. Unless told
- * otherwise it leaves by the right or the bottom of the source and arrives at
- * the left or the top of the target: of the four combinations, it picks the
- * one with the shortest line, counting extra for lines that would leave a side
- * backwards (for example, leaving by the right towards a target on the left).
- * Ties go to the combination that follows the flow direction.
+ * Sides an edge connects, from the position of its two nodes. Any side of either node can
+ * take it, as in draw.io: of every pair of sides, it picks the one with the shortest line,
+ * counting extra for lines that would leave or arrive at a side backwards (for example,
+ * leaving by the right towards a target on the left). So a target on the left is reached by
+ * its right side and one above by its bottom, instead of the line going round. Ties go to
+ * the pairs that follow the flow direction.
  *
- * `fixed` holds the sides chosen by hand. The end that was not chosen then
- * takes any of the four sides, whichever makes the shortest line with the other.
+ * `fixed` holds the sides chosen by hand; the end that was not chosen takes whichever side
+ * makes the shortest line with the other.
  */
 export function edgeSides(
   source: Box,
@@ -285,12 +289,13 @@ export function edgeSides(
 ): EdgeSides {
   const options: readonly EdgeSides[] =
     fixed.source === undefined && fixed.target === undefined
-      ? COMBINATIONS[direction === 'LR' || direction === 'RL' ? 'horizontal' : 'vertical']
-      : (fixed.source === undefined ? ALL_SIDES : [fixed.source]).flatMap((from) =>
-          (fixed.target === undefined ? ALL_SIDES : [fixed.target]).map((to) => ({
-            source: from,
-            target: to,
-          })),
+      ? [
+          ...COMBINATIONS[direction === 'LR' || direction === 'RL' ? 'horizontal' : 'vertical'],
+          ...pairs(ALL_SIDES, ALL_SIDES),
+        ]
+      : pairs(
+          fixed.source === undefined ? ALL_SIDES : [fixed.source],
+          fixed.target === undefined ? ALL_SIDES : [fixed.target],
         );
   let best = options[0] as EdgeSides;
   let bestCost = Infinity;

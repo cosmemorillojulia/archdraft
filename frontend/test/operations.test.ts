@@ -247,6 +247,14 @@ describe('connect', () => {
     expect(edit.ok && edit.selection).toEqual({ type: 'edge', id: 'user-db' });
   });
 
+  it('keeps the sides it was drawn between, and leaves the layout alone without them', () => {
+    expect(edited(connect(document, 'user', 'db')).layout).toEqual(document.layout);
+    const next = edited(connect(document, 'user', 'db', { source: 'top' }));
+    expect(next.layout.edgeRoutes?.['user-db']).toEqual({ source: 'top' });
+    const both = edited(connect(document, 'user', 'db', { source: 'left', target: 'bottom' }));
+    expect(both.layout.edgeRoutes?.['user-db']).toEqual({ source: 'left', target: 'bottom' });
+  });
+
   it('refuses to repeat a connection', () => {
     expect(connect(document, 'user', 'api')).toEqual({
       ok: false,

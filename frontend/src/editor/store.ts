@@ -20,6 +20,7 @@ import { currentStrings } from '../i18n/locale.ts';
 import {
   addNode,
   connect,
+  type ConnectionSides,
   duplicate,
   type Edit,
   type EdgePatch,
@@ -108,7 +109,8 @@ export interface EditorActions {
    * others, and is not scrolled into view; its `size` is the one drawn by dragging.
    */
   addNode: (kind: NodeKind, centre: Point, options?: { size?: Size; exact?: boolean }) => void;
-  connect: (source: string, target: string) => void;
+  /** Connects two nodes; `sides` keeps the sides the connection was drawn from and to. */
+  connect: (source: string, target: string, sides?: ConnectionSides) => void;
   moveNode: (id: string, position: Point) => void;
   resizeNode: (id: string, box: Point & Size) => void;
   updateNode: (id: string, patch: NodePatch) => void;
@@ -301,7 +303,8 @@ export function createEditorStore() {
         if (kind === 'text') set({ renaming: selection.id });
         if (options.exact === true) set({ placed: selection.id });
       },
-      connect: (source, target) => apply((document) => connect(document, source, target)),
+      connect: (source, target, sides) =>
+        apply((document) => connect(document, source, target, sides)),
       moveNode: (id, position) => apply((document) => moveNode(document, id, position)),
       resizeNode: (id, box) => apply((document) => resizeNode(document, id, box)),
       updateNode: (id, patch) => apply((document) => updateNode(document, id, patch)),

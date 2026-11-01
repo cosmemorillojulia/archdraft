@@ -1,8 +1,9 @@
-import type { LintSeverity } from '@archdraft/shared';
+import { type LintSeverity, NODE_SIDES, type NodeSide } from '@archdraft/shared';
 import {
   Background,
   BackgroundVariant,
   type Connection,
+  ConnectionMode,
   type FinalConnectionState,
   MiniMap,
   type NodeChange,
@@ -67,6 +68,14 @@ const DRAGGED_Z = 1000;
 
 const CONNECTION_LINE_STYLE = { stroke: 'var(--accent)', strokeWidth: 1.5 };
 const PRO_OPTIONS = { hideAttribution: true };
+
+/** The side a connection point stands for: its id, which is the name of the side. */
+const sideOf = (handle: string | null | undefined): NodeSide | undefined =>
+  NODE_SIDES.find((side) => side === handle);
+
+/** A node is not connected to itself, so its own points take no connection. */
+const isValidConnection = (connection: { source: string; target: string }): boolean =>
+  connection.source !== connection.target;
 const NO_ISSUES: ReadonlyMap<string, LintSeverity> = new Map();
 const NO_CHANGES: ReadonlySet<string> = new Set();
 
@@ -455,8 +464,17 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     }
   }, []);
 
-  const connectTo = (source: string, target: string) => {
-    if (source !== target) editorStore.getState().connect(source, target);
+  /** Connects two nodes, keeping the sides of the points the connection was drawn between. */
+  const connectTo = (
+    source: string,
+    target: string,
+    sides: { source?: NodeSide | undefined; target?: NodeSide | undefined } = {},
+  ) => {
+    if (source === target) return;
+    editorStore.getState().connect(source, target, {
+      ...(sides.source === undefined ? {} : { source: sides.source }),
+      ...(sides.target === undefined ? {} : { target: sides.target }),
+    });
   };
 
   // Handlers given to React Flow keep their identity (see useStableHandler).
@@ -495,7 +513,11 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     setDragging(null);
     setDropTargetId(null);
   });
-  const onConnect = useStableHandler(({ source, target }: Connection) => connectTo(source, target));
+  // Like draw.io: a connection leaves by the side of the point it is dragged from and, let go on
+  // a point of the other node, arrives by its side.
+  const onConnect = useStableHandler(({ source, target, sourceHandle, targetHandle }: Connection) =>
+    connectTo(source, target, { source: sideOf(sourceHandle), target: sideOf(targetHandle) }),
+  );
   const onNodeMouseEnter = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
     if (pointerType.current !== 'touch' && node.type !== 'container') setHoverId(node.id);
   });
@@ -526,7 +548,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     reviewStore.getState().clearFocus();
   });
 
-  // Dropping a connection anywhere on a component connects to it, not only on its connection point.
+  // Dropping a connection anywhere on a component connects to it, not only on its connection
+  // point; it then arrives by the side that makes the shortest line.
   const onConnectEnd = useStableHandler(
     (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
       if (state.isValid || !state.fromNode) return;
@@ -536,7 +559,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
         .elementFromPoint(point.clientX, point.clientY)
         ?.closest('.react-flow__node');
       const target = element?.getAttribute('data-id');
-      if (target) connectTo(state.fromNode.id, target);
+      if (target) connectTo(state.fromNode.id, target, { source: sideOf(state.fromHandle?.id) });
     },
   );
 
@@ -581,6 +604,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
           selectionKeyCode={null}
           multiSelectionKeyCode={null}
           connectOnClick={false}
+          connectionMode={ConnectionMode.Loose}
+          isValidConnection={isValidConnection}
           nodeDragThreshold={DRAG_THRESHOLD}
           connectionLineStyle={CONNECTION_LINE_STYLE}
           onNodesChange={onNodesChange}

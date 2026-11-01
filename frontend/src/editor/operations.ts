@@ -18,6 +18,7 @@ import {
   layoutEntry,
   LIMITS,
   type NodeKind,
+  type NodeSide,
   ownEdgeRoute,
   ownEdgeStyle,
   type Point,
@@ -448,9 +449,17 @@ export function stackNode(document: DiagramDocument, id: string, move: StackMove
   return { ok: true, document: { ...document, graph: { ...graph, nodes } } };
 }
 
-/** Connects `source` to `target` and selects the new edge. */
-export function connect(document: DiagramDocument, source: string, target: string): Edit {
-  const { graph } = document;
+/**
+ * Connects `source` to `target` and selects the new edge. `sides` holds the sides it was
+ * drawn from and to on the canvas, which it keeps; the ones left out stay automatic.
+ */
+export function connect(
+  document: DiagramDocument,
+  source: string,
+  target: string,
+  sides: ConnectionSides = {},
+): Edit {
+  const { graph, layout } = document;
   if (graph.edges.some((edge) => edge.source === source && edge.target === target)) {
     return reject(currentStrings().edit.alreadyConnected);
   }
@@ -460,9 +469,20 @@ export function connect(document: DiagramDocument, source: string, target: strin
     base.length <= LIMITS.idLength ? base : 'edge',
     new Set(graph.edges.map((edge) => edge.id)),
   );
+  const route: EdgeRoute = {
+    ...(sides.source === undefined ? {} : { source: sides.source }),
+    ...(sides.target === undefined ? {} : { target: sides.target }),
+  };
   return {
     ok: true,
-    document: { ...document, graph: { ...graph, edges: [...graph.edges, { id, source, target }] } },
+    document: {
+      ...document,
+      graph: { ...graph, edges: [...graph.edges, { id, source, target }] },
+      layout:
+        Object.keys(route).length === 0
+          ? layout
+          : withEdgeRoutes(layout, { ...layout.edgeRoutes, [id]: route }),
+    },
     selection: { type: 'edge', id },
   };
 }
@@ -903,6 +923,12 @@ export interface EdgeRoutePatch {
   readonly source?: EdgeRoute['source'];
   readonly target?: EdgeRoute['target'];
   readonly bend?: EdgeRoute['bend'];
+}
+
+/** The sides a connection was drawn from and to; the ones left out stay automatic. */
+export interface ConnectionSides {
+  readonly source?: NodeSide | undefined;
+  readonly target?: NodeSide | undefined;
 }
 
 /**

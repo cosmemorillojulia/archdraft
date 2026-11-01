@@ -14,8 +14,8 @@ import { ResizeHandles } from './ResizeHandles.tsx';
 /**
  * A component on the canvas: the icon of its kind on the colour of its
  * category, its name, the product it resolves to and, when it runs outside
- * the provider of the diagram, a badge saying so. Dragging from a dot on
- * its right or bottom side, shown on hover or when selected, connects it; selected,
+ * the provider of the diagram, a badge saying so. Dragging from the dot on
+ * any of its sides, shown on hover or when selected, connects it; selected,
  * it can be resized.
  */
 export const ComponentNode = memo(function ComponentNode({

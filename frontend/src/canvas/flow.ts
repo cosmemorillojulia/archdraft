@@ -93,9 +93,8 @@ export interface FlowElements {
  * - Nodes without a layout entry are left out, with their edges.
  * - Kind names, in accessible names and as the product of components that
  *   name none, come from `kinds`, in the language of the interface.
- * - Each edge leaves by the right or bottom of its source and arrives at the left or
- *   top of its target, whichever pair makes the shortest line (`edgeSides`), unless its
- *   route fixes a side.
+ * - Each edge leaves and arrives by whichever sides of its nodes make the shortest
+ *   line (`edgeSides`), unless its route fixes a side.
  * - Each element carries the delay of its entrance, so the diagram builds
  *   along its flow direction.
  * - Containers are not draggable here: dragging a large group by accident
