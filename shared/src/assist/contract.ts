@@ -28,6 +28,8 @@ export const ASSIST_LIMITS = {
   maxProposals: 5,
   titleLength: 120,
   textLength: 1000,
+  maxAssumptions: 6,
+  assumptionLength: 240,
 } as const;
 
 const PromptSchema = z.string().trim().min(1).max(ASSIST_LIMITS.promptLength);
@@ -75,6 +77,14 @@ export const ProposalSchema = z.strictObject({
   title: z.string().min(1).max(ASSIST_LIMITS.titleLength),
   /** Why this change, in the language asked for. */
   rationale: z.string().max(ASSIST_LIMITS.textLength),
+  /**
+   * What the assistant decided on its own: parts the request left out, a safer
+   * version of what was asked, the reading it chose of an ambiguous request.
+   */
+  assumptions: z
+    .array(z.string().min(1).max(ASSIST_LIMITS.assumptionLength))
+    .max(ASSIST_LIMITS.maxAssumptions)
+    .optional(),
   /** The diagram once the proposal is applied, already validated. */
   graph: ArchitectureGraphSchema,
   /** What it adds, changes and removes, to highlight it. */

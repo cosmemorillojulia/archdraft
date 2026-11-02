@@ -5,7 +5,9 @@ import {
   type ArchNode,
   LINT_RULE_IDS,
   LINT_RULES,
+  type LintFinding,
   type LintRuleId,
+  compareFindings,
   lintGraph,
   MAX_SYNC_HOPS,
   validateGraph,
@@ -403,5 +405,32 @@ describe('orphan-component', () => {
       node('idp', 'identity-provider'),
     ]);
     expect(findingsOf('orphan-component', graph)).toEqual([]);
+  });
+});
+
+describe('compareFindings', () => {
+  const finding = (ruleId: LintRuleId, nodeIds: string[], edgeIds: string[] = []): LintFinding => ({
+    ruleId,
+    severity: 'warning',
+    message: '',
+    nodeIds,
+    edgeIds,
+    suggestion: '',
+  });
+
+  it('tells the findings a change brings from those it resolves', () => {
+    const kept = finding('single-point-of-failure', ['api']);
+    const gone = finding('unprotected-entry', ['user', 'api']);
+    const added = finding('unencrypted-data', ['db']);
+    expect(compareFindings([kept, gone], [kept, added])).toEqual({
+      introduced: [added],
+      resolved: [gone],
+    });
+  });
+
+  it('matches a finding by its rule and components, in any order and over other connections', () => {
+    const before = finding('unprotected-entry', ['user', 'api'], ['user-api']);
+    const after = finding('unprotected-entry', ['api', 'user'], ['calls']);
+    expect(compareFindings([before], [after])).toEqual({ introduced: [], resolved: [] });
   });
 });
