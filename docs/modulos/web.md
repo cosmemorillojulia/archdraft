@@ -15,9 +15,10 @@ frontend/
     main.tsx              # punto de entrada
     ai/
       client.ts           # requestAssist: POST /v1/assist, problemas y validación de la respuesta
-      assistant-store.ts  # tarea en curso, propuestas ofrecidas y resaltado
+      assistant-store.ts  # tarea en curso, propuestas, vista previa, resumen y marcas
+      changes.ts          # marcas, vista previa y lista de cambios de una propuesta
       run-assistant.ts    # ejecuta cada tarea y aplica propuestas conservando la disposición
-      AssistantPanel.tsx  # panel de propuestas con Aplicar y Descartar
+      AssistantPanel.tsx  # propuestas con Aplicar y Descartar, y resumen de lo aplicado
     layout/
       compute-layout.ts   # computeLayout con ELK, puro; se ejecuta en el worker de disposición
     App.tsx               # proveedores, cabecera fija, lienzo, capas flotantes y añadir en el centro
@@ -475,14 +476,14 @@ El asistente (T20) usa la API del backend (`POST /v1/assist`, ver [backend.md](b
 
 ### Qué se le puede pedir
 
-| Desde                                     | Tarea      | Qué pasa                                                           |
-| ----------------------------------------- | ---------- | ------------------------------------------------------------------ |
-| Barra de descripción, diagrama vacío      | `generate` | Se abre el diagrama generado; deshacer vuelve al anterior          |
-| Barra de descripción con «Diagrama nuevo» | `generate` | Lo mismo, aunque el diagrama abierto tenga contenido               |
-| Barra de descripción, diagrama con algo   | `edit`     | El cambio se aplica como un paso del historial                     |
-| Menú del asistente: Sugerir mejoras       | `improve`  | Panel con de una a cinco mejoras, cada una con Aplicar y Descartar |
-| Menú del asistente: Simplificar           | `simplify` | Panel con un diseño más simple                                     |
-| Menú del asistente: Completar             | `extend`   | Panel con un diseño más completo, listo para producción            |
+| Desde                                     | Tarea      | Qué pasa                                                                                                                   |
+| ----------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Barra de descripción, diagrama vacío      | `generate` | Se abre el diagrama generado; deshacer vuelve al anterior                                                                  |
+| Barra de descripción con «Diagrama nuevo» | `generate` | Lo mismo, aunque el diagrama abierto tenga contenido                                                                       |
+| Barra de descripción, diagrama con algo   | `edit`     | El cambio se aplica como un paso del historial; si quita un componente o toca más de 8 piezas, se enseña antes en el panel |
+| Menú del asistente: Sugerir mejoras       | `improve`  | Panel con de una a cinco mejoras, cada una con Aplicar y Descartar                                                         |
+| Menú del asistente: Simplificar           | `simplify` | Panel con un diseño más simple                                                                                             |
+| Menú del asistente: Completar             | `extend`   | Panel con un diseño más completo, listo para producción                                                                    |
 
 Intro envía y Mayús+Intro hace un salto de línea. Mientras el asistente trabaja, la barra lo dice («Cambiando el diagrama…»), el botón de enviar pasa a Detener y Escape cancela. Una petición nueva cancela la anterior: solo cuenta la última.
 
@@ -491,15 +492,23 @@ Intro envía y Mayús+Intro hace un salto de línea. Mientras el asistente traba
 `ai/run-assistant.ts` hace lo mismo con cualquier propuesta:
 
 1. Vuelve a validar el grafo con `parseArchitectureGraph`, porque llega de la red.
-2. Conserva la disposición con `carryLayout`: lo que sigue en su grupo mantiene posición y tamaño; lo nuevo o lo que cambia de grupo lo coloca ELK; un grupo que gana o pierde miembros suelta su tamaño para crecer a su alrededor. Los estilos y recorridos dibujados a mano se quedan con las conexiones que siguen igual.
+2. Conserva la disposición con `carryLayout`: lo que sigue en su grupo mantiene posición y tamaño; lo nuevo o lo que cambia de grupo lo coloca ELK junto a lo que conecta (ver [layout.md](layout.md)); un grupo que gana o pierde miembros suelta su tamaño para crecer a su alrededor. Los estilos y recorridos dibujados a mano se quedan con las conexiones que siguen igual. Con «Reordenar todo el diagrama», que viene activado si el cambio añade, quita o reagrupa más del 40 % de los nodos, ELK coloca el diagrama entero y solo se conservan los estilos de las conexiones.
 3. Lo registra como un paso del historial con `replaceDocument`, que valida como cualquier edición del store.
-4. Resalta durante cuatro segundos lo añadido y lo cambiado, con el mismo mecanismo que el hallazgo elegido en la revisión: un anillo del color de acento y el resto atenuado.
+4. El panel pasa a un resumen de lo aplicado: explicación, lo que decidió el asistente, el efecto en la revisión y la lista de cambios, con Entendido y Deshacer. Mientras está abierto, lo añadido se marca en verde y lo cambiado en ámbar. Se cierra al editar el diagrama o al elegir algo en el lienzo.
+
+El layout de cada propuesta se calcula una vez por documento y se guarda (`layoutFor`), así que la vista previa y el cambio aplicado son el mismo dibujo.
 
 Si el diagrama cambió mientras el modelo respondía, o desde que se ofreció una propuesta, una propuesta hecha de operaciones (editar, mejorar) se aplica de nuevo sobre el diagrama actual con `applyPatch`. Así se pueden aplicar varias mejoras seguidas. Un rediseño completo no se puede adaptar, y el editor pide volver a pedirlo.
 
 ### Panel de propuestas
 
-`ai/AssistantPanel.tsx` ocupa el lugar del panel bajo la tarjeta del diagrama (y, en pantallas estrechas, el de la barra de descripción), con prioridad sobre la revisión y el inspector. Cada propuesta muestra su título, su explicación y un resumen de lo que añade, cambia y quita. Al pasar el ratón o el foco por ella, el lienzo señala lo que tocaría del diagrama actual. Aplicada o descartada, sale de la lista; el panel se cierra al quedar vacío.
+`ai/AssistantPanel.tsx` ocupa el lugar del panel bajo la tarjeta del diagrama (y, en pantallas estrechas, el de la barra de descripción), con prioridad sobre la revisión y el inspector (ADR 0023).
+
+- Cada propuesta muestra su título y un resumen de lo que añade, cambia y quita, con puntos de los colores del lienzo. Una está abierta: la primera al llegar, o la que se pulse.
+- La abierta muestra su explicación; lo que decidió el asistente sin que se le pidiera (`assumptions`); los hallazgos de la revisión que resuelve y los que trae (`compareFindings`); y la lista de cambios en palabras (`changeItems`): qué se añade, qué se quita y, de lo que se queda, qué cambia (nombre, tipo, grupo, atributos, extremos). Al señalar una pieza de la lista, esa pieza se destaca sola en el lienzo.
+- El lienzo dibuja la propuesta abierta tal como quedará: lo nuevo en verde, lo que cambia en ámbar y lo que se quita en rojo y discontinuo, donde estaba, con una etiqueta en palabras («Nuevo», «Cambia», «Se quita»). Lo demás se atenúa. Una leyenda arriba dice que es una vista previa. Si lo que cambia queda fuera de la vista, la vista se desliza hasta ello. Mientras tanto, el lienzo es de solo lectura.
+- Una propuesta que ya no encaja con el diagrama actual lo dice y no se puede aplicar.
+- Aplicada o descartada, sale de la lista; el panel se cierra al quedar vacío y, tras aplicar la última, pasa al resumen.
 
 ### Errores y avisos
 

@@ -110,7 +110,7 @@ Respuesta `200`, siempre con la misma forma:
 | Workers AI (binding)  | Por defecto en el Worker              | `response_format: { type: 'json_schema', json_schema: <esquema> }`     | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` |
 | Compatible con OpenAI | Si hay `LLM_BASE_URL` y `LLM_API_KEY` | `response_format: { type: 'json_object' }`; el esquema va en el prompt | `openai/gpt-oss-120b` (Groq)               |
 
-`LLM_MODEL` cambia el modelo de cualquiera de los dos. Datos comprobados en la documentación oficial el 2026-10-31:
+`LLM_MODEL` cambia el modelo de cualquiera de los dos. `LLM_REASONING_EFFORT` (`low`, `medium` o `high`) dice cuánto razona un modelo de razonamiento del proveedor compatible con OpenAI; con `gpt-oss` es `low` si no se indica, porque sus razonamientos salen de los tokens de la respuesta y, con los límites del plan gratuito de Groq, `medium` puede dejar el diagrama cortado. A los demás modelos no se les envía. Datos comprobados en la documentación oficial el 2026-10-31:
 
 - Workers AI admite modo JSON en seis modelos; el de 70B es el más capaz de ellos. En modo JSON, `response` puede llegar ya como objeto: el adaptador lo convierte en texto. Si el modelo no consigue el esquema, el binding falla con «JSON Mode couldn't be met», que se trata como respuesta inválida. Los errores de cuota se tratan como límite de uso hasta las 00:00 UTC, cuando se reinicia la asignación diaria.
 - Coste del modelo de 70B: 26.668 neurons por millón de tokens de entrada y 204.805 por millón de salida. Con 10.000 neurons al día, una generación típica (unos 3.000 tokens de entrada, el prompt mide unos 10.400 caracteres, y 2.000 de salida: unos 490 neurons) da para unas veinte al día; una edición, menos. Por eso el límite por IP de T19 es necesario antes de abrir la API.
@@ -125,17 +125,19 @@ Cada tarea es una llamada al modelo, más las reparaciones. No hay un bucle de h
 
 1. `assist.ts` compone dos mensajes: el de sistema (`systemPrompt`) y el de la tarea.
 2. `runWithRepair` llama al modelo, extrae el JSON (`extractJson`) y lo interpreta con la función de la tarea. Si algo no vale, vuelve a llamar con la última respuesta y la lista exacta de problemas (hasta 20). Hay como mucho dos reintentos; solo se reenvía la última respuesta, para que la conversación no crezca. Agotados los reintentos, falla con `invalid-response`.
+   - Revisión (ADR 0023): una respuesta válida puede traer riesgos. En `generate`, `edit`, `simplify` y `extend`, los hallazgos nuevos frente al diagrama anterior de `public-database`, `unprotected-entry`, `unencrypted-data` y `sync-cycle` se devuelven una vez al modelo para que los corrija o explique en `assumptions` por qué los mantiene. Si la corrección no es válida, se queda la primera respuesta.
 3. La interpretación trata la respuesta como entrada no confiable:
    - Grafo completo (`generate`, `simplify`, `extend`): `parseArchitectureGraph` con `schemaVersion` fijado por el código, y `diffGraphs` frente al diagrama anterior. Un rediseño idéntico al original se rechaza; uno que va en contra de su objetivo se acepta con aviso.
    - Operaciones (`edit`, `improve`): `GraphPatchSchema` y `applyPatch` sobre el diagrama de la petición. Un parche que no cambia nada se rechaza.
    - `improve`: cada propuesta se valida por separado. Mientras quedan reintentos, una inválida devuelve todas al modelo con sus errores; en el último intento se quedan las válidas, con el aviso `proposals-dropped`. `more-findings` avisa si alguna da más hallazgos de diseño (errores y avisos de `lintGraph`) que el diagrama actual.
-4. Los títulos y explicaciones demasiado largos se recortan en lugar de rechazarse.
+4. Los títulos y explicaciones demasiado largos se recortan en lugar de rechazarse. `assumptions` se queda con hasta seis frases de texto; lo demás se ignora.
 
 ### Diseño del prompt
 
 - En inglés, que los modelos pequeños siguen mejor. Los nombres y explicaciones se piden en el idioma de la persona; los ids, en inglés.
-- El mensaje de sistema tiene las reglas de modelado (ids en slug, contenedores nunca como extremo de una arista, atributos solo si se conocen, nada de figuras si no se piden) y el catálogo y las reglas de anidamiento, generados desde `NODE_CATALOG` y `CONTAINMENT_RULES`. Un test comprueba que aparecen todos los tipos.
-- `generate` lleva el JSON Schema del diagrama y un ejemplo, la plantilla de API serverless. Las tareas sobre un diagrama llevan el diagrama actual en JSON compacto, que ya hace de ejemplo, y no repiten la plantilla.
+- El mensaje de sistema tiene las reglas de modelado (ids en slug, contenedores nunca como extremo de una arista, atributos solo si se conocen, nada de figuras si no se piden, nodos y aristas en el orden del flujo) y el catálogo y las reglas de anidamiento, generados desde `NODE_CATALOG` y `CONTAINMENT_RULES`. Un test comprueba que aparecen todos los tipos.
+- También tiene las reglas para leer una petición: completar lo imprescindible, elegir la lectura más habitual de lo ambiguo y hacer segura por defecto la versión de lo que se pide inseguro. Lo que decida así lo dice en `assumptions`.
+- `generate` lleva el JSON Schema del diagrama y un ejemplo: la plantilla cuyas palabras clave, en inglés y en español, más aparecen en la petición (`exampleGraph`), o la API serverless si no coincide ninguna. Las tareas sobre un diagrama llevan el diagrama actual en JSON compacto, que ya hace de ejemplo, y no repiten la plantilla.
 - `improve` incluye los hallazgos del motor de reglas, con su sugerencia, para que el modelo parta de datos.
 - `simplify` y `extend` piden reutilizar los ids de lo que se mantiene, para que el editor conserve la disposición y muestre qué cambió.
 - Temperatura 0,2. Tokens de salida como mucho: 4.500 para un grafo completo, 2.500 para un parche y 3.500 para las mejoras. Un test limita el tamaño del mensaje de generación a 26.000 caracteres.
