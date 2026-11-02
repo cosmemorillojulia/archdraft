@@ -19,8 +19,10 @@ import {
   cancelAssistant,
   carryLayout,
   closeOffer,
-  previewProposal,
+  closeReport,
   runAssistant,
+  showProposal,
+  undoReported,
 } from '../src/ai/run-assistant.ts';
 import { PanelSlot } from '../src/components/PanelSlot.tsx';
 import { PromptDock } from '../src/components/PromptDock.tsx';
@@ -61,6 +63,7 @@ const ADD_CACHE: GraphOperation[] = [
 const RENAME_DB: GraphOperation[] = [
   { op: 'updateNode', id: 'db', changes: { label: 'Orders DB' } },
 ];
+const DROP_DB: GraphOperation[] = [{ op: 'removeNode', id: 'db' }];
 
 function patchProposal(title: string, operations: GraphOperation[], on = GRAPH): Proposal {
   const result = applyPatch(on, operations);
@@ -239,8 +242,45 @@ describe('runAssistant', () => {
       x: 520,
       y: 0,
     });
-    expect(assistantStore.getState().highlight?.nodes).toEqual(new Set(['cache']));
+    expect(assistantStore.getState().marks?.nodes.get('cache')).toBe('added');
+    expect(assistantStore.getState().report?.proposal.title).toBe('Cache');
     expect(assistantStore.getState().working).toBeNull();
+  });
+
+  it('offers an edit that removes a part instead of applying it, drawn as it would be', async () => {
+    openShop();
+    apiAnswering(ok(result('edit', [patchProposal('No database', DROP_DB)])));
+    await runAssistant('edit', 'Remove the database', 'LR');
+    expect(currentGraph()).toBe(GRAPH);
+    expect(assistantStore.getState().offer?.task).toBe('edit');
+    await waitFor(() => expect(assistantStore.getState().preview).not.toBeNull());
+    const preview = assistantStore.getState().preview;
+    // What goes is still drawn, where it was, to show it going.
+    expect(preview?.marks.nodes.get('db')).toBe('removed');
+    expect(preview?.document.graph.nodes.map((node) => node.id)).toContain('db');
+    expect(preview?.document.layout.positions['db']).toEqual({ x: 520, y: 0 });
+    await applyOffered(0);
+    expect(currentGraph()?.nodes.map((node) => node.id)).toEqual(['user', 'api']);
+    expect(assistantStore.getState().report?.proposal.title).toBe('No database');
+  });
+
+  it('takes a reported change back, and closes the report when something else is chosen', async () => {
+    openShop();
+    apiAnswering(
+      ok(result('edit', [patchProposal('Cache', ADD_CACHE)])),
+      ok(result('edit', [patchProposal('Cache', ADD_CACHE)])),
+    );
+    await runAssistant('edit', 'Add a cache', 'LR');
+    undoReported();
+    expect(currentGraph()).toBe(GRAPH);
+    expect(assistantStore.getState().report).toBeNull();
+    expect(assistantStore.getState().marks).toBeNull();
+
+    await runAssistant('edit', 'Add a cache', 'LR');
+    expect(assistantStore.getState().report).not.toBeNull();
+    editorStore.getState().select({ type: 'node', id: 'api' });
+    expect(assistantStore.getState().report).toBeNull();
+    closeReport();
   });
 
   it('offers improvements in the panel, in place of the review', async () => {
@@ -328,11 +368,28 @@ describe('runAssistant', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('previews what a proposal touches, and stops', () => {
-    previewProposal(patchProposal('Rename', RENAME_DB));
-    expect(assistantStore.getState().highlight?.nodes).toEqual(new Set(['db']));
-    previewProposal(null);
-    expect(assistantStore.getState().highlight).toBeNull();
+  it('draws the open proposal on the canvas, and the next one when another is shown', async () => {
+    openShop();
+    apiAnswering(
+      ok(
+        result('improve', [patchProposal('Cache', ADD_CACHE), patchProposal('Rename', RENAME_DB)]),
+      ),
+    );
+    await runAssistant('improve', undefined, 'LR');
+    await waitFor(() =>
+      expect(assistantStore.getState().preview?.marks.nodes.get('cache')).toBe('added'),
+    );
+    // What stays keeps its place in the preview, as it will once applied.
+    expect(assistantStore.getState().preview?.document.layout.positions['db']).toEqual({
+      x: 520,
+      y: 0,
+    });
+    showProposal(1);
+    await waitFor(() =>
+      expect(assistantStore.getState().preview?.marks.nodes.get('db')).toBe('updated'),
+    );
+    closeOffer();
+    expect(assistantStore.getState().preview).toBeNull();
   });
 });
 
@@ -385,6 +442,31 @@ describe('PromptDock', () => {
 });
 
 describe('AssistantPanel', () => {
+  it('tells what a change did, what the assistant decided and what to check', async () => {
+    openShop();
+    const exposed = patchProposal('Open the database', [
+      { op: 'updateNode', id: 'db', changes: { attributes: { publiclyAccessible: true } } },
+    ]);
+    assistantStore.setState({
+      report: {
+        task: 'edit',
+        proposal: { ...exposed, assumptions: ['Kept the database where it was.'] },
+        before: GRAPH,
+        after: exposed.graph,
+      },
+    });
+    const user = userEvent.setup();
+    render(<PanelSlot placement="side" />);
+    expect(
+      screen.getByRole('heading', { name: strings.assistant.reported.change }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Kept the database where it was.')).toBeInTheDocument();
+    expect(screen.getByText(strings.lint.rules['public-database'].title)).toBeInTheDocument();
+    expect(screen.getByText(strings.inspector.attributes.publiclyAccessible)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: strings.assistant.done }));
+    expect(assistantStore.getState().report).toBeNull();
+  });
+
   it('lists the proposals with what they change, and applies or discards them', async () => {
     openShop();
     assistantStore.setState({
@@ -393,6 +475,8 @@ describe('AssistantPanel', () => {
         proposals: [patchProposal('Add a cache', ADD_CACHE), patchProposal('Rename', RENAME_DB)],
         basedOn: GRAPH,
         warnings: [],
+        active: 0,
+        tidy: false,
       },
     });
     const user = userEvent.setup();
@@ -405,7 +489,16 @@ describe('AssistantPanel', () => {
     expect(
       screen.getByText(strings.assistant.changes({ added: 2, updated: 0, removed: 0 })),
     ).toBeInTheDocument();
+    // The open proposal says what it changes, one by one.
+    expect(screen.getByText('Cache')).toBeInTheDocument();
+    expect(screen.getByText(strings.assistant.connection('API', 'Cache'))).toBeInTheDocument();
 
+    await user.click(
+      screen.getByRole('button', { name: strings.assistant.showProposal('Rename') }),
+    );
+    expect(
+      await screen.findByText(strings.assistant.details.renamed('Orders', 'Orders DB')),
+    ).toBeInTheDocument();
     await user.click(
       screen.getByRole('button', { name: strings.assistant.discardLabel('Rename') }),
     );
@@ -424,6 +517,8 @@ describe('AssistantPanel', () => {
         proposals: [patchProposal('More', ADD_CACHE)],
         basedOn: GRAPH,
         warnings: [],
+        active: 0,
+        tidy: false,
       },
     });
     const user = userEvent.setup();

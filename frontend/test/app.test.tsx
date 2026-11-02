@@ -148,7 +148,7 @@ describe('App', () => {
     const zoom = screen.getByRole('group', { name: strings.canvas.zoom.label });
     const shortcuts = screen.getByRole('group', { name: strings.canvas.shortcuts.label });
     expect(zoom).not.toContainElement(shortcuts);
-    for (const name of [strings.canvas.edgeStyle.toSquare, strings.canvas.flow.label]) {
+    for (const name of [strings.canvas.edgeStyle.toCurved, strings.canvas.flow.label]) {
       expect(within(shortcuts).getByRole('button', { name })).toBeInTheDocument();
       expect(within(zoom).queryByRole('button', { name })).not.toBeInTheDocument();
     }

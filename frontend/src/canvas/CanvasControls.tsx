@@ -13,10 +13,11 @@ interface CanvasControlsProps {
  * What floats over the corner of the canvas. On desktop it is a row of panels: the zoom at the
  * edge, the overview of the diagram next to it (a gap here, the map itself is drawn by React Flow),
  * and the shortcuts to its left. On touch screens the shortcuts and the zoom are one panel, in one column.
+ * On desktop only the panels take the pointer: the row lies over the overview, which must stay usable.
  */
 export function CanvasControls({ miniMapWidth, ...zoom }: CanvasControlsProps) {
   return (
-    <div className="pointer-events-auto flex flex-col items-center gap-0.5 max-md:floating max-md:rounded-panel max-md:p-1 md:flex-row-reverse md:items-end md:gap-2">
+    <div className="pointer-events-auto flex flex-col items-center gap-0.5 max-md:floating max-md:rounded-panel max-md:p-1 md:pointer-events-none md:flex-row-reverse md:items-end md:gap-2 md:[&>[role=group]]:pointer-events-auto">
       <ZoomControls {...zoom} />
       {miniMapWidth > 0 && (
         <span aria-hidden="true" className="hidden md:block" style={{ width: miniMapWidth }} />

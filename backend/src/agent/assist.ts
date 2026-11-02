@@ -6,12 +6,14 @@ import {
   type AssistRequest,
   type AssistResult,
   type AssistWarning,
+  compareFindings,
   createEmptyGraph,
   diffGraphs,
   GraphPatchSchema,
   hasChanges,
   isContainerKind,
   isShapeKind,
+  type LintRuleId,
   lintGraph,
   parseArchitectureGraph,
   type Proposal,
@@ -21,12 +23,14 @@ import { z } from 'zod';
 import type { LlmMessage, LlmProvider } from '../llm/provider.ts';
 import { isObject } from './extract-json.ts';
 import {
+  describeFinding,
   editMessage,
   generateMessage,
   improveMessage,
   redesignMessage,
   systemPrompt,
 } from './prompt.ts';
+import { type OnProgress, reporting } from './progress.ts';
 import { type Interpretation, runWithRepair } from './repair.ts';
 
 /**
@@ -36,7 +40,12 @@ import { type Interpretation, runWithRepair } from './repair.ts';
  * improvement comes back as operations applied to the diagram it was asked on.
  */
 
-const TitledSchema = z.object({ title: z.string(), rationale: z.string() });
+// "assumptions" comes before the diagram, so the model settles what it decides before drawing it.
+const TitledSchema = z.object({
+  title: z.string(),
+  rationale: z.string(),
+  assumptions: z.array(z.string()).max(ASSIST_LIMITS.maxAssumptions).optional(),
+});
 const GraphAnswerSchema = TitledSchema.extend({ graph: ArchitectureGraphSchema });
 const PatchAnswerSchema = TitledSchema.extend({ operations: GraphPatchSchema });
 const ImproveAnswerSchema = z.object({
@@ -65,11 +74,14 @@ function jsonSchemaOf(schema: z.ZodType): object {
 const MAX_TOKENS = { graph: 4500, patch: 2500, improve: 3500 } as const;
 const TEMPERATURE = 0.2;
 
+/** Does `request`; with `onProgress`, telling along the way what it is doing (`reporting`). */
 export async function assist(
   provider: LlmProvider,
   request: AssistRequest,
   signal?: AbortSignal,
+  onProgress?: OnProgress,
 ): Promise<AssistResult> {
+  const model = onProgress === undefined ? provider : reporting(provider, onProgress);
   const ask = <T>(
     content: string,
     jsonSchema: object,
@@ -81,7 +93,7 @@ export async function assist(
       { role: 'user', content },
     ];
     return runWithRepair(
-      provider,
+      model,
       { messages, jsonSchema, maxTokens, temperature: TEMPERATURE, ...(signal ? { signal } : {}) },
       interpret,
     );
@@ -95,7 +107,7 @@ export async function assist(
         generateMessage(request.prompt, request.provider, jsonSchemaOf(ArchitectureGraphSchema)),
         schema,
         MAX_TOKENS.graph,
-        (answer) => readGraphAnswer(answer, empty),
+        (answer) => reviewed(readGraphAnswer(answer, empty), empty),
       );
       return { task: request.task, proposals: [value], attempts, warnings: [...warnings] };
     }
@@ -105,7 +117,7 @@ export async function assist(
         editMessage(request.prompt, graph, jsonSchemaOf(PatchAnswerSchema)),
         jsonSchemaOf(PatchAnswerSchema),
         MAX_TOKENS.patch,
-        (answer) => readPatchAnswer(answer, graph),
+        (answer) => reviewed(readPatchAnswer(answer, graph), graph),
       );
       return { task: request.task, proposals: [value], attempts, warnings: [...warnings] };
     }
@@ -127,7 +139,7 @@ export async function assist(
         redesignMessage(task, graph, request.prompt, jsonSchemaOf(ArchitectureGraphSchema)),
         jsonSchemaOf(GraphAnswerSchema),
         MAX_TOKENS.graph,
-        (answer) => readRedesignAnswer(answer, graph, task),
+        (answer) => reviewed(readRedesignAnswer(answer, graph, task), graph),
       );
       return { task, proposals: [value], attempts, warnings: [...warnings] };
     }
@@ -140,15 +152,50 @@ function text(value: unknown, max: number): string | undefined {
   return value.trim().slice(0, max);
 }
 
-type Titled = { title: string; rationale: string };
+type Titled = Pick<Proposal, 'title' | 'rationale' | 'assumptions'>;
+
+/** The sentences of a list that are text, cut like the other fields; anything else is ignored. */
+function sentences(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((item) => text(item, ASSIST_LIMITS.assumptionLength) ?? [])
+    .slice(0, ASSIST_LIMITS.maxAssumptions);
+}
 
 function readTitle(answer: Record<string, unknown>, problems: string[], prefix = ''): Titled {
   const title = text(answer['title'], ASSIST_LIMITS.titleLength);
   if (title === undefined) problems.push(`${prefix}"title" must be a non-empty string.`);
+  const assumptions = sentences(answer['assumptions']);
   return {
     title: title ?? '',
     rationale: text(answer['rationale'], ASSIST_LIMITS.textLength) ?? '',
+    ...(assumptions.length > 0 ? { assumptions } : {}),
   };
+}
+
+/**
+ * Rules whose new findings are worth one more attempt: a data store open to
+ * clients, compute without an entry, data stored unencrypted, a loop of calls.
+ */
+const REVIEWED_RULES: ReadonlySet<LintRuleId> = new Set([
+  'public-database',
+  'unprotected-entry',
+  'unencrypted-data',
+  'sync-cycle',
+]);
+
+/** A design that adds risks of those rules to `before` is sent back once to fix them. */
+function reviewed(
+  read: Interpretation<Proposal>,
+  before: ArchitectureGraph,
+): Interpretation<Proposal> {
+  if (!read.ok) return read;
+  const risks = compareFindings(lintGraph(before), lintGraph(read.value.graph))
+    .introduced.filter(
+      (finding) => finding.severity !== 'info' && REVIEWED_RULES.has(finding.ruleId),
+    )
+    .map(describeFinding);
+  return risks.length === 0 ? read : { ...read, review: risks };
 }
 
 /** A whole diagram in `answer.graph`, compared with the one it replaces. */

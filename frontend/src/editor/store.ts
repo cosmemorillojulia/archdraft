@@ -7,6 +7,7 @@ import {
   type EdgeStyle,
   isContainerKind,
   type NodeKind,
+  type NodeSide,
   type Point,
   type Size,
   type TemplateId,
@@ -20,6 +21,7 @@ import { currentStrings } from '../i18n/locale.ts';
 import {
   addNode,
   connect,
+  type ConnectionSides,
   duplicate,
   type Edit,
   type EdgePatch,
@@ -28,13 +30,16 @@ import {
   moveNode,
   moveNodes,
   type NodePatch,
+  nudgeNodes,
   resizeNode,
   remove,
   removeNodes,
   type Selection,
   setDefaultEdgeStyle,
+  reconnect,
   setEdgeRoute,
   setEdgeStyle,
+  setEdgeLabels,
   type DiagramPatch,
   type StackMove,
   stackNode,
@@ -108,7 +113,10 @@ export interface EditorActions {
    * others, and is not scrolled into view; its `size` is the one drawn by dragging.
    */
   addNode: (kind: NodeKind, centre: Point, options?: { size?: Size; exact?: boolean }) => void;
-  connect: (source: string, target: string) => void;
+  /** Connects two nodes; `sides` keeps the sides the connection was drawn from and to. */
+  connect: (source: string, target: string, sides?: ConnectionSides) => void;
+  /** Moves one end of a connection to another node, by `side` of it or the one that fits best. */
+  reconnect: (id: string, end: 'source' | 'target', node: string, side?: NodeSide) => void;
   moveNode: (id: string, position: Point) => void;
   resizeNode: (id: string, box: Point & Size) => void;
   updateNode: (id: string, patch: NodePatch) => void;
@@ -117,6 +125,8 @@ export interface EditorActions {
   setDefaultEdgeStyle: (style: EdgeStyle) => void;
   /** Draws one connection in `style`; `undefined` makes it follow the diagram again. */
   setEdgeStyle: (id: string, style: EdgeStyle | undefined) => void;
+  /** Shows or hides the labels of the connections `ids`, or of all of them. */
+  setEdgeLabels: (ids: readonly string[] | 'all', shown: boolean) => void;
   /** Changes the sides and the bend of one connection; `null` makes its route automatic again. */
   setEdgeRoute: (id: string, patch: EdgeRoutePatch | null) => void;
   /** Renames the diagram or changes its cloud provider. */
@@ -135,6 +145,13 @@ export interface EditorActions {
   toggleSelected: (id: string) => void;
   /** Moves the nodes of the group, or any others, together. */
   moveNodes: (moves: readonly { id: string; position: Point }[]) => void;
+  /** Adds nodes to the group of chosen nodes, as a box drawn around them does. */
+  selectNodes: (ids: readonly string[]) => void;
+  /**
+   * Moves the selected node, or the group, by `delta`. A move that `continues` the last one,
+   * as when an arrow key is held down, joins its step of the history.
+   */
+  nudgeSelection: (delta: Point, continues?: boolean) => void;
   /** Expands or collapses the inspector of the current selection on narrow screens. */
   expandInspector: (expanded: boolean) => void;
   /** Selects a node and edits its name in place. */
@@ -216,8 +233,11 @@ export function createEditorStore() {
   return createStore<EditorStore>()((set, get) => {
     const notify = (text: string) => set({ message: { id: ++messages, text } });
 
-    /** Records `edit` as a new step of the history, unless it fails or changes nothing. */
-    const apply = (edit: (document: DiagramDocument) => Edit) => {
+    /**
+     * Records `edit` as a new step of the history, unless it fails or changes nothing. An edit
+     * that `continues` the last one changes that step instead of adding another.
+     */
+    const apply = (edit: (document: DiagramDocument) => Edit, continues = false) => {
       const { current, past, selection, group } = get();
       if (!current) return;
       const result = edit(current.document);
@@ -235,7 +255,7 @@ export function createEditorStore() {
       }
       set({
         current: { ...current, document: result.document },
-        past: [...past, current].slice(-HISTORY_LIMIT),
+        past: continues && past.length > 0 ? past : [...past, current].slice(-HISTORY_LIMIT),
         future: [],
         selection: result.selection === undefined ? selection : result.selection,
         // An edit that chooses something else ends the group; one that keeps the choice keeps it.
@@ -301,13 +321,17 @@ export function createEditorStore() {
         if (kind === 'text') set({ renaming: selection.id });
         if (options.exact === true) set({ placed: selection.id });
       },
-      connect: (source, target) => apply((document) => connect(document, source, target)),
+      connect: (source, target, sides) =>
+        apply((document) => connect(document, source, target, sides)),
+      reconnect: (id, end, node, side) =>
+        apply((document) => reconnect(document, id, end, node, side)),
       moveNode: (id, position) => apply((document) => moveNode(document, id, position)),
       resizeNode: (id, box) => apply((document) => resizeNode(document, id, box)),
       updateNode: (id, patch) => apply((document) => updateNode(document, id, patch)),
       updateEdge: (id, patch) => apply((document) => updateEdge(document, id, patch)),
       setDefaultEdgeStyle: (style) => apply((document) => setDefaultEdgeStyle(document, style)),
       setEdgeStyle: (id, style) => apply((document) => setEdgeStyle(document, id, style)),
+      setEdgeLabels: (ids, shown) => apply((document) => setEdgeLabels(document, ids, shown)),
       setEdgeRoute: (id, patch) => apply((document) => setEdgeRoute(document, id, patch)),
       updateDiagram: (patch) => apply((document) => updateDiagram(document, patch)),
       replaceDocument: (next) => {
@@ -347,6 +371,24 @@ export function createEditorStore() {
         });
       },
       moveNodes: (moves) => apply((document) => moveNodes(document, moves)),
+      selectNodes: (ids) => {
+        const { selection, group } = get();
+        const chosen = group.length > 1 ? group : selection?.type === 'node' ? [selection.id] : [];
+        const next = [...chosen, ...ids.filter((id) => !chosen.includes(id))];
+        const last = next.at(-1);
+        set({
+          selection: last === undefined ? null : { type: 'node', id: last },
+          group: next.length > 1 ? next : [],
+          connectingFrom: null,
+          renaming: null,
+          placed: null,
+        });
+      },
+      nudgeSelection: (delta, continues) => {
+        const { selection, group } = get();
+        const ids = group.length > 1 ? group : selection?.type === 'node' ? [selection.id] : [];
+        if (ids.length > 0) apply((document) => nudgeNodes(document, ids, delta), continues);
+      },
       startRename: (id) =>
         set({ selection: { type: 'node', id }, group: [], connectingFrom: null, renaming: id }),
       stopRename: () => set({ renaming: null }),

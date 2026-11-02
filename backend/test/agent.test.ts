@@ -8,7 +8,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { assist } from '../src/agent/assist.ts';
 import { extractJson } from '../src/agent/extract-json.ts';
-import { catalogSummary, systemPrompt } from '../src/agent/prompt.ts';
+import { catalogSummary, exampleGraph, systemPrompt } from '../src/agent/prompt.ts';
 import { runWithRepair } from '../src/agent/repair.ts';
 import { LlmError } from '../src/llm/errors.ts';
 import { createScriptedProvider } from '../src/llm/scripted-provider.ts';
@@ -21,7 +21,7 @@ const SHOP: Omit<ArchitectureGraph, 'schemaVersion'> = {
   provider: 'aws',
   nodes: [
     { id: 'user', kind: 'user', label: 'Customer' },
-    { id: 'api', kind: 'service', label: 'API' },
+    { id: 'api', kind: 'api-gateway', label: 'API' },
     { id: 'db', kind: 'relational-db', label: 'Orders' },
   ],
   edges: [
@@ -30,6 +30,14 @@ const SHOP: Omit<ArchitectureGraph, 'schemaVersion'> = {
   ],
 };
 const shopGraph = (): ArchitectureGraph => ({ schemaVersion: 1, ...structuredClone(SHOP) });
+/** The shop with its customer calling a service straight away, which the review reports. */
+const exposedShop = (): ArchitectureGraph => {
+  const graph = shopGraph();
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node) => (node.id === 'api' ? { ...node, kind: 'service' } : node)),
+  };
+};
 
 const ADD_CACHE = {
   title: 'Add a cache',
@@ -134,13 +142,38 @@ describe('prompt', () => {
     expect(systemPrompt('en')).toContain('in English');
   });
 
-  it('keeps a generation request within the daily quota of the free plan', async () => {
-    const { requests } = await run({ task: 'generate', locale: 'en', prompt: 'A shop' }, [
+  it.each([
+    'A shop',
+    'A chatbot over our documents with RAG',
+    'Un pipeline de analítica con ETL y un data warehouse',
+  ])('keeps a generation request within the daily quota of the free plan: %s', async (prompt) => {
+    const { requests } = await run({ task: 'generate', locale: 'en', prompt }, [
       json({ title: 'Shop', rationale: '', graph: SHOP }),
     ]);
     const characters = requests[0]?.messages.reduce((sum, { content }) => sum + content.length, 0);
     // About four characters per token: some 6,000 tokens in, a small share of 10,000 neurons a day.
     expect(characters).toBeLessThan(26_000);
+  });
+
+  it('shows the example closest to what is asked, in English or Spanish', () => {
+    const titleOf = (prompt: string) => exampleGraph(prompt).title;
+    expect(titleOf('A chatbot with embeddings and a vector store')).toBe(
+      ARCHITECTURE_TEMPLATES['rag-chatbot'].title,
+    );
+    expect(titleOf('Microservicios que se comunican con eventos y colas')).toBe(
+      ARCHITECTURE_TEMPLATES['event-driven-microservices'].title,
+    );
+    expect(titleOf('Un blog estático con un CMS')).toBe(
+      ARCHITECTURE_TEMPLATES['static-site-cms'].title,
+    );
+    expect(titleOf('Something else entirely')).toBe(ARCHITECTURE_TEMPLATES['serverless-api'].title);
+  });
+
+  it('asks to read requests safely and to list nodes in the order of the flow', () => {
+    const prompt = systemPrompt('en');
+    expect(prompt).toContain('Secure by default');
+    expect(prompt).toContain('in the order the requests flow');
+    expect(prompt).toContain('"assumptions"');
   });
 });
 
@@ -185,6 +218,61 @@ describe('assist: generate', () => {
       json({ title: 'Shop', rationale: '', graph: SHOP }),
     ]);
     expect(requests[1]?.messages.at(-1)?.content).toContain('"graph" must be an object.');
+  });
+
+  it('passes on what the assistant decided by itself, and leaves out what is not text', async () => {
+    const { result } = await run({ task: 'generate', locale: 'en', prompt: 'A shop' }, [
+      json({
+        title: 'Shop',
+        rationale: '',
+        assumptions: [
+          'Orders are kept in a managed database.',
+          42,
+          ' ',
+          ...Array<string>(9).fill('More'),
+        ],
+        graph: SHOP,
+      }),
+    ]);
+    const assumptions = result.proposals[0]?.assumptions ?? [];
+    expect(assumptions[0]).toBe('Orders are kept in a managed database.');
+    expect(assumptions).toHaveLength(6);
+  });
+
+  it('asks once to fix a design that opens a risk, and takes the fix', async () => {
+    const open = {
+      ...SHOP,
+      nodes: SHOP.nodes.map((node) =>
+        node.id === 'db' ? { ...node, attributes: { publiclyAccessible: true } } : node,
+      ),
+    };
+    const { result, requests } = await run({ task: 'generate', locale: 'en', prompt: 'A shop' }, [
+      json({ title: 'Shop', rationale: '', graph: open }),
+      json({ title: 'Shop', rationale: '', graph: SHOP }),
+    ]);
+    expect(result.attempts).toBe(2);
+    const review = requests[1]?.messages.at(-1)?.content ?? '';
+    expect(review).toContain('public-database');
+    expect(review).toContain('"assumptions"');
+    const db = result.proposals[0]?.graph.nodes.find((node) => node.id === 'db');
+    expect(db?.attributes).toBeUndefined();
+  });
+
+  it('keeps the first design when the fix of its risks is not valid', async () => {
+    const open = {
+      ...SHOP,
+      nodes: SHOP.nodes.map((node) =>
+        node.id === 'db' ? { ...node, attributes: { publiclyAccessible: true } } : node,
+      ),
+    };
+    const { result, requests } = await run({ task: 'generate', locale: 'en', prompt: 'A shop' }, [
+      json({ title: 'Shop', rationale: '', graph: open }),
+      'not JSON',
+    ]);
+    expect(requests).toHaveLength(2);
+    expect(result.attempts).toBe(2);
+    const db = result.proposals[0]?.graph.nodes.find((node) => node.id === 'db');
+    expect(db?.attributes).toEqual({ publiclyAccessible: true });
   });
 
   it('cuts titles that are too long instead of failing', async () => {
@@ -247,6 +335,15 @@ describe('assist: edit', () => {
     expect(requests[2]?.messages.at(-1)?.content).toContain('the operations change nothing');
   });
 
+  it('does not review a risk the diagram already had', async () => {
+    // The customer already calls the API straight away: the edit does not add that risk.
+    const { requests } = await run(
+      { task: 'edit', locale: 'en', prompt: 'Add a cache', graph: exposedShop() },
+      [json(ADD_CACHE)],
+    );
+    expect(requests).toHaveLength(1);
+  });
+
   it('reports malformed operations by their path', async () => {
     const { requests } = await run(
       { task: 'edit', locale: 'en', prompt: 'Paint it', graph: shopGraph() },
@@ -269,7 +366,7 @@ describe('assist: improve', () => {
   };
 
   it('tells the model the findings of the design rules', async () => {
-    const { requests } = await run({ task: 'improve', locale: 'en', graph: shopGraph() }, [
+    const { requests } = await run({ task: 'improve', locale: 'en', graph: exposedShop() }, [
       json({ proposals: [ADD_CACHE] }),
     ]);
     const content = requests[0]?.messages[1]?.content ?? '';

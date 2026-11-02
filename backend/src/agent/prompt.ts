@@ -7,6 +7,7 @@ import {
   type LintFinding,
   NODE_CATALOG,
   NODE_KINDS,
+  type TemplateId,
 } from '@archdraft/shared';
 
 /**
@@ -49,7 +50,16 @@ const MODELLING_RULES = `Modelling rules:
 - Set "attributes" (replicas, multiAz, autoscaling, publiclyAccessible, encryptedAtRest, managed) only when they are known or decided by the design; leave out what is unknown.
 - Use "service" for the concrete product only when it differs from the usual one for the provider (for example "Aurora" for a relational-db on AWS).
 - Do not add shapes, notes or text unless they are asked for.
-- Model what was asked, without inventing parts the description does not need.`;
+- Model what was asked, without inventing parts the description does not need.
+- List the nodes in the order the requests flow: people and clients first, then the entry (CDN, gateway, load balancer), then compute, then queues, data stores and external services. A container comes right before what it holds. List the edges in the same order. The editor lays the diagram out in this order, so it decides how tidy it looks.`;
+
+/** How to turn what a person writes into what they need. */
+const READING_RULES = `How to read a request:
+- Read it as a senior architect would: work out what the system has to do and for whom, then design the smallest architecture that does it well.
+- When the request leaves out a part the system cannot work without (how people reach it, where its data is kept), add the usual one.
+- When the request is ambiguous, take the most usual reading.
+- Secure by default: data stores stay private and are reached through a service, never straight from clients; clients reach compute through a load balancer, API gateway or CDN; sensitive data is encrypted at rest. When the request asks for something unsafe, design the safe version instead; keep the unsafe one only when the person insists on it explicitly.
+- "assumptions" lists, in at most six short sentences, what you decided that the request did not say: parts you added, the reading you took, what you made safer than asked. Leave it empty when there is nothing of the sort.`;
 
 export function systemPrompt(locale: AssistLocale): string {
   return [
@@ -57,6 +67,7 @@ export function systemPrompt(locale: AssistLocale): string {
     'You answer with a single JSON object and nothing else: no prose, no code fences.',
     `Write every label, title, summary and explanation in ${LANGUAGE[locale]}. Ids stay in English.`,
     MODELLING_RULES,
+    READING_RULES,
     `Kinds of node (kind (category): meaning):\n${catalogSummary()}`,
     `Where containers may go:\n${containmentSummary()}`,
   ].join('\n\n');
@@ -64,12 +75,37 @@ export function systemPrompt(locale: AssistLocale): string {
 
 const compact = (value: unknown) => JSON.stringify(value);
 
-/** A diagram written well, so the model sees the format used as intended. */
-export function exampleGraph(): ArchitectureGraph {
-  return ARCHITECTURE_TEMPLATES['serverless-api'];
+/**
+ * Words that point to each template, in English and Spanish. The example
+ * closest to the request shows the model the shape of what it is asked for.
+ */
+const EXAMPLE_HINTS: Record<TemplateId, RegExp> = {
+  'serverless-api':
+    /\b(serverless|lambda|functions?|funci[oó]n(es)?|api( rest)?|backend|endpoints?)\b/gi,
+  'three-tier-web':
+    /\b(three[- ]tier|tres capas|3 capas|monolith|monol[ií]tic[oa]|web app|aplicaci[oó]n web|e-?commerce|tienda|shop|store|vms?|ec2|servidor(es)?|servers?)\b/gi,
+  'event-driven-microservices':
+    /\b(microservic\w*|events?|eventos?|queues?|colas?|kafka|pub\/?sub|messaging|mensajer[ií]a|sagas?|orders?|pedidos?)\b/gi,
+  'analytics-pipeline':
+    /\b(analytics|anal[ií]tica|pipelines?|etl|elt|warehouse|almac[eé]n de datos|lakes?|lago de datos|dashboards?|bi|streaming|ingest\w*|ingesta|reports?|informes?)\b/gi,
+  'rag-chatbot':
+    /\b(rag|chat ?bots?|llms?|embeddings?|vector\w*|ai|ia|gpt|assistants?|asistentes?|agents?|agentes?|semantic search|b[uú]squeda sem[aá]ntica)\b/gi,
+  'static-site-cms':
+    /\b(static|est[aá]tic[oa]|blog|cms|landing|portfolio|wordpress|headless|documentation site|sitio web|website|marketing)\b/gi,
+};
+
+/** A diagram written well, close to what is asked, so the model sees the format used as intended. */
+export function exampleGraph(prompt = ''): ArchitectureGraph {
+  let best: TemplateId = 'serverless-api';
+  let bestScore = 0;
+  for (const [id, hint] of Object.entries(EXAMPLE_HINTS) as [TemplateId, RegExp][]) {
+    const score = prompt.match(hint)?.length ?? 0;
+    if (score > bestScore) [best, bestScore] = [id, score];
+  }
+  return ARCHITECTURE_TEMPLATES[best];
 }
 
-const GRAPH_ANSWER = `Answer with {"title": string, "rationale": string, "graph": <the whole diagram>}. "title" names the diagram or the proposal in a few words; "rationale" explains the design in two or three sentences. The diagram follows this JSON Schema:`;
+const GRAPH_ANSWER = `Answer with {"title": string, "rationale": string, "assumptions": [string], "graph": <the whole diagram>}. "title" names the diagram or the proposal in a few words; "rationale" explains the design in two or three sentences. The diagram follows this JSON Schema:`;
 
 const PATCH_ANSWER = `A change is a list of operations, applied in order:
 - {"op":"addNode","node":{...}} and {"op":"addEdge","edge":{...}} with the whole new node or edge.
@@ -89,7 +125,7 @@ export function generateMessage(
       ? 'Use the cloud provider the description names ("aws", "gcp" or "azure"), or "generic" if it names none.'
       : `Use "${provider}" as the provider of the diagram.`,
     `${GRAPH_ANSWER}\n${compact(graphSchema)}`,
-    `An example of a good diagram:\n${compact(exampleGraph())}`,
+    `An example of a good diagram, for its format and its order, not its content:\n${compact(exampleGraph(prompt))}`,
   ].join('\n\n');
 }
 
@@ -105,12 +141,13 @@ export function editMessage(
   return [
     currentDiagram(graph),
     `Change it as asked, and only as asked:\n"""${prompt}"""`,
+    'Read the request as the rules above say: what it needs to work, and safe. Connect what you add to the parts it serves, and put it in the container it belongs to.',
     PATCH_ANSWER,
-    `Answer with {"title": string, "rationale": string, "operations": [...]}: "title" says in a few words what changed and "rationale" why. JSON Schema of the answer:\n${compact(answerSchema)}`,
+    `Answer with {"title": string, "rationale": string, "assumptions": [string], "operations": [...]}: "title" says in a few words what changed and "rationale" why. JSON Schema of the answer:\n${compact(answerSchema)}`,
   ].join('\n\n');
 }
 
-function describeFinding(finding: LintFinding): string {
+export function describeFinding(finding: LintFinding): string {
   const where = finding.nodeIds.length > 0 ? ` (nodes: ${finding.nodeIds.join(', ')})` : '';
   return `- [${finding.severity}] ${finding.ruleId}: ${finding.message}${where}. Suggestion: ${finding.suggestion}`;
 }

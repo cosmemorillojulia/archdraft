@@ -83,15 +83,11 @@ describe('toFlow', () => {
     expect(nodes.find((node) => node.id === 'api')?.data).not.toHaveProperty('providerBadge');
   });
 
-  it('joins each edge from the right or bottom of its source to the left or top of its target', () => {
-    // user → api (api is inside the VPC, to the right) and api → payments (down and right).
+  it('joins each edge by the sides of its nodes that face each other', () => {
+    // user → api: api is inside the VPC, to the right.
     const { edges } = toFlow({ graph, layout }, 'LR');
     const byId = new Map(edges.map((edge) => [edge.id, edge]));
     expect(byId.get('e1')).toMatchObject({ sourceHandle: 'right', targetHandle: 'left' });
-    for (const edge of edges) {
-      expect(['right', 'bottom']).toContain(edge.sourceHandle);
-      expect(['left', 'top']).toContain(edge.targetHandle);
-    }
   });
 
   it('leaves out of the nodes the old per-direction connection points', () => {
@@ -126,11 +122,11 @@ describe('toFlow', () => {
   it('gives each edge its own style, or else the one of the diagram', () => {
     const styles = (styled: DiagramLayout) =>
       toFlow({ graph, layout: styled }, 'LR').edges.map((edge) => edge.data?.style);
-    expect(styles(layout)).toEqual(['curved', 'curved', 'curved']);
-    expect(styles({ ...layout, edgeStyle: 'square', edgeStyles: { e2: 'curved' } })).toEqual([
-      'square',
+    expect(styles(layout)).toEqual(['square', 'square', 'square']);
+    expect(styles({ ...layout, edgeStyle: 'curved', edgeStyles: { e2: 'square' } })).toEqual([
       'curved',
       'square',
+      'curved',
     ]);
   });
 

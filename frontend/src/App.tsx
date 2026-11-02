@@ -105,7 +105,7 @@ function Editor() {
   const graph = useEditor((state) => state.current?.document.graph);
   const selecting = useEditor((state) => state.selection !== null);
   const reviewing = useReview((state) => state.open);
-  const offering = useAssistant((state) => state.offer !== null);
+  const offering = useAssistant((state) => state.offer !== null || state.report !== null);
   // On narrow screens a panel takes the place of the prompt.
   const panelOpen = selecting || reviewing || offering;
   const flow = useReactFlow();

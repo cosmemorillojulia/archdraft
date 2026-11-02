@@ -2,11 +2,12 @@ import { ASSIST_LIMITS, type AssistRequest, AssistRequestSchema } from '@archdra
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
+import { streamSSE } from 'hono/streaming';
 import { assist } from '../agent/assist.ts';
 import { LlmError } from '../llm/errors.ts';
 import type { LlmProvider } from '../llm/provider.ts';
 import { allowedOrigins, type Env, providerFromEnv } from './env.ts';
-import { PROBLEM_OF, problemResponse } from './problems.ts';
+import { PROBLEM_OF, problemBody, problemResponse } from './problems.ts';
 
 /** One line per call to the agent. Never the prompt or the diagram (docs/arquitectura.md §7). */
 export interface AssistLogEntry {
@@ -41,7 +42,9 @@ function logJson(entry: AssistLogEntry): void {
 /**
  * The HTTP API (docs/modulos/backend.md): `GET /health` and `POST /v1/assist`.
  * The work is the agent's; this layer checks what comes in, picks the model
- * and turns failures into problem details.
+ * and turns failures into problem details. A request that accepts
+ * `text/event-stream` gets server-sent events instead: `progress` while the
+ * agent works, then one `result` or one `problem`, with the same bodies.
  */
 export function createApp(dependencies: AppDependencies = {}) {
   const pickProvider = dependencies.provider ?? providerFromEnv;
@@ -104,6 +107,41 @@ export function createApp(dependencies: AppDependencies = {}) {
       }
       const started = now();
       const entry = { requestId: c.get('requestId'), task: request.task, provider: provider.name };
+
+      if (c.req.header('Accept')?.includes('text/event-stream') === true) {
+        return streamSSE(c, async (stream) => {
+          // Events go out in order, whatever the agent is doing when it reports.
+          let queue = Promise.resolve();
+          const send = (event: string, data: unknown) =>
+            (queue = queue.then(() => stream.writeSSE({ event, data: JSON.stringify(data) })));
+          try {
+            const result = await assist(provider, request, c.req.raw.signal, (progress) => {
+              void send('progress', progress);
+            });
+            log({ ...entry, status: 200, durationMs: now() - started, attempts: result.attempts });
+            await send('result', result);
+          } catch (error) {
+            // The editor went away: there is nobody to tell.
+            if (c.req.raw.signal.aborted) return;
+            const failure = error instanceof LlmError ? error : undefined;
+            if (!failure) console.error('Unexpected error', error);
+            const problem = failure ? PROBLEM_OF[failure.kind] : 'internal-error';
+            const body = problemBody(problem, failure ? { detail: failure.message } : {});
+            log({
+              ...entry,
+              status: body.status,
+              durationMs: now() - started,
+              problem: failure?.kind ?? 'internal-error',
+              ...(failure ? { detail: failure.message } : {}),
+            });
+            await send('problem', {
+              ...body,
+              ...(failure?.retryAfter === undefined ? {} : { retryAfter: failure.retryAfter }),
+            });
+          }
+        });
+      }
+
       try {
         const result = await assist(provider, request, c.req.raw.signal);
         log({ ...entry, status: 200, durationMs: now() - started, attempts: result.attempts });

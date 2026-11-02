@@ -4,17 +4,23 @@ import { createStore } from 'zustand/vanilla';
 /** Where the choice to show the particles that travel along connections is kept. */
 export const FLOW_ANIMATION_KEY = 'archdraft:flow-animation';
 
+/**
+ * A choice made with the toggle wins. Without one, the particles follow the system: they are
+ * off when it asks for reduced motion, and the toggle can still turn them on.
+ */
 function loadFlowAnimation(): boolean {
+  let stored: string | null = null;
   try {
-    return localStorage.getItem(FLOW_ANIMATION_KEY) !== 'off';
+    stored = localStorage.getItem(FLOW_ANIMATION_KEY);
   } catch (error) {
     console.warn('Could not read the flow animation preference', error);
-    return true;
   }
+  if (stored !== null) return stored !== 'off';
+  return !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
 export interface Preferences {
-  /** Particles travel along the connections; on unless turned off. */
+  /** Particles travel along the connections; on unless turned off or the system reduces motion. */
   readonly flowAnimation: boolean;
   setFlowAnimation: (on: boolean) => void;
 }

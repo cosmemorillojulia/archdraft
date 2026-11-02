@@ -28,6 +28,8 @@ export const ASSIST_LIMITS = {
   maxProposals: 5,
   titleLength: 120,
   textLength: 1000,
+  maxAssumptions: 6,
+  assumptionLength: 240,
 } as const;
 
 const PromptSchema = z.string().trim().min(1).max(ASSIST_LIMITS.promptLength);
@@ -75,6 +77,14 @@ export const ProposalSchema = z.strictObject({
   title: z.string().min(1).max(ASSIST_LIMITS.titleLength),
   /** Why this change, in the language asked for. */
   rationale: z.string().max(ASSIST_LIMITS.textLength),
+  /**
+   * What the assistant decided on its own: parts the request left out, a safer
+   * version of what was asked, the reading it chose of an ambiguous request.
+   */
+  assumptions: z
+    .array(z.string().min(1).max(ASSIST_LIMITS.assumptionLength))
+    .max(ASSIST_LIMITS.maxAssumptions)
+    .optional(),
   /** The diagram once the proposal is applied, already validated. */
   graph: ArchitectureGraphSchema,
   /** What it adds, changes and removes, to highlight it. */
@@ -107,6 +117,32 @@ export const AssistResultSchema = z.strictObject({
   warnings: z.array(z.enum(ASSIST_WARNINGS)),
 });
 
+/**
+ * What the assistant is doing while it works, sent as `progress` events when the request asks
+ * for a stream (`Accept: text/event-stream`), before the `result` or the `problem`:
+ *
+ * - `thinking`: the model is reasoning about the request, before it answers.
+ * - `drawing`: the model is writing the answer.
+ * - `checking`: the answer is being validated and reviewed against the design rules.
+ * - `fixing`: the model is asked again, to fix the problems or the risks found.
+ */
+export const ASSIST_STAGES = ['thinking', 'drawing', 'checking', 'fixing'] as const;
+export type AssistStage = (typeof ASSIST_STAGES)[number];
+
+export const ASSIST_PROGRESS_LIMITS = {
+  /** Longest stretch of reasoning sent in one event. */
+  thoughtLength: 4000,
+} as const;
+
+export const AssistProgressSchema = z.strictObject({
+  stage: z.enum(ASSIST_STAGES),
+  /** Reasoning of the model since the last event, for the models that show theirs. */
+  thought: z.string().max(ASSIST_PROGRESS_LIMITS.thoughtLength).optional(),
+  /** Names of the components the answer has written so far, in order. */
+  components: z.array(z.string().max(LIMITS.labelLength)).max(LIMITS.maxNodes).optional(),
+});
+
+export type AssistProgress = z.infer<typeof AssistProgressSchema>;
 export type AssistRequest = z.infer<typeof AssistRequestSchema>;
 export type Proposal = z.infer<typeof ProposalSchema>;
 export type AssistResult = z.infer<typeof AssistResultSchema>;

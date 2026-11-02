@@ -1,10 +1,11 @@
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
-import { AnimatePresence, m, useReducedMotion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { memo, useState } from 'react';
 import { EASE_OUT } from '../motion.ts';
 import { useStrings } from '../i18n/locale.ts';
-import { isSelected, useCanvas } from './canvas-context.ts';
-import { connectionPath } from './edge-path.ts';
+import { MARK_COLOR } from './appearance.ts';
+import { isSelected, markOf, useCanvas } from './canvas-context.ts';
+import { connectionPath, routePoints } from './edge-path.ts';
 import { EdgeRouteHandles, type RoutePreview } from './EdgeRouteHandles.tsx';
 import type { ArchitectureFlowEdge } from './flow.ts';
 import { arrowhead, type EdgeSides, sidePoint } from './geometry.ts';
@@ -17,11 +18,19 @@ const PARTICLE_MAX_S = 4;
 /** Seconds the line takes to draw in; the arrowhead appears as it arrives. */
 const DRAW_S = 0.55;
 
+/** How far, in diagram pixels, an end has to be from where its node rests to count as moving. */
+const MOVED = 2;
+
+function away(point: { x: number; y: number }, rest: { x: number; y: number }): boolean {
+  return Math.abs(point.x - rest.x) > MOVED || Math.abs(point.y - rest.y) > MOVED;
+}
+
 /**
  * A connection: a smooth curve, or a line of right angles, that draws itself in when the
  * diagram builds, dashed when asynchronous, ending in an arrowhead, with a particle in the
  * colour of its source that travels along it. When it is selected, or either
- * end is in focus, it turns to the accent colour and shows its label.
+ * end is in focus, it turns to the accent colour. Its label shows always or
+ * never, as it was set, not when it is pointed at.
  *
  * The arrowhead is drawn here rather than as an SVG marker: a marker scales
  * with the stroke width, cannot fade its colour, and shows before the line
@@ -40,7 +49,6 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
 }: EdgeProps<ArchitectureFlowEdge>) {
   const strings = useStrings();
   const canvas = useCanvas();
-  const reduceMotion = useReducedMotion() === true;
   // Drawing in uses a normalised dash, which Chromium does not rescale when the path changes
   // length (a node moved); once drawn, the line is a plain path.
   const [drawn, setDrawn] = useState(false);
@@ -52,19 +60,43 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
     edge,
     async,
     style,
+    showLabel,
     route,
+    sourcePoint,
+    targetPoint,
+    obstacles,
     sourceBox,
     targetBox,
     direction,
     sourceCategory,
     appearDelay,
   } = data;
-  // The sides come from the handles React Flow measured, except while another side is being tried.
+  // The sides come from the handles React Flow measured, except while another side, or another
+  // node, is being tried.
   const settled: EdgeSides = { source: sourcePosition, target: targetPosition };
-  const trying = preview?.kind === 'sides' ? preview.sides : null;
+  const reconnecting = preview?.kind === 'reconnect' ? preview : null;
+  const trying = preview?.kind === 'sides' ? preview.sides : (reconnecting?.sides ?? null);
+  const fromBox = reconnecting?.end === 'source' ? reconnecting.box : sourceBox;
+  const toBox = reconnecting?.end === 'target' ? reconnecting.box : targetBox;
   const sides = trying ?? settled;
-  const start = trying ? sidePoint(sourceBox, trying.source) : { x: sourceX, y: sourceY };
-  const tip = trying ? sidePoint(targetBox, trying.target) : { x: targetX, y: targetY };
+  // React Flow gives the middle of each side, which follows a node while it is dragged; the
+  // ends of connections that share a side are spread from there.
+  const sourceMiddle = sidePoint(sourceBox, settled.source);
+  const targetMiddle = sidePoint(targetBox, settled.target);
+  const draggedFrom = {
+    x: sourceX + sourcePoint.x - sourceMiddle.x,
+    y: sourceY + sourcePoint.y - sourceMiddle.y,
+  };
+  const draggedTo = {
+    x: targetX + targetPoint.x - targetMiddle.x,
+    y: targetY + targetPoint.y - targetMiddle.y,
+  };
+  const dragged = away(draggedFrom, sourcePoint) || away(draggedTo, targetPoint);
+  const start = trying ? sidePoint(fromBox, trying.source) : dragged ? draggedFrom : sourcePoint;
+  const tip = trying ? sidePoint(toBox, trying.target) : dragged ? draggedTo : targetPoint;
+  // The boxes to go round are where the nodes rest: while an end moves, as when its node is
+  // dragged or the end is taken to another node, the line takes its plain course instead.
+  const moving = dragged || reconnecting !== null;
   const arrow = arrowhead(tip.x, tip.y, sides.target);
   const ends = {
     sourceX: start.x,
@@ -74,16 +106,21 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
     sourcePosition: sides.source,
     targetPosition: sides.target,
   };
-  // A bend was made for the sides it was stored with, so it is not applied to other ones.
-  const stored = trying ? undefined : route?.bend;
-  const bend = preview?.kind === 'bend' ? preview.bend : stored;
-  const { path, labelX, labelY, bend: bendHandle } = connectionPath(style, ends, bend);
+  const stored = routePoints(style, ends, route);
+  // Another node has no use for the points put for this one.
+  const points = preview?.kind === 'points' ? preview.points : reconnecting ? [] : stored;
+  const shape = connectionPath(style, ends, points, moving ? [] : obstacles);
+  const { path, labelX, labelY } = shape;
   const selected = isSelected(canvas.selection, 'edge', id);
   const active = selected || canvas.edges.has(id);
   const dimmed = canvas.dimOthers && !active;
+  const mark = markOf(canvas, 'edge', id);
+  const removed = mark === 'removed';
   const label = edge.label ?? (edge.protocol && strings.protocols[edge.protocol]);
-  const colour = active ? 'var(--accent)' : 'var(--edge)';
-  const strokeWidth = selected ? 2.5 : active ? 2 : 1.5;
+  const colour = mark ? MARK_COLOR[mark] : active ? 'var(--accent)' : 'var(--edge)';
+  const strokeWidth = selected ? 2.5 : active || mark ? 2 : 1.5;
+  // A connection that goes is dotted like no other, asynchronous or not.
+  const dashes = removed ? '2 5' : async ? '5 5' : undefined;
   const delay = canvas.building ? appearDelay : 0;
   const travel = Math.min(
     Math.max(Math.hypot(tip.x - start.x, tip.y - start.y) / PARTICLE_SPEED, PARTICLE_MIN_S),
@@ -96,7 +133,10 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
 
   return (
     <>
-      <g className="transition-opacity duration-200" style={{ opacity: dimmed ? 0.15 : 1 }}>
+      <g
+        className="transition-opacity duration-200"
+        style={{ opacity: dimmed ? 0.15 : removed ? 0.7 : 1 }}
+      >
         {/* Invisible wide stroke from React Flow, so the edge is easy to point at. */}
         <BaseEdge path={path} style={{ stroke: 'transparent' }} interactionWidth={20} />
         {drawn ? (
@@ -104,7 +144,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
             d={path}
             fill="none"
             strokeWidth={strokeWidth}
-            strokeDasharray={async ? '5 5' : undefined}
+            strokeDasharray={dashes}
             className="transition-[stroke,stroke-width] duration-200"
             style={{ stroke: colour }}
           />
@@ -113,7 +153,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
             d={path}
             fill="none"
             strokeWidth={strokeWidth}
-            strokeDasharray={async ? '5 5' : undefined}
+            strokeDasharray={dashes}
             className="transition-[stroke,stroke-width] duration-200"
             style={{ stroke: colour }}
             {...reveal}
@@ -131,7 +171,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.15, delay: delay + (canvas.building ? DRAW_S * 0.8 : 0) }}
         />
-        {canvas.particles && !reduceMotion && (
+        {canvas.particles && !removed && (
           <m.circle
             r={async ? 2.25 : 2.5}
             style={{ fill: `var(--cat-${sourceCategory})` }}
@@ -150,13 +190,26 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
         >
           <AnimatePresence>
-            {active && label !== undefined && (
+            {showLabel && label !== undefined && (
               <m.div
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18, ease: EASE_OUT }}
-                className="rounded-full bg-accent px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap text-on-accent"
+                className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap transition-[background-color,border-color,color] duration-200 ${
+                  active
+                    ? 'border-accent bg-accent text-on-accent'
+                    : 'border-line bg-surface text-muted'
+                }`}
+                style={
+                  mark
+                    ? {
+                        backgroundColor: MARK_COLOR[mark],
+                        borderColor: MARK_COLOR[mark],
+                        color: 'var(--surface)',
+                      }
+                    : {}
+                }
               >
                 {label}
               </m.div>
@@ -166,11 +219,15 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
         {selected && (
           <EdgeRouteHandles
             id={id}
+            style={style}
             sides={settled}
             source={start}
             target={tip}
-            home={connectionPath(style, ends).bend}
-            bend={bendHandle}
+            ends={ends}
+            shape={shape}
+            points={stored}
+            sourceId={edge.source}
+            targetId={edge.target}
             sourceBox={sourceBox}
             targetBox={targetBox}
             direction={direction}

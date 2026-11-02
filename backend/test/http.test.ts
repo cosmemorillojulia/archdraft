@@ -1,7 +1,7 @@
 import { type ArchitectureGraph, AssistResultSchema } from '@archdraft/shared';
 import { describe, expect, it } from 'vitest';
 import { type AppDependencies, type AssistLogEntry, createApp } from '../src/http/app.ts';
-import { allowedOrigins, type Env, providerFromEnv } from '../src/http/env.ts';
+import { allowedOrigins, type Env, providerFromEnv, reasoningEffortFor } from '../src/http/env.ts';
 import { LlmError } from '../src/llm/errors.ts';
 import { createScriptedProvider, type ScriptedTurn } from '../src/llm/scripted-provider.ts';
 
@@ -12,7 +12,7 @@ const GRAPH: Omit<ArchitectureGraph, 'schemaVersion'> = {
   provider: 'generic',
   nodes: [
     { id: 'user', kind: 'user', label: 'User' },
-    { id: 'api', kind: 'service', label: 'API' },
+    { id: 'api', kind: 'api-gateway', label: 'API' },
   ],
   edges: [{ id: 'user-api', source: 'user', target: 'api', mode: 'sync' }],
 };
@@ -201,6 +201,15 @@ describe('providerFromEnv', () => {
       'workers-ai:@cf/meta/llama-3.3-70b-instruct-fp8-fast',
     );
     expect(providerFromEnv({ AI: ai, LLM_MODEL: '@cf/other' })?.name).toBe('workers-ai:@cf/other');
+  });
+
+  it('keeps a reasoning model brief unless told otherwise, and leaves other models alone', () => {
+    expect(reasoningEffortFor({}, 'openai/gpt-oss-120b')).toBe('low');
+    expect(reasoningEffortFor({ LLM_REASONING_EFFORT: ' medium ' }, 'openai/gpt-oss-20b')).toBe(
+      'medium',
+    );
+    expect(reasoningEffortFor({ LLM_REASONING_EFFORT: 'max' }, 'openai/gpt-oss-120b')).toBe('low');
+    expect(reasoningEffortFor({}, 'llama-3.3-70b')).toBeUndefined();
   });
 
   it('has none when nothing is configured', () => {

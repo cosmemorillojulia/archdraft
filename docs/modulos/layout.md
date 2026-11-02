@@ -26,17 +26,22 @@ Las posiciones de un nodo dentro de un contenedor son relativas a ese contenedor
 
 ## Opciones de ELK elegidas
 
-| Opción                                      | Valor               | Motivo                                                                                                              |
-| ------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `elk.algorithm`                             | `layered`           | Sugiyama por capas: el tráfico fluye en una dirección, que es como se leen los diagramas de arquitectura            |
-| `elk.hierarchyHandling`                     | `INCLUDE_CHILDREN`  | Dispone los contenedores y su contenido a la vez, de modo que las aristas que cruzan contenedores ordenan las capas |
-| `elk.edgeRouting`                           | `ORTHOGONAL`        | Aristas en ángulo recto; deja el hueco que necesitará el lienzo para dibujarlas así                                 |
-| `elk.direction`                             | según `direction`   | `LR` → `RIGHT`, `TB` → `DOWN`, `RL` → `LEFT`, `BT` → `UP`                                                           |
-| `elk.spacing.nodeNode`                      | 40                  | Separación entre nodos de la misma capa                                                                             |
-| `elk.layered.spacing.nodeNodeBetweenLayers` | 80                  | Espacio entre capas para las etiquetas de protocolo                                                                 |
-| `elk.layered.considerModelOrder.strategy`   | `NODES_AND_EDGES`   | Respeta el orden del grafo cuando no empeora los cruces: el resultado se parece a cómo se escribió el diagrama      |
-| `elk.randomSeed`                            | 1                   | Fija la semilla para que la disposición sea determinista                                                            |
-| `elk.padding` en contenedores               | arriba 48, resto 24 | La franja superior deja sitio a la cabecera con el nombre del contenedor                                            |
+| Opción                                                              | Valor                                            | Motivo                                                                                                                                                        |
+| ------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `elk.algorithm`                                                     | `layered`                                        | Sugiyama por capas: el tráfico fluye en una dirección, que es como se leen los diagramas de arquitectura                                                      |
+| `elk.hierarchyHandling`                                             | `INCLUDE_CHILDREN`                               | Dispone los contenedores y su contenido a la vez, de modo que las aristas que cruzan contenedores ordenan las capas                                           |
+| `elk.edgeRouting`                                                   | `ORTHOGONAL`                                     | Aristas en ángulo recto; deja el hueco que necesitará el lienzo para dibujarlas así                                                                           |
+| `elk.direction`                                                     | según `direction`                                | `LR` → `RIGHT`, `TB` → `DOWN`, `RL` → `LEFT`, `BT` → `UP`                                                                                                     |
+| `elk.spacing.nodeNode`                                              | 40                                               | Separación entre nodos de la misma capa                                                                                                                       |
+| `elk.layered.spacing.nodeNodeBetweenLayers`                         | 80                                               | Espacio entre capas para las etiquetas de protocolo                                                                                                           |
+| `elk.layered.considerModelOrder.strategy`                           | `NODES_AND_EDGES`                                | Respeta el orden del grafo cuando no empeora los cruces: el resultado se parece a cómo se escribió el diagrama                                                |
+| `elk.layered.thoroughness`                                          | 16                                               | Más pasadas para reducir cruces que las 7 por defecto; 200 nodos siguen bajando de medio segundo                                                              |
+| `elk.layered.crossingMinimization.greedySwitchHierarchical.type`    | `TWO_SIDED`                                      | Intercambios que quitan cruces y que ELK desactiva por defecto en diagramas con contenedores                                                                  |
+| `elk.layered.nodePlacement.strategy`                                | `NETWORK_SIMPLEX` y `BRANDES_KOEPF` (`BALANCED`) | Se prueban las dos y se queda la más ordenada (`untidiness`): la primera alinea cadenas de llamadas, la segunda centra un nodo entre los que reparte o recoge |
+| `elk.spacing.edgeNode`, `elk.layered.spacing.edgeNodeBetweenLayers` | 24                                               | Hueco para que las conexiones, que dibuja el lienzo, pasen entre las cajas                                                                                    |
+| `elk.spacing.edgeEdge`                                              | 12                                               | Separación entre conexiones paralelas                                                                                                                         |
+| `elk.randomSeed`                                                    | 1                                                | Fija la semilla para que la disposición sea determinista                                                                                                      |
+| `elk.padding` en contenedores                                       | arriba 48, resto 24                              | La franja superior deja sitio a la cabecera con el nombre del contenedor                                                                                      |
 
 Los contenedores con hijos no reciben tamaño: ELK lo calcula a partir de su contenido. Los contenedores vacíos y los componentes usan el tamaño conocido si `pinned.sizes` lo trae (el editor podrá pasar el tamaño medido de cada nodo) y, si no, el tamaño por defecto.
 
@@ -48,8 +53,9 @@ Se usa `elkjs/lib/elk.bundled.js`, que incluye el motor y no crea un worker prop
 
 1. Se calcula la disposición completa con ELK, como si no hubiera nada fijado.
 2. Los nodos con posición en `pinned` la conservan, igual que su tamaño si lo trae.
-3. Cada nodo nuevo parte de su posición en la disposición completa y, si choca con un hermano ya colocado (con `NODE_SPACING` de margen), se desplaza en el eje transversal al flujo, hacia abajo en `LR` y `RL` y hacia la derecha en `TB` y `BT`, hasta quedar libre.
-4. Los contenedores crecen para abarcar a sus hijos, nunca encogen. Se procesan los hijos antes que el contenedor para conocer su tamaño final antes de colocarlo.
+3. Cada nodo nuevo se coloca junto a lo que conecta ya colocado (sus hermanos, o nodos fijados de otros grupos, cuya posición se pasa a la de su grupo): detrás de quien lo llama, o delante de quien llama él si nadie lo llama, a `LAYER_SPACING` en el sentido del flujo, y a la altura media de sus vecinos en el eje transversal. Si no conecta con nada colocado, parte de su posición en la disposición completa.
+4. Desde ahí busca el hueco libre más cercano (con `NODE_SPACING` de margen) a un lado y otro del eje transversal. Dentro de un grupo fijado no pasa de su ancho a lo largo del flujo, ni de su padding, y prefiere un hueco que quepa en el grupo: si el grupo tiene que crecer, crece a través del flujo, lejos de los grupos que tiene delante y detrás. Si no hay hueco cerca, se coloca más allá de todos.
+5. Los contenedores crecen para abarcar a sus hijos, nunca encogen. Se procesan los hijos antes que el contenedor para conocer su tamaño final antes de colocarlo.
 
 Las entradas de `pinned` de nodos que ya no existen se ignoran. Si no hay ninguna posición fijada de un nodo existente, el resultado es exactamente la disposición completa.
 
@@ -58,7 +64,7 @@ Alternativas descartadas:
 - Modo interactivo de ELK (`interactiveLayout` y estrategias semiinteractivas): usa las posiciones previas como pista para ordenar, pero no garantiza que un nodo fijado no se mueva, que es justo lo que el usuario espera tras colocarlo a mano.
 - Disponer solo los nodos nuevos en un grafo aparte: pierde la relación con sus vecinos ya colocados y no resuelve dónde poner el bloque resultante.
 
-Limitación conocida: si un contenedor fijado crece, puede llegar a solapar a un hermano también fijado. No se mueve ninguno de los dos porque ambos los colocó el usuario; el editor podrá ofrecer volver a disponer el diagrama completo.
+Limitación conocida: si un contenedor fijado crece, puede llegar a solapar a un hermano también fijado. No se mueve ninguno de los dos porque ambos los colocó el usuario. Para los cambios del asistente, el editor ofrece reordenar el diagrama completo («Reordenar todo el diagrama», ADR 0023), y lo propone por defecto cuando el cambio añade, quita o reagrupa más del 40 % de los nodos.
 
 ## Entrada no válida
 

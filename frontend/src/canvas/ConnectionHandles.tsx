@@ -1,11 +1,21 @@
 import { Handle, Position } from '@xyflow/react';
 
+const SIDES = [
+  { id: 'top', position: Position.Top },
+  { id: 'right', position: Position.Right },
+  { id: 'bottom', position: Position.Bottom },
+  { id: 'left', position: Position.Left },
+] as const;
+
 /**
- * The connection points of a node. A connection can leave from and arrive at any side, so each
- * side has a point for both. By default edges arrive at the left and the top and leave by the
- * right and the bottom: of these, the arriving points are invisible, and the two leaving ones
- * show a dot on hover or when the node is selected, to drag a new connection from. The other
- * four are there for the connections whose sides were chosen by hand, and are invisible too.
+ * The connection points of a node, one in the middle of each side, as in draw.io. Each shows
+ * a dot on hover or when the node is selected, to drag a new connection from, which then
+ * leaves by that side. While a connection is dragged, the dots of the node under the pointer
+ * show where it can arrive: let go on one and it arrives by that side, anywhere else on the
+ * node and the side is the one that makes the shortest line. Each side also has an invisible
+ * target point at the same place, which edges attach to and which a connection snaps to when
+ * the pointer comes near; the canvas connects in loose mode, so a connection let go right on a
+ * dot, which is a source point, arrives there too.
  * They stay outside the animated card of the node: React Flow measures where they are when the
  * node mounts, and measuring them mid-entrance, scaled down, made edges end inside the node.
  * The ids are the names of the sides, which edges refer to.
@@ -19,64 +29,27 @@ export function ConnectionHandles({
 }) {
   return (
     <>
-      <Handle
-        id="left"
-        type="source"
-        position={Position.Left}
-        isConnectable={false}
-        className="flow-handle pointer-events-none"
-      />
-      <Handle
-        id="top"
-        type="source"
-        position={Position.Top}
-        isConnectable={false}
-        className="flow-handle pointer-events-none"
-      />
-      <Handle
-        id="right"
-        type="target"
-        position={Position.Right}
-        isConnectable={false}
-        className="flow-handle pointer-events-none"
-      />
-      <Handle
-        id="bottom"
-        type="target"
-        position={Position.Bottom}
-        isConnectable={false}
-        className="flow-handle pointer-events-none"
-      />
-      <Handle
-        id="left"
-        type="target"
-        position={Position.Left}
-        isConnectable={isConnectable}
-        className="flow-handle pointer-events-none"
-      />
-      <Handle
-        id="top"
-        type="target"
-        position={Position.Top}
-        isConnectable={isConnectable}
-        className="flow-handle pointer-events-none"
-      />
-      <Handle
-        id="right"
-        type="source"
-        position={Position.Right}
-        isConnectable={isConnectable}
-        data-selected={selected || undefined}
-        className="flow-handle connect-handle"
-      />
-      <Handle
-        id="bottom"
-        type="source"
-        position={Position.Bottom}
-        isConnectable={isConnectable}
-        data-selected={selected || undefined}
-        className="flow-handle connect-handle"
-      />
+      {SIDES.map(({ id, position }) => (
+        <Handle
+          key={`${id}-target`}
+          id={id}
+          type="target"
+          position={position}
+          isConnectable={isConnectable}
+          className="flow-handle arrive-handle pointer-events-none"
+        />
+      ))}
+      {SIDES.map(({ id, position }) => (
+        <Handle
+          key={`${id}-source`}
+          id={id}
+          type="source"
+          position={position}
+          isConnectable={isConnectable}
+          data-selected={selected || undefined}
+          className="flow-handle connect-handle"
+        />
+      ))}
     </>
   );
 }

@@ -27,23 +27,37 @@ export type EdgeStyle = (typeof EDGE_STYLES)[number];
 export const EdgeStyleSchema = z.enum(EDGE_STYLES);
 
 /** The style of a diagram that does not choose one. */
-export const DEFAULT_EDGE_STYLE: EdgeStyle = 'curved';
+export const DEFAULT_EDGE_STYLE: EdgeStyle = 'square';
 
 /** A side of a node, which a connection can leave from or arrive at. */
 export const NODE_SIDES = ['left', 'right', 'top', 'bottom'] as const;
 export type NodeSide = (typeof NODE_SIDES)[number];
 export const NodeSideSchema = z.enum(NODE_SIDES);
 
+/** Most points one connection can be routed through. */
+export const MAX_ROUTE_POINTS = 32;
+
 /**
  * How one connection departs from what the diagram would draw by itself. Every field is
  * optional, and the missing ones stay automatic: the sides are the ones that make the shortest
- * line, and the bend is where the middle of the connection falls.
+ * line, and without points the line takes the course it falls into by default.
+ *
+ * `points` are the points the connection passes through, in diagram coordinates: the ones a
+ * curve goes through, or the corners of a right-angled line. `bend` is how routes were kept
+ * before them, a shift of the middle of the connection; it is still read, and points replace
+ * it as soon as the route is edited.
  */
 export const EdgeRouteSchema = z.strictObject({
   source: NodeSideSchema.optional().describe('Side of the source the connection leaves from'),
   target: NodeSideSchema.optional().describe('Side of the target the connection arrives at'),
+  points: z
+    .array(PointSchema)
+    .min(1)
+    .max(MAX_ROUTE_POINTS)
+    .optional()
+    .describe('Points the connection passes through, in order, in diagram coordinates'),
   bend: PointSchema.optional().describe(
-    'How far the middle of the connection is moved from where it falls by default',
+    'Older routes: how far the middle of the connection is moved from where it falls by default',
   ),
 });
 
@@ -58,7 +72,10 @@ export const DiagramLayoutSchema = z.strictObject({
     .describe('Style of single connections that differ from the diagram, per edge id'),
   edgeRoutes: boundedRecord(EdgeRouteSchema, LIMITS.maxEdges)
     .optional()
-    .describe('Sides and bend of single connections that were routed by hand, per edge id'),
+    .describe('Sides and points of single connections that were routed by hand, per edge id'),
+  edgeLabels: boundedRecord(z.literal(true), LIMITS.maxEdges)
+    .optional()
+    .describe('Connections whose label is always shown, per edge id; the others hide it'),
 });
 
 /** What the editor stores, shares and restores: the graph plus how it is drawn. */
@@ -116,6 +133,11 @@ export function ownEdgeStyle(layout: DiagramLayout, edgeId: string): EdgeStyle |
 /** How an edge is drawn: its own style if it has one, else the one of the diagram. */
 export function resolveEdgeStyle(layout: DiagramLayout, edgeId: string): EdgeStyle {
   return ownEdgeStyle(layout, edgeId) ?? layout.edgeStyle ?? DEFAULT_EDGE_STYLE;
+}
+
+/** Whether the label of an edge is shown; labels are hidden unless shown one by one. */
+export function showsEdgeLabel(layout: DiagramLayout, edgeId: string): boolean {
+  return layout.edgeLabels !== undefined && layoutEntry(layout.edgeLabels, edgeId) === true;
 }
 
 /** The route an edge was given by hand, if it has one. */

@@ -82,6 +82,7 @@ const document: DiagramDocument = {
       queue: DEFAULT_NODE_SIZE,
       note: { width: 160, height: 96 },
     },
+    edgeLabels: { 'user-api': true, 'api-queue': true },
   },
 };
 
@@ -123,25 +124,25 @@ describe('diagram as SVG', () => {
     expect(texts).toEqual(expect.arrayContaining(['HTTPS', 'Enqueue']));
   });
 
-  it('draws connections as curves, with right angles when the layout asks for it', () => {
+  it('draws connections with right angles, as curves when the layout asks for it', () => {
     const lines = (laid: DiagramDocument['layout']) =>
       [
         ...parse(diagramToSvg({ ...document, layout: laid }, options).svg).querySelectorAll(
           `path[fill="none"][stroke="${palette.edge}"]`,
         ),
       ].map((path) => path.getAttribute('d') ?? '');
-    const curved = lines(document.layout);
-    expect(curved).toHaveLength(2);
-    expect(curved.every((d) => d.includes('C'))).toBe(true);
+    const square = lines(document.layout);
+    expect(square).toHaveLength(2);
+    expect(square.some((d) => d.includes('C'))).toBe(false);
 
     const mixed = lines({
       ...document.layout,
-      edgeStyle: 'square',
-      edgeStyles: { 'user-api': 'curved' },
+      edgeStyle: 'curved',
+      edgeStyles: { 'user-api': 'square' },
     });
-    expect(mixed[0]).toContain('C');
-    expect(mixed[1]).not.toContain('C');
-    expect(mixed[1]).toMatch(/L/);
+    expect(mixed[0]).not.toContain('C');
+    expect(mixed[0]).toMatch(/L/);
+    expect(mixed[1]).toContain('C');
   });
 
   it('draws a connection with the sides and the bend its route gives it', () => {
@@ -152,11 +153,12 @@ describe('diagram as SVG', () => {
         ),
       ].map((path) => path.getAttribute('d') ?? '');
     const edgeId = document.graph.edges[0]?.id ?? '';
-    const plain = lines(document.layout);
-    const sides = lines({ ...document.layout, edgeRoutes: { [edgeId]: { source: 'top' } } });
+    const curved = { ...document.layout, edgeStyle: 'curved' } as const;
+    const plain = lines(curved);
+    const sides = lines({ ...curved, edgeRoutes: { [edgeId]: { source: 'top' } } });
     expect(sides[0]).not.toBe(plain[0]);
     expect(sides[1]).toBe(plain[1]);
-    const bent = lines({ ...document.layout, edgeRoutes: { [edgeId]: { bend: { x: 0, y: 60 } } } });
+    const bent = lines({ ...curved, edgeRoutes: { [edgeId]: { bend: { x: 0, y: 60 } } } });
     expect(bent[0]).not.toBe(plain[0]);
     expect(bent[1]).toBe(plain[1]);
     const squareBent = lines({
@@ -192,6 +194,13 @@ describe('diagram as SVG', () => {
     expect(svg).toContain('stroke-dasharray="6 4"');
   });
 
+  it('leaves out the labels of connections that hide them', () => {
+    const { edgeLabels: _shown, ...hidden } = document.layout;
+    const { svg } = diagramToSvg({ ...document, layout: hidden }, options);
+    expect(svg).not.toContain('>Enqueue<');
+    expect(svg).not.toContain('>HTTPS<');
+  });
+
   it('leaves out a connection label that would cover a node', () => {
     // A third component placed where the label of the queue connection falls.
     const crowded: DiagramDocument = {
@@ -201,6 +210,7 @@ describe('diagram as SVG', () => {
         nodes: [...document.graph.nodes, { id: 'cache', kind: 'cache', label: 'Cache' }],
       },
       layout: {
+        ...document.layout,
         positions: { ...document.layout.positions, cache: { x: 500, y: 60 } },
         sizes: { ...document.layout.sizes, cache: DEFAULT_NODE_SIZE },
       },

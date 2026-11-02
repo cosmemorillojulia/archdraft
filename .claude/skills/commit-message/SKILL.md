@@ -68,7 +68,7 @@ Si el cambio rompe compatibilidad, añade `!` tras el tipo: `feat(core)!: rename
 2. Si dudas, comprueba con `git status --short` qué hay modificado y descarta lo que no pertenezca al cambio.
 3. Si hay cambios sin relación en el árbol de trabajo, no los incluyas y avísalo.
 4. Si el cambio mezcla funcionalidades o tipos distintos (por ejemplo una feature y un arreglo no relacionado), propón **commits separados** según la sección de commits atómicos, cada uno con su propio `git add`.
-5. Si un mismo archivo contiene cambios de dos commits distintos, avísalo: el usuario puede separarlos con `git add -p`.
+5. **Nunca recomiendes `git add -p`** ni ningún otro staging parcial o interactivo. Si un mismo archivo contiene cambios de dos commits distintos, sepáralos tú: deja en el árbol de trabajo solo la versión del primer commit, guarda la versión completa en el scratchpad y añade a la sugerencia, justo después del primer commit, un `Copy-Item` que la restaure antes del siguiente. Cada commit tiene que compilar y pasar los tests con el contenido exacto que añade.
 
 ## Formato de la sugerencia
 

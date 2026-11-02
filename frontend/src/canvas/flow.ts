@@ -15,19 +15,14 @@ import {
   ownEdgeRoute,
   resolveEdgeMode,
   resolveEdgeStyle,
+  showsEdgeLabel,
 } from '@archdraft/shared';
 import type { LayoutDirection } from '../layout/compute-layout.ts';
 import type { Edge, Node } from '@xyflow/react';
 import { en, type KindText } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
-import {
-  absoluteBoxes,
-  type Box,
-  boundsOf,
-  edgeSides,
-  nestingDepths,
-  stackingOrder,
-} from './geometry.ts';
+import { absoluteBoxes, type Box, boundsOf, nestingDepths, stackingOrder } from './geometry.ts';
+import { placeEdges } from './edge-layout.ts';
 
 /** What a screen reader says for a node: name and kind, or only the kind if it has no name. */
 const spoken = (label: string, kind: string): string => (label === '' ? kind : `${label}, ${kind}`);
@@ -62,8 +57,15 @@ export interface ArchitectureEdgeData extends Record<string, unknown> {
   async: boolean;
   /** Curved or right-angled: the style of the edge, or else the one of the diagram. */
   style: EdgeStyle;
+  /** Whether its label shows, always; otherwise it never does. */
+  showLabel: boolean;
   /** What was decided by hand about how the edge runs: its sides and the bend of its middle. */
   route: EdgeRoute | undefined;
+  /** Where it leaves its source and where the tip of its arrowhead touches its target. */
+  sourcePoint: { x: number; y: number };
+  targetPoint: { x: number; y: number };
+  /** The boxes it goes round: every node of the diagram but the groups, its own two included. */
+  obstacles: readonly Box[];
   /** The boxes of its two nodes, for choosing another side to attach to, and the flow direction. */
   sourceBox: Box;
   targetBox: Box;
@@ -93,9 +95,9 @@ export interface FlowElements {
  * - Nodes without a layout entry are left out, with their edges.
  * - Kind names, in accessible names and as the product of components that
  *   name none, come from `kinds`, in the language of the interface.
- * - Each edge leaves by the right or bottom of its source and arrives at the left or
- *   top of its target, whichever pair makes the shortest line (`edgeSides`), unless its
- *   route fixes a side.
+ * - Each edge leaves and arrives by whichever sides of its nodes give the shortest
+ *   route round the nodes in its way (`placeEdges`), unless its route fixes a side,
+ *   and edges that share a side spread along it.
  * - Each element carries the delay of its entrance, so the diagram builds
  *   along its flow direction.
  * - Containers are not draggable here: dragging a large group by accident
@@ -168,13 +170,15 @@ export function toFlow(
   });
 
   const kindOf = new Map(graph.nodes.map((node) => [node.id, node.kind]));
+  const { placements, obstacles } = placeEdges(graph, boxes, layout, direction);
   const edges = graph.edges.flatMap((edge): ArchitectureFlowEdge[] => {
     const sourceKind = kindOf.get(edge.source);
     const from = boxes.get(edge.source);
     const to = boxes.get(edge.target);
-    if (sourceKind === undefined || !from || !to) return [];
+    const placement = placements.get(edge.id);
+    if (sourceKind === undefined || !from || !to || !placement) return [];
     const route = ownEdgeRoute(layout, edge.id);
-    const sides = edgeSides(from, to, direction, route);
+    const { sides } = placement;
     return [
       {
         id: edge.id,
@@ -187,7 +191,11 @@ export function toFlow(
           edge,
           async: resolveEdgeMode(edge) === 'async',
           style: resolveEdgeStyle(layout, edge.id),
+          showLabel: showsEdgeLabel(layout, edge.id),
           route,
+          sourcePoint: placement.source,
+          targetPoint: placement.target,
+          obstacles,
           sourceBox: from,
           targetBox: to,
           direction,

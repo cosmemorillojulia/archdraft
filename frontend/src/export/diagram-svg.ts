@@ -15,19 +15,19 @@ import {
   ownEdgeRoute,
   resolveEdgeMode,
   resolveEdgeStyle,
+  showsEdgeLabel,
 } from '@archdraft/shared';
 import type { LayoutDirection } from '../layout/compute-layout.ts';
 import { groupTint } from '../canvas/appearance.ts';
-import { connectionPath } from '../canvas/edge-path.ts';
+import { connectionPath, routePoints } from '../canvas/edge-path.ts';
+import { type EdgeLayout, type EdgePlacement, placeEdges } from '../canvas/edge-layout.ts';
 import {
   absoluteBoxes,
   stackingOrder,
   arrowhead,
   type Box,
   boundsOf,
-  edgeSides,
   nestingDepths,
-  sidePoint,
 } from '../canvas/geometry.ts';
 import type { KindText } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
@@ -291,27 +291,28 @@ function connection(
   edge: ArchEdge,
   style: EdgeStyle,
   route: EdgeRoute | undefined,
-  source: Box,
-  target: Box,
+  showLabel: boolean,
+  placement: EdgePlacement,
+  edgeLayout: EdgeLayout,
   obstacles: readonly Box[],
   options: DrawingOptions,
 ): { line: string; label: string } {
-  const { palette, measure, direction } = options;
-  const sides = edgeSides(source, target, direction, route);
-  const from = sidePoint(source, sides.source);
-  const to = sidePoint(target, sides.target);
+  const { palette, measure } = options;
+  const { sides, source: from, target: to } = placement;
   const arrow = arrowhead(to.x, to.y, sides.target);
+  const ends = {
+    sourceX: from.x,
+    sourceY: from.y,
+    targetX: arrow.base.x,
+    targetY: arrow.base.y,
+    sourcePosition: sides.source,
+    targetPosition: sides.target,
+  };
   const { path, labelX, labelY } = connectionPath(
     style,
-    {
-      sourceX: from.x,
-      sourceY: from.y,
-      targetX: arrow.base.x,
-      targetY: arrow.base.y,
-      sourcePosition: sides.source,
-      targetPosition: sides.target,
-    },
-    route?.bend,
+    ends,
+    routePoints(style, ends, route),
+    edgeLayout.obstacles,
   );
   const dashed = resolveEdgeMode(edge) === 'async' ? ' stroke-dasharray="5 5"' : '';
   const line =
@@ -319,7 +320,7 @@ function connection(
     `<path d="${arrow.outline}" fill="${palette.edge}" stroke="${palette.edge}" stroke-width="1.5" stroke-linejoin="round"/>`;
   const text =
     edge.label ?? (edge.protocol === undefined ? undefined : options.protocols[edge.protocol]);
-  if (text === undefined) return { line, label: '' };
+  if (!showLabel || text === undefined) return { line, label: '' };
   const shown = truncate(text, 160, EDGE_LABEL, measure);
   const width = measure(shown, EDGE_LABEL) + 14;
   // A curve can pass behind a node, and its label would cover the node's name: it is left out.
@@ -334,7 +335,7 @@ function connection(
 /**
  * The diagram as a standalone SVG, drawn like the canvas at rest: groups,
  * then connections with their arrowheads, then components and shapes, then
- * the labels of the connections, except those that would cover a node. Pure: colours, names, icons and text widths come in the options,
+ * the labels of the connections that show theirs, except those that would cover a node. Pure: colours, names, icons and text widths come in the options,
  * so the drawing follows the theme and language of the editor and can be
  * tested without a browser.
  */
@@ -362,13 +363,22 @@ export function diagramToSvg(document: DiagramDocument, options: DrawingOptions)
     const box = boxes.get(node.id);
     return box && !isContainerKind(node.kind) ? [box] : [];
   });
+  const edgeLayout = placeEdges(graph, boxes, layout, options.direction);
   const connections = graph.edges.flatMap((edge) => {
-    const source = boxes.get(edge.source);
-    const target = boxes.get(edge.target);
-    if (!source || !target) return [];
+    const placement = edgeLayout.placements.get(edge.id);
+    if (!placement) return [];
     const style = resolveEdgeStyle(layout, edge.id);
     return [
-      connection(edge, style, ownEdgeRoute(layout, edge.id), source, target, obstacles, options),
+      connection(
+        edge,
+        style,
+        ownEdgeRoute(layout, edge.id),
+        showsEdgeLabel(layout, edge.id),
+        placement,
+        edgeLayout,
+        obstacles,
+        options,
+      ),
     ];
   });
   const behind = ordered.filter((node) => isContainerKind(node.kind)).map(draw);

@@ -273,6 +273,54 @@ describe('computeLayout with pinned positions', () => {
     expectReadable(graph, vertical);
   });
 
+  it('places a new node next to what it connects to, along the flow', async () => {
+    const graph = chainGraph(2);
+    const previous = await computeLayout(graph);
+    const n1 = boxOf(previous, 'n1');
+    const extended = graphOf(
+      [...graph.nodes, { id: 'n2', kind: 'service', label: 'Node 2' }],
+      [...graph.edges, { id: 'e-new', source: 'n1', target: 'n2' }],
+    );
+    const layout = await computeLayout(extended, { pinned: previous });
+    const n2 = boxOf(layout, 'n2');
+    expect(n2.x).toBe(n1.x + n1.width + 80);
+    expect(n2.y).toBe(n1.y);
+
+    // Called by the first node too, it goes after it, beside the second, not past the diagram.
+    const between = graphOf(
+      [...graph.nodes, { id: 'cache', kind: 'cache', label: 'Cache' }],
+      [...graph.edges, { id: 'e-cache', source: 'n0', target: 'cache' }],
+    );
+    const beside = await computeLayout(between, { pinned: previous });
+    const cache = boxOf(beside, 'cache');
+    const n0 = boxOf(previous, 'n0');
+    expect(cache.x).toBe(n0.x + n0.width + 80);
+    expect(Math.abs(cache.y - n1.y)).toBeLessThanOrEqual(n1.height + 40);
+    expectReadable(between, beside);
+  });
+
+  it('places a node new in a group within its width, growing it across the flow', async () => {
+    const graph = graphOf([
+      { id: 'net', kind: 'network', label: 'Net' },
+      { id: 'a', kind: 'service', label: 'A', parentId: 'net' },
+      { id: 'b', kind: 'service', label: 'B', parentId: 'net' },
+      { id: 'after', kind: 'service', label: 'After' },
+    ]);
+    const edges = [
+      { id: 'a-b', source: 'a', target: 'b' },
+      { id: 'b-after', source: 'b', target: 'after' },
+    ];
+    const previous = await computeLayout(graphOf(graph.nodes, edges));
+    const extended = graphOf(
+      [...graph.nodes, { id: 'c', kind: 'cache', label: 'C', parentId: 'net' }],
+      [...edges, { id: 'b-c', source: 'b', target: 'c' }],
+    );
+    const layout = await computeLayout(extended, { pinned: previous });
+    expect(boxOf(layout, 'net').width).toBe(boxOf(previous, 'net').width);
+    expect(boxOf(layout, 'net').height).toBeGreaterThan(boxOf(previous, 'net').height);
+    expectReadable(extended, layout);
+  });
+
   it('keeps a pinned size and grows a container to fit a new child', async () => {
     const graph = graphOf([
       { id: 'net', kind: 'network', label: 'Net' },

@@ -11,6 +11,7 @@ import {
   initialViewport,
   nearestSide,
   nestingDepths,
+  OUTWARD,
   sidePoint,
 } from '../src/canvas/geometry.ts';
 
@@ -172,21 +173,33 @@ describe('edgeSides', () => {
     expect(edgeSides(box(0, 0), box(40, 200), 'TB')).toEqual({ source: 'bottom', target: 'top' });
   });
 
-  it('always leaves by the right or the bottom and arrives at the left or the top', () => {
-    const others = [
-      box(-300, 0),
-      box(300, 0),
-      box(0, -200),
-      box(0, 200),
-      box(-250, -150),
-      box(250, 150),
-    ];
+  it('takes any side, so a node behind or above is reached without going round', () => {
     for (const direction of ['LR', 'RL', 'TB', 'BT'] as const) {
-      for (const other of others) {
-        const sides = edgeSides(box(0, 0), other, direction);
-        expect(['right', 'bottom']).toContain(sides.source);
-        expect(['left', 'top']).toContain(sides.target);
-      }
+      expect(edgeSides(box(0, 0), box(-300, 0), direction)).toEqual({
+        source: 'left',
+        target: 'right',
+      });
+      expect(edgeSides(box(0, 0), box(0, -200), direction)).toEqual({
+        source: 'top',
+        target: 'bottom',
+      });
+      expect(edgeSides(box(0, 0), box(-300, 150), direction)).toEqual({
+        source: 'left',
+        target: 'right',
+      });
+    }
+  });
+
+  it('never leaves or arrives by a side that faces away from the other node', () => {
+    const others = [box(300, 0), box(0, 200), box(250, 150), box(-250, -150), box(-300, 120)];
+    for (const other of others) {
+      const sides = edgeSides(box(0, 0), other, 'LR');
+      const from = sidePoint(box(0, 0), sides.source);
+      const to = sidePoint(other, sides.target);
+      const out = OUTWARD[sides.source];
+      const into = OUTWARD[sides.target];
+      expect((to.x - from.x) * out.x + (to.y - from.y) * out.y).toBeGreaterThanOrEqual(0);
+      expect((from.x - to.x) * into.x + (from.y - to.y) * into.y).toBeGreaterThanOrEqual(0);
     }
   });
 });

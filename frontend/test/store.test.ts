@@ -64,6 +64,44 @@ describe('choosing several nodes', () => {
     store.getState().select(null);
     expect(store.getState().group).toEqual([]);
   });
+
+  it('adds the nodes inside a drawn box to the ones already chosen', () => {
+    const store = loaded();
+    store.getState().select({ type: 'node', id: 'user' });
+    store.getState().selectNodes(['api', 'user']);
+    expect(store.getState().group).toEqual(['user', 'api']);
+    expect(store.getState().selection).toEqual({ type: 'node', id: 'api' });
+  });
+});
+
+describe('moving with the arrow keys', () => {
+  const positions = (store: ReturnType<typeof createEditorStore>) =>
+    store.getState().current?.document.layout.positions;
+
+  it('moves the selected node, and a held key is one step of the history', () => {
+    const store = loaded();
+    store.getState().select({ type: 'node', id: 'user' });
+    store.getState().nudgeSelection({ x: 10, y: 0 });
+    store.getState().nudgeSelection({ x: 10, y: 0 }, true);
+    store.getState().nudgeSelection({ x: 0, y: -1 }, true);
+    expect(positions(store)?.user).toEqual({ x: 20, y: -1 });
+    store.getState().undo();
+    expect(positions(store)?.user).toEqual({ x: 0, y: 0 });
+  });
+
+  it('moves the chosen nodes together and leaves their groups in place', () => {
+    const store = loaded();
+    store.getState().select({ type: 'node', id: 'user' });
+    store.getState().toggleSelected('api');
+    store.getState().toggleSelected('vpc');
+    store.getState().nudgeSelection({ x: 0, y: 10 });
+    expect(positions(store)).toMatchObject({
+      user: { x: 0, y: 10 },
+      api: { x: 24, y: 58 },
+      vpc: { x: 300, y: 0 },
+    });
+    expect(store.getState().group).toEqual(['user', 'api', 'vpc']);
+  });
 });
 
 describe('the diagram card edits', () => {

@@ -71,6 +71,7 @@ function entriesOf<T>(
 /** The layout limited to the nodes and edges of `graph`, in the order of the graph. */
 function layoutOf(graph: ArchitectureGraph, layout: DiagramLayout): DiagramLayout {
   const edgeStyles = entriesOf(layout.edgeStyles ?? {}, graph.edges);
+  const edgeLabels = entriesOf(layout.edgeLabels ?? {}, graph.edges);
   // Written in the order of the schema, whatever the order they were set in; a route that says nothing is left out.
   const edgeRoutes = Object.fromEntries(
     Object.entries(entriesOf(layout.edgeRoutes ?? {}, graph.edges)).flatMap(([id, route]) => {
@@ -84,6 +85,7 @@ function layoutOf(graph: ArchitectureGraph, layout: DiagramLayout): DiagramLayou
     ...(layout.edgeStyle === undefined ? {} : { edgeStyle: layout.edgeStyle }),
     ...(Object.keys(edgeStyles).length === 0 ? {} : { edgeStyles }),
     ...(Object.keys(edgeRoutes).length === 0 ? {} : { edgeRoutes }),
+    ...(Object.keys(edgeLabels).length === 0 ? {} : { edgeLabels }),
   };
 }
 

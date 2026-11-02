@@ -19,6 +19,17 @@ export interface LlmRequest {
   readonly temperature?: number;
   readonly maxTokens?: number;
   readonly signal?: AbortSignal;
+  /**
+   * Called with each piece of the answer as it is written, and of the reasoning
+   * of models that show theirs. A provider that cannot stream answers whole and
+   * never calls it; the answer `complete` resolves to is the same either way.
+   */
+  readonly onDelta?: (delta: LlmDelta) => void;
+}
+
+export interface LlmDelta {
+  readonly reasoning?: string;
+  readonly content?: string;
 }
 
 export interface LlmProvider {

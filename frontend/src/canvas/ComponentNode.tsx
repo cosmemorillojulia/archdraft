@@ -5,7 +5,9 @@ import { KIND_ICONS } from '../icons.ts';
 import { SPRING_POP } from '../motion.ts';
 import { SEVERITY_COLOR } from '../review/findings.ts';
 import { useStrings } from '../i18n/locale.ts';
-import { nodeChoice, useCanvas } from './canvas-context.ts';
+import { MARK_COLOR, markRing } from './appearance.ts';
+import { markOf, nodeChoice, useCanvas } from './canvas-context.ts';
+import { ChangeBadge } from './ChangeBadge.tsx';
 import { ConnectionHandles } from './ConnectionHandles.tsx';
 import { NameEditor } from './NameEditor.tsx';
 import type { ComponentFlowNode } from './flow.ts';
@@ -14,8 +16,8 @@ import { ResizeHandles } from './ResizeHandles.tsx';
 /**
  * A component on the canvas: the icon of its kind on the colour of its
  * category, its name, the product it resolves to and, when it runs outside
- * the provider of the diagram, a badge saying so. Dragging from a dot on
- * its right or bottom side, shown on hover or when selected, connects it; selected,
+ * the provider of the diagram, a badge saying so. Dragging from the dot on
+ * any of its sides, shown on hover or when selected, connects it; selected,
  * it can be resized.
  */
 export const ComponentNode = memo(function ComponentNode({
@@ -32,6 +34,7 @@ export const ComponentNode = memo(function ComponentNode({
   const { selected, grouped } = nodeChoice(canvas, id);
   const issue = canvas.issues.get(id);
   const inFinding = canvas.finding?.nodes.has(id) === true;
+  const mark = markOf(canvas, 'node', id);
 
   return (
     // The connection points stay outside the animated card: React Flow measures where they are
@@ -48,8 +51,9 @@ export const ComponentNode = memo(function ComponentNode({
         <div
           data-state={focused ? 'focused' : dimmed ? 'dimmed' : 'idle'}
           data-selected={selected || undefined}
+          data-mark={mark}
           title={service === node.label ? node.label : `${node.label}: ${service}`}
-          className="relative flex h-full w-full items-center gap-2.5 rounded-xl border bg-surface px-3 transition-[opacity,transform,border-color,box-shadow] duration-200 ease-out-soft data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.04] data-[state=focused]:shadow-[0_8px_20px_-6px_rgb(17_24_39/0.25)]"
+          className="relative flex h-full w-full items-center gap-2.5 rounded-xl border bg-surface px-3 transition-[opacity,transform,border-color,box-shadow] duration-200 ease-out-soft data-[mark=removed]:border-dashed data-[mark=removed]:opacity-60 data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.04] data-[state=focused]:shadow-[0_8px_20px_-6px_rgb(17_24_39/0.25)]"
           style={{
             borderColor: focused || selected ? `var(--cat-${category})` : 'var(--line)',
             ...(canvas.finding && inFinding
@@ -57,12 +61,9 @@ export const ComponentNode = memo(function ComponentNode({
                   boxShadow: `0 0 0 3px color-mix(in srgb, ${SEVERITY_COLOR[canvas.finding.severity]} 45%, transparent)`,
                 }
               : {}),
-            ...(canvas.changed.has(id)
-              ? {
-                  borderColor: 'var(--accent)',
-                  boxShadow: '0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent)',
-                }
-              : {}),
+            ...(mark === undefined
+              ? {}
+              : { borderColor: MARK_COLOR[mark], boxShadow: markRing(mark) }),
           }}
         >
           <span
@@ -83,7 +84,11 @@ export const ComponentNode = memo(function ComponentNode({
                 className="w-full px-1 text-[13px] leading-tight font-semibold"
               />
             ) : (
-              <span className="line-clamp-2 text-[13px] leading-tight font-semibold break-words">
+              <span
+                className={`line-clamp-2 text-[13px] leading-tight font-semibold break-words ${
+                  mark === 'removed' ? 'line-through' : ''
+                }`}
+              >
                 {node.label}
               </span>
             )}
@@ -97,6 +102,7 @@ export const ComponentNode = memo(function ComponentNode({
               style={{ backgroundColor: SEVERITY_COLOR[issue] }}
             />
           )}
+          {mark !== undefined && <ChangeBadge mark={mark} className="absolute -top-2 left-2" />}
           {providerBadge !== undefined && (
             <span className="absolute -top-2 right-2 rounded-full border border-line bg-surface px-1.5 text-[9.5px] leading-4 font-medium text-muted">
               {strings.canvas.providerBadges[providerBadge]}

@@ -3,7 +3,8 @@ import type { NodeProps } from '@xyflow/react';
 import { m } from 'motion/react';
 import { memo } from 'react';
 import { SPRING_POP } from '../motion.ts';
-import { nodeChoice, useCanvas } from './canvas-context.ts';
+import { MARK_COLOR } from './appearance.ts';
+import { markOf, nodeChoice, useCanvas } from './canvas-context.ts';
 import type { ShapeFlowNode } from './flow.ts';
 import { ConnectionHandles } from './ConnectionHandles.tsx';
 import { NameEditor } from './NameEditor.tsx';
@@ -92,8 +93,13 @@ export const ShapeNode = memo(function ShapeNode({
   const dimmed = canvas.dimOthers && !canvas.nodes.has(id);
   const { selected, grouped } = nodeChoice(canvas, id);
   const kind = node.kind;
+  const mark = markOf(canvas, 'node', id);
   const stroke =
-    focused || selected || canvas.changed.has(id) ? 'var(--accent)' : 'var(--shape-line)';
+    mark !== undefined
+      ? MARK_COLOR[mark]
+      : focused || selected
+        ? 'var(--accent)'
+        : 'var(--shape-line)';
   const fill = SHAPE_FILL(kind);
 
   return (
@@ -109,8 +115,9 @@ export const ShapeNode = memo(function ShapeNode({
         <div
           data-state={focused ? 'focused' : dimmed ? 'dimmed' : 'idle'}
           data-selected={selected || undefined}
+          data-mark={mark}
           title={node.label === '' ? undefined : node.label}
-          className="relative flex h-full w-full items-center justify-center transition-[opacity,transform] duration-200 ease-out-soft data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.03]"
+          className="relative flex h-full w-full items-center justify-center transition-[opacity,transform] duration-200 ease-out-soft data-[mark=removed]:opacity-50 data-[state=dimmed]:opacity-30 data-[state=focused]:scale-[1.03]"
         >
           <ShapeBody kind={kind} stroke={stroke} fill={fill} selected={selected} />
           {canvas.renamingId === id ? (
