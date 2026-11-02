@@ -296,6 +296,11 @@ export const en = {
       show: 'Show the particles on connections',
     },
     shortcuts: { label: 'Shortcuts' },
+    edgeLabels: {
+      label: 'Connection labels',
+      hide: 'Hide the labels of every connection',
+      show: 'Show the labels of every connection',
+    },
     edgeStyle: {
       toSquare: 'Draw connections with right angles',
       toCurved: 'Draw connections as curves',
@@ -427,6 +432,8 @@ export const en = {
       managed: 'Managed service',
     } satisfies Record<Exclude<keyof NodeAttributes, 'replicas'>, string>,
     label: 'Label',
+    labelVisibility: 'Show label',
+    labelVisibilities: { hidden: 'Never', shown: 'Always' },
     protocol: 'Protocol',
     protocolNone: 'Not specified',
     mode: 'Mode',

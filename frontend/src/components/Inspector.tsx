@@ -16,6 +16,7 @@ import {
   type NodeAttributes,
   ownEdgeRoute,
   ownEdgeStyle,
+  showsEdgeLabel,
   resolveEdgeMode,
 } from '@archdraft/shared';
 import {
@@ -559,6 +560,7 @@ function EdgeForm({
   const ownStyle = layout === undefined ? undefined : ownEdgeStyle(layout, edge.id);
   const diagramStyle = layout?.edgeStyle ?? DEFAULT_EDGE_STYLE;
   const routed = layout !== undefined && ownEdgeRoute(layout, edge.id) !== undefined;
+  const labelShown = layout !== undefined && showsEdgeLabel(layout, edge.id);
 
   const title = {
     headingId,
@@ -610,6 +612,17 @@ function EdgeForm({
           placeholder={edge.protocol && strings.protocols[edge.protocol]}
           maxLength={LIMITS.labelLength}
           onCommit={(label) => update({ label: label === '' ? undefined : label })}
+        />
+        <ChoiceField<'hidden' | 'shown'>
+          label={strings.inspector.labelVisibility}
+          value={labelShown ? 'shown' : 'hidden'}
+          options={[
+            { value: 'hidden', label: strings.inspector.labelVisibilities.hidden },
+            { value: 'shown', label: strings.inspector.labelVisibilities.shown },
+          ]}
+          onChange={(visibility) =>
+            editorStore.getState().setEdgeLabels([edge.id], visibility === 'shown')
+          }
         />
         <SelectField<EdgeProtocol | 'none'>
           label={strings.inspector.protocol}

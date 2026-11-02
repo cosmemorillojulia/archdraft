@@ -39,6 +39,7 @@ import {
   reconnect,
   setEdgeRoute,
   setEdgeStyle,
+  setEdgeLabels,
   type DiagramPatch,
   type StackMove,
   stackNode,
@@ -124,6 +125,8 @@ export interface EditorActions {
   setDefaultEdgeStyle: (style: EdgeStyle) => void;
   /** Draws one connection in `style`; `undefined` makes it follow the diagram again. */
   setEdgeStyle: (id: string, style: EdgeStyle | undefined) => void;
+  /** Shows or hides the labels of the connections `ids`, or of all of them. */
+  setEdgeLabels: (ids: readonly string[] | 'all', shown: boolean) => void;
   /** Changes the sides and the bend of one connection; `null` makes its route automatic again. */
   setEdgeRoute: (id: string, patch: EdgeRoutePatch | null) => void;
   /** Renames the diagram or changes its cloud provider. */
@@ -328,6 +331,7 @@ export function createEditorStore() {
       updateEdge: (id, patch) => apply((document) => updateEdge(document, id, patch)),
       setDefaultEdgeStyle: (style) => apply((document) => setDefaultEdgeStyle(document, style)),
       setEdgeStyle: (id, style) => apply((document) => setEdgeStyle(document, id, style)),
+      setEdgeLabels: (ids, shown) => apply((document) => setEdgeLabels(document, ids, shown)),
       setEdgeRoute: (id, patch) => apply((document) => setEdgeRoute(document, id, patch)),
       updateDiagram: (patch) => apply((document) => updateDiagram(document, patch)),
       replaceDocument: (next) => {

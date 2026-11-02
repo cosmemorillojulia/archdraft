@@ -94,12 +94,14 @@ export function carryLayout(
   };
   const edgeStyles = keep(layout.edgeStyles);
   const edgeRoutes = keep(layout.edgeRoutes);
+  const edgeLabels = keep(layout.edgeLabels);
   return {
     positions,
     sizes,
     ...(layout.edgeStyle === undefined ? {} : { edgeStyle: layout.edgeStyle }),
     ...(edgeStyles === undefined ? {} : { edgeStyles }),
     ...(edgeRoutes === undefined ? {} : { edgeRoutes }),
+    ...(edgeLabels === undefined ? {} : { edgeLabels }),
   };
 }
 
@@ -156,11 +158,12 @@ function layoutFor(
   const carried = carryLayout(before.graph, graph, before.layout);
   const laidOut = tidy
     ? layoutDiagram(graph, direction).then((fresh) => {
-        const { edgeStyle, edgeStyles } = carried;
+        const { edgeStyle, edgeStyles, edgeLabels } = carried;
         return {
           ...fresh,
           ...(edgeStyle === undefined ? {} : { edgeStyle }),
           ...(edgeStyles === undefined ? {} : { edgeStyles }),
+          ...(edgeLabels === undefined ? {} : { edgeLabels }),
         };
       })
     : layoutDiagram(graph, direction, carried).then((placed) => ({ ...carried, ...placed }));

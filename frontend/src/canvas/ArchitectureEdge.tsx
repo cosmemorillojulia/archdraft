@@ -22,7 +22,8 @@ const DRAW_S = 0.55;
  * A connection: a smooth curve, or a line of right angles, that draws itself in when the
  * diagram builds, dashed when asynchronous, ending in an arrowhead, with a particle in the
  * colour of its source that travels along it. When it is selected, or either
- * end is in focus, it turns to the accent colour and shows its label.
+ * end is in focus, it turns to the accent colour. Its label shows always or
+ * never, as it was set, not when it is pointed at.
  *
  * The arrowhead is drawn here rather than as an SVG marker: a marker scales
  * with the stroke width, cannot fade its colour, and shows before the line
@@ -52,6 +53,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
     edge,
     async,
     style,
+    showLabel,
     route,
     sourceBox,
     targetBox,
@@ -162,14 +164,26 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
         >
           <AnimatePresence>
-            {active && label !== undefined && (
+            {showLabel && label !== undefined && (
               <m.div
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18, ease: EASE_OUT }}
-                className="rounded-full bg-accent px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap text-on-accent"
-                style={mark ? { backgroundColor: MARK_COLOR[mark], color: 'var(--surface)' } : {}}
+                className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap transition-[background-color,border-color,color] duration-200 ${
+                  active
+                    ? 'border-accent bg-accent text-on-accent'
+                    : 'border-line bg-surface text-muted'
+                }`}
+                style={
+                  mark
+                    ? {
+                        backgroundColor: MARK_COLOR[mark],
+                        borderColor: MARK_COLOR[mark],
+                        color: 'var(--surface)',
+                      }
+                    : {}
+                }
               >
                 {label}
               </m.div>

@@ -1,5 +1,5 @@
-import { DEFAULT_EDGE_STYLE } from '@archdraft/shared';
-import { Activity, CornerDownRight, Spline } from 'lucide-react';
+import { DEFAULT_EDGE_STYLE, showsEdgeLabel } from '@archdraft/shared';
+import { Activity, CornerDownRight, Spline, Tag } from 'lucide-react';
 import { memo } from 'react';
 import { Button } from '../components/Button.tsx';
 import { editorStore, useEditor } from '../editor/store.ts';
@@ -10,7 +10,8 @@ import { CONTROL_GROUP, TOUCH_SIZE } from './ZoomControls.tsx';
 /**
  * Shortcuts to the settings of the view that are worth having at hand, in a column of their
  * own next to the zoom: the switch between curved and right-angled connections and the one for
- * the particles that travel along them. Each shortcut is one button here; new ones go in the
+ * the particles that travel along them, and the one that shows or hides the labels of all of
+ * them at once. Each shortcut is one button here; new ones go in the
  * same column.
  */
 export const CanvasShortcuts = memo(function CanvasShortcuts() {
@@ -22,6 +23,18 @@ export const CanvasShortcuts = memo(function CanvasShortcuts() {
   const edgeStyleLabel =
     edgeStyle === 'curved' ? strings.canvas.edgeStyle.toSquare : strings.canvas.edgeStyle.toCurved;
   const flowLabel = flowAnimation ? strings.canvas.flow.hide : strings.canvas.flow.show;
+  // Pressed once every connection shows its label; pressing it then hides them all.
+  const allLabelsShown = useEditor((state) => {
+    const document = state.current?.document;
+    return (
+      document !== undefined &&
+      document.graph.edges.length > 0 &&
+      document.graph.edges.every((edge) => showsEdgeLabel(document.layout, edge.id))
+    );
+  });
+  const labelsLabel = allLabelsShown
+    ? strings.canvas.edgeLabels.hide
+    : strings.canvas.edgeLabels.show;
   return (
     <div role="group" aria-label={strings.canvas.shortcuts.label} className={CONTROL_GROUP}>
       <Button
@@ -50,6 +63,17 @@ export const CanvasShortcuts = memo(function CanvasShortcuts() {
         onClick={() => preferencesStore.getState().setFlowAnimation(!flowAnimation)}
       >
         <Activity size={16} aria-hidden="true" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={`${TOUCH_SIZE} aria-pressed:text-accent`}
+        aria-label={strings.canvas.edgeLabels.label}
+        aria-pressed={allLabelsShown}
+        title={labelsLabel}
+        onClick={() => editorStore.getState().setEdgeLabels('all', !allLabelsShown)}
+      >
+        <Tag size={16} aria-hidden="true" />
       </Button>
     </div>
   );

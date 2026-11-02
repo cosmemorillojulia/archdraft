@@ -73,6 +73,9 @@ export const DiagramLayoutSchema = z.strictObject({
   edgeRoutes: boundedRecord(EdgeRouteSchema, LIMITS.maxEdges)
     .optional()
     .describe('Sides and points of single connections that were routed by hand, per edge id'),
+  edgeLabels: boundedRecord(z.literal(true), LIMITS.maxEdges)
+    .optional()
+    .describe('Connections whose label is always shown, per edge id; the others hide it'),
 });
 
 /** What the editor stores, shares and restores: the graph plus how it is drawn. */
@@ -130,6 +133,11 @@ export function ownEdgeStyle(layout: DiagramLayout, edgeId: string): EdgeStyle |
 /** How an edge is drawn: its own style if it has one, else the one of the diagram. */
 export function resolveEdgeStyle(layout: DiagramLayout, edgeId: string): EdgeStyle {
   return ownEdgeStyle(layout, edgeId) ?? layout.edgeStyle ?? DEFAULT_EDGE_STYLE;
+}
+
+/** Whether the label of an edge is shown; labels are hidden unless shown one by one. */
+export function showsEdgeLabel(layout: DiagramLayout, edgeId: string): boolean {
+  return layout.edgeLabels !== undefined && layoutEntry(layout.edgeLabels, edgeId) === true;
 }
 
 /** The route an edge was given by hand, if it has one. */

@@ -82,6 +82,7 @@ const document: DiagramDocument = {
       queue: DEFAULT_NODE_SIZE,
       note: { width: 160, height: 96 },
     },
+    edgeLabels: { 'user-api': true, 'api-queue': true },
   },
 };
 
@@ -193,6 +194,13 @@ describe('diagram as SVG', () => {
     expect(svg).toContain('stroke-dasharray="6 4"');
   });
 
+  it('leaves out the labels of connections that hide them', () => {
+    const { edgeLabels: _shown, ...hidden } = document.layout;
+    const { svg } = diagramToSvg({ ...document, layout: hidden }, options);
+    expect(svg).not.toContain('>Enqueue<');
+    expect(svg).not.toContain('>HTTPS<');
+  });
+
   it('leaves out a connection label that would cover a node', () => {
     // A third component placed where the label of the queue connection falls.
     const crowded: DiagramDocument = {
@@ -202,6 +210,7 @@ describe('diagram as SVG', () => {
         nodes: [...document.graph.nodes, { id: 'cache', kind: 'cache', label: 'Cache' }],
       },
       layout: {
+        ...document.layout,
         positions: { ...document.layout.positions, cache: { x: 500, y: 60 } },
         sizes: { ...document.layout.sizes, cache: DEFAULT_NODE_SIZE },
       },

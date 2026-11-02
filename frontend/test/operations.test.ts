@@ -29,6 +29,7 @@ import {
   remove,
   resizeNode,
   setDefaultEdgeStyle,
+  setEdgeLabels,
   setEdgeRoute,
   setEdgeStyle,
   subtreeOf,
@@ -657,6 +658,30 @@ describe('text fixed to a box', () => {
       .map((node) => node.id);
     expect(ids.indexOf('text')).toBe(ids.indexOf('db') + 1);
     expect(stackNode(next, 'text', 'front')).toMatchObject({ ok: true, document: next });
+  });
+});
+
+describe('edge labels', () => {
+  it('hides every label until it is shown, one by one or all at once', () => {
+    expect(document.layout).not.toHaveProperty('edgeLabels');
+    const one = edited(setEdgeLabels(document, ['api-db'], true));
+    expect(one.layout.edgeLabels).toEqual({ 'api-db': true });
+    const all = edited(setEdgeLabels(one, 'all', true));
+    expect(all.layout.edgeLabels).toEqual({ 'api-db': true, 'user-api': true });
+    const none = edited(setEdgeLabels(all, 'all', false));
+    expect(none.layout).toEqual(document.layout);
+  });
+
+  it('changes nothing for a connection that does not exist or already shows it so', () => {
+    expect(setEdgeLabels(document, ['ghost'], true)).toEqual({ ok: true, document });
+    expect(setEdgeLabels(document, 'all', false)).toEqual({ ok: true, document });
+  });
+
+  it('forgets the setting of a removed connection', () => {
+    const shown = edited(setEdgeLabels(document, 'all', true));
+    expect(edited(remove(shown, { type: 'edge', id: 'api-db' })).layout.edgeLabels).toEqual({
+      'user-api': true,
+    });
   });
 });
 

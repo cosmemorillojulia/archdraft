@@ -21,6 +21,7 @@ import {
   type NodeSide,
   ownEdgeRoute,
   ownEdgeStyle,
+  showsEdgeLabel,
   MAX_ROUTE_POINTS,
   type Point,
   resolveEdgeStyle,
@@ -277,6 +278,15 @@ function withEdgeStyles(
 ): DiagramLayout {
   const { edgeStyles: _previous, ...rest } = layout;
   return Object.keys(styles).length === 0 ? rest : { ...rest, edgeStyles: styles };
+}
+
+/** The layout with `labels` as the edges whose label shows; with none, the field is left out. */
+function withEdgeLabels(
+  layout: DiagramLayout,
+  labels: Readonly<Record<string, true>>,
+): DiagramLayout {
+  const { edgeLabels: _previous, ...rest } = layout;
+  return Object.keys(labels).length === 0 ? rest : { ...rest, edgeLabels: labels };
 }
 
 /** The layout with `routes` as the routes of single edges; with none, the field is left out. */
@@ -741,11 +751,14 @@ export function resizeNode(document: DiagramDocument, id: string, box: Box): Edi
   };
 }
 
-/** The layout without what it says about the edges `ids`: their styles and their routes. */
+/** The layout without what it says about the edges `ids`: their styles, routes and labels. */
 function withoutEdgeEntries(layout: DiagramLayout, ids: ReadonlySet<string>): DiagramLayout {
-  return withEdgeRoutes(
-    withEdgeStyles(layout, withoutKeys(layout.edgeStyles ?? {}, ids)),
-    withoutKeys(layout.edgeRoutes ?? {}, ids),
+  return withEdgeLabels(
+    withEdgeRoutes(
+      withEdgeStyles(layout, withoutKeys(layout.edgeStyles ?? {}, ids)),
+      withoutKeys(layout.edgeRoutes ?? {}, ids),
+    ),
+    withoutKeys(layout.edgeLabels ?? {}, ids),
   );
 }
 
@@ -852,6 +865,7 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
   // A copied connection is drawn in the style, and runs the way, of the one it copies.
   const edgeStyles: Record<string, EdgeStyle> = { ...layout.edgeStyles };
   const edgeRoutes: Record<string, EdgeRoute> = { ...layout.edgeRoutes };
+  const edgeLabels: Record<string, true> = { ...layout.edgeLabels };
   const edges = innerEdges.map((edge) => {
     const source = copyOf(edge.source);
     const target = copyOf(edge.target);
@@ -862,6 +876,7 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
     if (own !== undefined) edgeStyles[edgeId] = own;
     const route = ownEdgeRoute(layout, edge.id);
     if (route !== undefined) edgeRoutes[edgeId] = route;
+    if (showsEdgeLabel(layout, edge.id)) edgeLabels[edgeId] = true;
     return { ...edge, id: edgeId, source, target };
   });
 
@@ -876,7 +891,10 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
       graph: nextGraph,
       layout: growAncestors(
         nextGraph,
-        withEdgeRoutes(withEdgeStyles({ ...layout, positions, sizes }, edgeStyles), edgeRoutes),
+        withEdgeLabels(
+          withEdgeRoutes(withEdgeStyles({ ...layout, positions, sizes }, edgeStyles), edgeRoutes),
+          edgeLabels,
+        ),
         copyOf(id),
       ),
     },
@@ -978,6 +996,29 @@ export function setEdgeStyle(
     ok: true,
     document: { ...document, layout: restyled ? withoutRoutePoints(styled, [id]) : styled },
   };
+}
+
+/**
+ * Shows or hides the labels of the connections `ids`, or of every connection with `'all'`. A
+ * label shows always or never, whatever is selected.
+ */
+export function setEdgeLabels(
+  document: DiagramDocument,
+  ids: readonly string[] | 'all',
+  shown: boolean,
+): Edit {
+  const { graph, layout } = document;
+  const targets = new Set(
+    graph.edges
+      .map((edge) => edge.id)
+      .filter((id) => (ids === 'all' || ids.includes(id)) && showsEdgeLabel(layout, id) !== shown),
+  );
+  if (targets.size === 0) return unchanged(document);
+  const others = withoutKeys(layout.edgeLabels ?? {}, targets);
+  const labels = shown
+    ? { ...others, ...Object.fromEntries([...targets].map((id) => [id, true as const])) }
+    : others;
+  return { ok: true, document: { ...document, layout: withEdgeLabels(layout, labels) } };
 }
 
 /**

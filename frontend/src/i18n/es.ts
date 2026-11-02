@@ -472,6 +472,11 @@ export const es: Strings = {
       show: 'Mostrar las partículas de las conexiones',
     },
     shortcuts: { label: 'Accesos directos' },
+    edgeLabels: {
+      label: 'Etiquetas de las conexiones',
+      hide: 'Ocultar las etiquetas de todas las conexiones',
+      show: 'Mostrar las etiquetas de todas las conexiones',
+    },
     edgeStyle: {
       toSquare: 'Dibujar las conexiones con ángulos rectos',
       toCurved: 'Dibujar las conexiones como curvas',
@@ -594,6 +599,8 @@ export const es: Strings = {
       managed: 'Servicio gestionado',
     },
     label: 'Etiqueta',
+    labelVisibility: 'Mostrar etiqueta',
+    labelVisibilities: { hidden: 'Nunca', shown: 'Siempre' },
     protocol: 'Protocolo',
     protocolNone: 'Sin indicar',
     mode: 'Modo',

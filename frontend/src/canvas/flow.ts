@@ -15,6 +15,7 @@ import {
   ownEdgeRoute,
   resolveEdgeMode,
   resolveEdgeStyle,
+  showsEdgeLabel,
 } from '@archdraft/shared';
 import type { LayoutDirection } from '../layout/compute-layout.ts';
 import type { Edge, Node } from '@xyflow/react';
@@ -62,6 +63,8 @@ export interface ArchitectureEdgeData extends Record<string, unknown> {
   async: boolean;
   /** Curved or right-angled: the style of the edge, or else the one of the diagram. */
   style: EdgeStyle;
+  /** Whether its label shows, always; otherwise it never does. */
+  showLabel: boolean;
   /** What was decided by hand about how the edge runs: its sides and the bend of its middle. */
   route: EdgeRoute | undefined;
   /** The boxes of its two nodes, for choosing another side to attach to, and the flow direction. */
@@ -186,6 +189,7 @@ export function toFlow(
           edge,
           async: resolveEdgeMode(edge) === 'async',
           style: resolveEdgeStyle(layout, edge.id),
+          showLabel: showsEdgeLabel(layout, edge.id),
           route,
           sourceBox: from,
           targetBox: to,
