@@ -12,7 +12,7 @@ const GRAPH: Omit<ArchitectureGraph, 'schemaVersion'> = {
   provider: 'generic',
   nodes: [
     { id: 'user', kind: 'user', label: 'User' },
-    { id: 'api', kind: 'service', label: 'API' },
+    { id: 'api', kind: 'api-gateway', label: 'API' },
   ],
   edges: [{ id: 'user-api', source: 'user', target: 'api', mode: 'sync' }],
 };
