@@ -73,6 +73,22 @@ describe('createOpenAiCompatibleProvider', () => {
     });
   });
 
+  it('tells a reasoning model how much to think', async () => {
+    const calls: RequestInit[] = [];
+    const provider = createOpenAiCompatibleProvider({
+      baseUrl: 'https://api.example.com/openai/v1',
+      apiKey: 'secret',
+      model: 'openai/gpt-oss-120b',
+      reasoningEffort: 'low',
+      fetch: (_input, init) => {
+        calls.push(init ?? {});
+        return Promise.resolve(completion('{}'));
+      },
+    });
+    await provider.complete(REQUEST);
+    expect(bodyOf(calls[0])).toMatchObject({ reasoning_effort: 'low' });
+  });
+
   it('leaves out the options that were not given', async () => {
     const { provider, calls } = providerAnswering(() => Promise.resolve(completion('hi')));
     await provider.complete(REQUEST);

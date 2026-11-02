@@ -1,4 +1,8 @@
-import { createOpenAiCompatibleProvider } from '../llm/openai-compatible.ts';
+import {
+  createOpenAiCompatibleProvider,
+  REASONING_EFFORTS,
+  type ReasoningEffort,
+} from '../llm/openai-compatible.ts';
 import type { LlmProvider } from '../llm/provider.ts';
 import {
   createWorkersAiProvider,
@@ -16,6 +20,8 @@ export interface Env {
   /** Secrets that switch to an OpenAI-compatible provider, such as Groq. */
   readonly LLM_BASE_URL?: string;
   readonly LLM_API_KEY?: string;
+  /** `low`, `medium` or `high`, for reasoning models; see `reasoningEffortFor`. */
+  readonly LLM_REASONING_EFFORT?: string;
 }
 
 /**
@@ -23,6 +29,17 @@ export interface Env {
  * Groq shut down `llama-3.3-70b-versatile` for free accounts on 2026-08-16 and points to this one.
  */
 export const DEFAULT_OPENAI_COMPATIBLE_MODEL = 'openai/gpt-oss-120b';
+
+/**
+ * How much a reasoning model thinks: what the environment says, or `low` for
+ * `gpt-oss`. Its thoughts share the tokens of the answer, which the free plan
+ * of Groq keeps short (agent/assist.ts), and `medium`, its default, can leave
+ * a diagram cut half way. Other models are not sent the parameter.
+ */
+export function reasoningEffortFor(env: Env, model: string): ReasoningEffort | undefined {
+  const asked = REASONING_EFFORTS.find((effort) => effort === env.LLM_REASONING_EFFORT?.trim());
+  return asked ?? (/gpt-oss/i.test(model) ? 'low' : undefined);
+}
 
 /** Longest a call to the model may take; well within the wall time a Worker is given. */
 export const MODEL_TIMEOUT_MS = 60_000;
@@ -34,10 +51,13 @@ export const MODEL_TIMEOUT_MS = 60_000;
  */
 export function providerFromEnv(env: Env): LlmProvider | undefined {
   if (env.LLM_BASE_URL && env.LLM_API_KEY) {
+    const model = env.LLM_MODEL ?? DEFAULT_OPENAI_COMPATIBLE_MODEL;
+    const reasoningEffort = reasoningEffortFor(env, model);
     return createOpenAiCompatibleProvider({
       baseUrl: env.LLM_BASE_URL,
       apiKey: env.LLM_API_KEY,
-      model: env.LLM_MODEL ?? DEFAULT_OPENAI_COMPATIBLE_MODEL,
+      model,
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
       // Workers refuse a `fetch` called away from the global object.
       fetch: (input, init) => fetch(input, init),
       timeoutMs: MODEL_TIMEOUT_MS,

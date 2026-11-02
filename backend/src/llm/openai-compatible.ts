@@ -10,7 +10,15 @@ export interface OpenAiCompatibleOptions {
   /** Injected so tests and the Worker decide how requests go out. */
   readonly fetch: typeof fetch;
   readonly timeoutMs?: number;
+  /**
+   * How much a reasoning model such as `gpt-oss` thinks before it answers. Its
+   * thoughts come out of the tokens of the answer, so too much leaves the JSON cut.
+   */
+  readonly reasoningEffort?: ReasoningEffort;
 }
+
+export const REASONING_EFFORTS = ['low', 'medium', 'high'] as const;
+export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
 /** How long one call may take before it counts as a timeout. */
 export const DEFAULT_TIMEOUT_MS = 60_000;
@@ -40,7 +48,7 @@ export function createOpenAiCompatibleProvider(options: OpenAiCompatibleOptions)
             'Content-Type': 'application/json',
             Authorization: `Bearer ${options.apiKey}`,
           },
-          body: JSON.stringify(body(options.model, request)),
+          body: JSON.stringify(body(options, request)),
           signal,
         });
       } catch (error) {
@@ -93,9 +101,10 @@ async function providerMessage(response: Response): Promise<string | undefined> 
   return typeof message === 'string' ? message.slice(0, MAX_REASON_LENGTH) : undefined;
 }
 
-function body(model: string, request: LlmRequest) {
+function body({ model, reasoningEffort }: OpenAiCompatibleOptions, request: LlmRequest) {
   return {
     model,
+    ...(reasoningEffort === undefined ? {} : { reasoning_effort: reasoningEffort }),
     messages: request.messages,
     ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
     ...(request.maxTokens === undefined ? {} : { max_tokens: request.maxTokens }),
