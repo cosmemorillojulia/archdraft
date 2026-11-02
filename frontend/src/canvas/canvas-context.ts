@@ -1,5 +1,6 @@
 import type { ArchEdge, LintSeverity } from '@archdraft/shared';
 import { createContext, useContext } from 'react';
+import type { ChangeMark, ChangeMarks } from '../ai/assistant-store.ts';
 import type { Selection } from '../editor/operations.ts';
 
 /** Position, relative to the parent, and size of a node. */
@@ -41,8 +42,11 @@ export interface CanvasState {
   issues: ReadonlyMap<string, LintSeverity>;
   /** The finding chosen in the review: its components are outlined in its colour. */
   finding: { nodes: ReadonlySet<string>; severity: LintSeverity } | null;
-  /** What the assistant just changed, or a proposal would: outlined in the accent colour. */
-  changed: ReadonlySet<string>;
+  /**
+   * What the assistant just changed, or the proposal on the canvas would: each
+   * node and edge in the colour of what happens to it.
+   */
+  marks: ChangeMarks | null;
 }
 
 export const CanvasContext = createContext<CanvasState>({
@@ -60,11 +64,20 @@ export const CanvasContext = createContext<CanvasState>({
   resize: () => undefined,
   issues: new Map(),
   finding: null,
-  changed: new Set(),
+  marks: null,
 });
 
 export function useCanvas(): CanvasState {
   return useContext(CanvasContext);
+}
+
+/** What the change on the canvas does to a node or an edge, if anything. */
+export function markOf(
+  canvas: CanvasState,
+  type: 'node' | 'edge',
+  id: string,
+): ChangeMark | undefined {
+  return (type === 'node' ? canvas.marks?.nodes : canvas.marks?.edges)?.get(id);
 }
 
 export function isSelected(selection: Selection | null, type: Selection['type'], id: string) {

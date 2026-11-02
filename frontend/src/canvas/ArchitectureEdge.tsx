@@ -3,7 +3,8 @@ import { AnimatePresence, m } from 'motion/react';
 import { memo, useState } from 'react';
 import { EASE_OUT } from '../motion.ts';
 import { useStrings } from '../i18n/locale.ts';
-import { isSelected, useCanvas } from './canvas-context.ts';
+import { MARK_COLOR } from './appearance.ts';
+import { isSelected, markOf, useCanvas } from './canvas-context.ts';
 import { connectionPath, routePoints } from './edge-path.ts';
 import { EdgeRouteHandles, type RoutePreview } from './EdgeRouteHandles.tsx';
 import type { ArchitectureFlowEdge } from './flow.ts';
@@ -85,9 +86,13 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   const selected = isSelected(canvas.selection, 'edge', id);
   const active = selected || canvas.edges.has(id);
   const dimmed = canvas.dimOthers && !active;
+  const mark = markOf(canvas, 'edge', id);
+  const removed = mark === 'removed';
   const label = edge.label ?? (edge.protocol && strings.protocols[edge.protocol]);
-  const colour = active ? 'var(--accent)' : 'var(--edge)';
-  const strokeWidth = selected ? 2.5 : active ? 2 : 1.5;
+  const colour = mark ? MARK_COLOR[mark] : active ? 'var(--accent)' : 'var(--edge)';
+  const strokeWidth = selected ? 2.5 : active || mark ? 2 : 1.5;
+  // A connection that goes is dotted like no other, asynchronous or not.
+  const dashes = removed ? '2 5' : async ? '5 5' : undefined;
   const delay = canvas.building ? appearDelay : 0;
   const travel = Math.min(
     Math.max(Math.hypot(tip.x - start.x, tip.y - start.y) / PARTICLE_SPEED, PARTICLE_MIN_S),
@@ -100,7 +105,10 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
 
   return (
     <>
-      <g className="transition-opacity duration-200" style={{ opacity: dimmed ? 0.15 : 1 }}>
+      <g
+        className="transition-opacity duration-200"
+        style={{ opacity: dimmed ? 0.15 : removed ? 0.7 : 1 }}
+      >
         {/* Invisible wide stroke from React Flow, so the edge is easy to point at. */}
         <BaseEdge path={path} style={{ stroke: 'transparent' }} interactionWidth={20} />
         {drawn ? (
@@ -108,7 +116,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
             d={path}
             fill="none"
             strokeWidth={strokeWidth}
-            strokeDasharray={async ? '5 5' : undefined}
+            strokeDasharray={dashes}
             className="transition-[stroke,stroke-width] duration-200"
             style={{ stroke: colour }}
           />
@@ -117,7 +125,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
             d={path}
             fill="none"
             strokeWidth={strokeWidth}
-            strokeDasharray={async ? '5 5' : undefined}
+            strokeDasharray={dashes}
             className="transition-[stroke,stroke-width] duration-200"
             style={{ stroke: colour }}
             {...reveal}
@@ -135,7 +143,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.15, delay: delay + (canvas.building ? DRAW_S * 0.8 : 0) }}
         />
-        {canvas.particles && (
+        {canvas.particles && !removed && (
           <m.circle
             r={async ? 2.25 : 2.5}
             style={{ fill: `var(--cat-${sourceCategory})` }}
@@ -161,6 +169,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18, ease: EASE_OUT }}
                 className="rounded-full bg-accent px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap text-on-accent"
+                style={mark ? { backgroundColor: MARK_COLOR[mark], color: 'var(--surface)' } : {}}
               >
                 {label}
               </m.div>

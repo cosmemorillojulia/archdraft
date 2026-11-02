@@ -14,7 +14,7 @@ import { ReviewPanel } from './ReviewPanel.tsx';
  * selection. One panel leaves as the other arrives.
  */
 export function PanelSlot({ placement }: { placement: PanelPlacement }) {
-  const offering = useAssistant((state) => state.offer !== null);
+  const offering = useAssistant((state) => state.offer !== null || state.report !== null);
   const reviewOpen = useReview((state) => state.open);
   const inspecting = useInspecting(placement);
   const selection = useEditor((state) => state.selection);

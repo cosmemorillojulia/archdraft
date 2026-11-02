@@ -39,6 +39,7 @@ import { type ArchitectureFlowEdge, type ArchitectureFlowNode, toFlow } from './
 import { useStableHandler } from './use-stable-handler.ts';
 import { type Insets, absoluteBoxes, boundsOf, initialViewport } from './geometry.ts';
 import { CanvasControls } from './CanvasControls.tsx';
+import { PreviewLegend } from './PreviewLegend.tsx';
 
 const NODE_TYPES = { component: ComponentNode, container: ContainerNode, shape: ShapeNode };
 const EDGE_TYPES = { architecture: ArchitectureEdge };
@@ -85,7 +86,7 @@ const sideOf = (handle: string | null | undefined): NodeSide | undefined =>
 const isValidConnection = (connection: { source: string; target: string }): boolean =>
   connection.source !== connection.target;
 const NO_ISSUES: ReadonlyMap<string, LintSeverity> = new Map();
-const NO_CHANGES: ReadonlySet<string> = new Set();
+const NO_IDS: ReadonlySet<string> = new Set();
 
 export interface DiagramCanvasProps {
   /** Space covered by the floating interface, kept clear when the diagram is fitted. */
@@ -129,7 +130,13 @@ interface FlowProps extends DiagramCanvasProps {
 
 function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlacement }: FlowProps) {
   const strings = useStrings();
-  const { document: diagram, direction } = snapshot;
+  const { direction } = snapshot;
+  // A proposal of the assistant is drawn in place of the diagram, to look at, not to edit.
+  const preview = useAssistant((state) => state.preview);
+  const reportMarks = useAssistant((state) => state.marks);
+  const changeFocus = useAssistant((state) => state.focus);
+  const previewing = preview !== null;
+  const diagram = preview?.document ?? snapshot.document;
   const selection = useEditor((state) => state.selection);
   const group = useEditor((state) => state.group);
   const renamingId = useEditor((state) => state.renaming);
@@ -140,7 +147,6 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const reviewOpen = useReview((state) => state.open);
   const activeKey = useReview((state) => state.activeKey);
   const focusCount = useReview((state) => state.focusCount);
-  const assistantHighlight = useAssistant((state) => state.highlight);
   const flow = useReactFlow<ArchitectureFlowNode, ArchitectureFlowEdge>();
   const containerRef = useRef<HTMLDivElement>(null);
   const pointerType = useRef('mouse');
@@ -207,7 +213,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     [diagram, resizing],
   );
   const nodes = useMemo(() => {
-    if (!dragging && !resizing && selectedNodeId === null && groupIds.size === 0) {
+    if (previewing || (!dragging && !resizing && selectedNodeId === null && groupIds.size === 0)) {
       return elements.nodes;
     }
     return elements.nodes.map((node) => {
@@ -234,7 +240,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       if (node.id === selectedNodeId || groupIds.has(node.id)) return { ...node, draggable: true };
       return node;
     });
-  }, [elements.nodes, dragging, fitted, groupIds, resizing, selectedNodeId]);
+  }, [elements.nodes, dragging, fitted, groupIds, previewing, resizing, selectedNodeId]);
 
   // While the review is open, components show their most severe finding, and the chosen
   // finding stands out with everything else faded.
@@ -255,10 +261,11 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const draggingId = dragging?.id ?? null;
   const busyId = draggingId ?? resizing?.id ?? null;
   const canvas = useMemo(() => {
-    const hovered = busyId === null ? hoverId : null;
+    const hovered = busyId === null && !previewing ? hoverId : null;
     const shared = {
-      selection: group.length > 1 ? null : selection,
-      group: groupIds,
+      // Nothing of a preview can be chosen, so none of its handles show.
+      selection: group.length > 1 || previewing ? null : selection,
+      group: previewing ? NO_IDS : groupIds,
       renamingId,
       placedId,
       dropTargetId,
@@ -267,16 +274,25 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       issues,
       resize,
     };
-    // What the assistant changes stands out the way a chosen finding does.
-    if (hovered === null && assistantHighlight) {
+    // What the assistant changes, or would change, is drawn in the colour of each change. In a
+    // preview the rest fades, so the change reads at a glance; one change pointed at in the panel
+    // stands out alone, with the ends of a connection.
+    const marks = preview?.marks ?? reportMarks;
+    if (hovered === null && marks) {
+      const pointed =
+        changeFocus?.type === 'edge'
+          ? diagram.graph.edges.find((edge) => edge.id === changeFocus.id)
+          : undefined;
       return {
         ...shared,
         focusId: null,
-        nodes: assistantHighlight.nodes,
-        edges: assistantHighlight.edges,
-        dimOthers: true,
+        nodes: changeFocus
+          ? new Set(pointed ? [pointed.source, pointed.target] : [changeFocus.id])
+          : new Set(marks.nodes.keys()),
+        edges: changeFocus ? new Set(pointed ? [pointed.id] : []) : new Set(marks.edges.keys()),
+        dimOthers: previewing || changeFocus !== null,
         finding: null,
-        changed: assistantHighlight.nodes,
+        marks,
       };
     }
     if (hovered === null && activeFinding) {
@@ -288,7 +304,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
         edges: new Set(activeFinding.edgeIds),
         dimOthers: true,
         finding: { nodes, severity: activeFinding.severity },
-        changed: NO_CHANGES,
+        marks: null,
       };
     }
     const focusId = draggingId === null ? (hovered ?? selectedNodeId) : null;
@@ -298,12 +314,12 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       ...relatedTo(focusId, diagram.graph.edges),
       dimOthers: hovered !== null,
       finding: null,
-      changed: NO_CHANGES,
+      marks: null,
     };
   }, [
     activeFinding,
-    assistantHighlight,
     building,
+    changeFocus,
     busyId,
     diagram.graph.edges,
     draggingId,
@@ -312,7 +328,10 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     issues,
     particles,
     placedId,
+    preview,
+    previewing,
     renamingId,
+    reportMarks,
     resize,
     selectedNodeId,
     selection,
@@ -377,37 +396,68 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   /** What the view was last moved to show: a node, under the inspector expanded or not. */
   const revealed = useRef<{ id: string | null; expanded: boolean }>({ id: null, expanded: false });
 
-  // A finding chosen in the review glides to the middle of the free area, zooming out if it does not fit.
+  /**
+   * Glides the nodes `ids` to the middle of the free area, zooming out if they do not fit;
+   * `ifHidden` leaves the view alone when they are already in sight.
+   */
+  const glideTo = useCallback(
+    (ids: Iterable<string>, ifHidden = false): boolean => {
+      const area = freeArea();
+      const bounds = boundsOf(
+        [...ids].flatMap((id) => {
+          const box = boxes.get(id);
+          return box ? [box] : [];
+        }),
+      );
+      if (!area || !bounds) return false;
+      const current = flow.getViewport();
+      if (ifHidden) {
+        const left = bounds.x * current.zoom + current.x;
+        const top = bounds.y * current.zoom + current.y;
+        const inSight =
+          left >= area.left &&
+          top >= area.top &&
+          left + bounds.width * current.zoom <= area.right &&
+          top + bounds.height * current.zoom <= area.bottom;
+        if (inSight) return false;
+      }
+      const width = area.right - area.left;
+      const height = area.bottom - area.top;
+      const zoom = Math.max(
+        Math.min(current.zoom, width / bounds.width, height / bounds.height),
+        MIN_ZOOM,
+      );
+      void flow.setViewport(
+        {
+          x: area.left + width / 2 - (bounds.x + bounds.width / 2) * zoom,
+          y: area.top + height / 2 - (bounds.y + bounds.height / 2) * zoom,
+          zoom,
+        },
+        { duration: FOCUS_MS },
+      );
+      return true;
+    },
+    [boxes, flow, freeArea],
+  );
+
+  // A finding chosen in the review glides to the middle of the free area.
   const focusedCount = useRef(focusCount);
   useEffect(() => {
     if (focusCount === focusedCount.current) return;
     focusedCount.current = focusCount;
-    const area = freeArea();
-    const bounds = boundsOf(
-      (activeFinding?.nodeIds ?? []).flatMap((id) => {
-        const box = boxes.get(id);
-        return box ? [box] : [];
-      }),
-    );
-    if (!area || !bounds) return;
     // The finding selects its first component, which this glide already brings into view.
-    revealed.current = { id: activeFinding?.nodeIds[0] ?? null, expanded: inspectorExpanded };
-    const current = flow.getViewport();
-    const width = area.right - area.left;
-    const height = area.bottom - area.top;
-    const zoom = Math.max(
-      Math.min(current.zoom, width / bounds.width, height / bounds.height),
-      MIN_ZOOM,
-    );
-    void flow.setViewport(
-      {
-        x: area.left + width / 2 - (bounds.x + bounds.width / 2) * zoom,
-        y: area.top + height / 2 - (bounds.y + bounds.height / 2) * zoom,
-        zoom,
-      },
-      { duration: FOCUS_MS },
-    );
-  }, [activeFinding, boxes, flow, focusCount, freeArea, inspectorExpanded]);
+    if (glideTo(activeFinding?.nodeIds ?? [])) {
+      revealed.current = { id: activeFinding?.nodeIds[0] ?? null, expanded: inspectorExpanded };
+    }
+  }, [activeFinding, focusCount, glideTo, inspectorExpanded]);
+
+  // A proposal drawn on the canvas brings what it changes into sight, if it is not.
+  const shownPreview = useRef(preview);
+  useEffect(() => {
+    if (preview === shownPreview.current) return;
+    shownPreview.current = preview;
+    if (preview) glideTo(preview.marks.nodes.keys(), true);
+  }, [glideTo, preview]);
 
   // A newly selected node hidden behind the inspector or another panel glides into view,
   // and again when the inspector expands over it.
@@ -535,6 +585,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   });
   const onNodeMouseLeave = useStableHandler(() => setHoverId(null));
   const onNodeClick = useStableHandler((event: React.MouseEvent, node: ArchitectureFlowNode) => {
+    if (previewing) return;
     const editor = editorStore.getState();
     // Ctrl, Cmd or Shift with a click chooses several nodes, to move or delete them together.
     if ((event.ctrlKey || event.metaKey || event.shiftKey) && editor.connectingFrom === null) {
@@ -548,10 +599,11 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     else if (editor.connectingFrom === node.id) editor.cancelConnection();
     else editor.connect(editor.connectingFrom, node.id);
   });
-  const onNodeDoubleClick = useStableHandler((_event: unknown, node: ArchitectureFlowNode) =>
-    editorStore.getState().startRename(node.id),
-  );
+  const onNodeDoubleClick = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
+    if (!previewing) editorStore.getState().startRename(node.id);
+  });
   const onEdgeClick = useStableHandler((_event: unknown, edge: ArchitectureFlowEdge) => {
+    if (previewing) return;
     reviewStore.getState().setOpen(false);
     editorStore.getState().select({ type: 'edge', id: edge.id });
   });
@@ -578,7 +630,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   // Ctrl, Cmd or Shift and a drag on the empty canvas draws a box: the nodes wholly inside it join
   // the chosen ones. Groups do not, since they stay put when the chosen nodes move.
   const onMarqueeStart = (event: ReactPointerEvent) => {
-    if (!(event.ctrlKey || event.metaKey || event.shiftKey)) return;
+    if (previewing || !(event.ctrlKey || event.metaKey || event.shiftKey)) return;
     if (event.button !== 0 || event.pointerType === 'touch') return;
     const element = containerRef.current;
     if (!element || !(event.target as Element).classList.contains('react-flow__pane')) return;
@@ -638,7 +690,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
 
   // Enter or Space on a focused node or edge selects it, which opens the inspector.
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (previewing || (event.key !== 'Enter' && event.key !== ' ')) return;
     const target = event.target as Element;
     const id = target.getAttribute('data-id');
     if (id === null) return;
@@ -681,6 +733,8 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
           selectionKeyCode={null}
           multiSelectionKeyCode={null}
           connectOnClick={false}
+          nodesDraggable={!previewing}
+          nodesConnectable={!previewing}
           connectionMode={ConnectionMode.Loose}
           isValidConnection={isValidConnection}
           nodeDragThreshold={DRAG_THRESHOLD}
@@ -733,6 +787,11 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
             }}
           />
         )}
+        <AnimatePresence>
+          {previewing && (
+            <PreviewLegend key="legend" top={insets.top} left={insets.left} right={insets.right} />
+          )}
+        </AnimatePresence>
         <div className={`pointer-events-none absolute z-10 ${controlsClassName}`}>
           <CanvasControls
             onFit={fit}
