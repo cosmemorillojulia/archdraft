@@ -30,6 +30,7 @@ import {
   redesignMessage,
   systemPrompt,
 } from './prompt.ts';
+import { type OnProgress, reporting } from './progress.ts';
 import { type Interpretation, runWithRepair } from './repair.ts';
 
 /**
@@ -73,11 +74,14 @@ function jsonSchemaOf(schema: z.ZodType): object {
 const MAX_TOKENS = { graph: 4500, patch: 2500, improve: 3500 } as const;
 const TEMPERATURE = 0.2;
 
+/** Does `request`; with `onProgress`, telling along the way what it is doing (`reporting`). */
 export async function assist(
   provider: LlmProvider,
   request: AssistRequest,
   signal?: AbortSignal,
+  onProgress?: OnProgress,
 ): Promise<AssistResult> {
+  const model = onProgress === undefined ? provider : reporting(provider, onProgress);
   const ask = <T>(
     content: string,
     jsonSchema: object,
@@ -89,7 +93,7 @@ export async function assist(
       { role: 'user', content },
     ];
     return runWithRepair(
-      provider,
+      model,
       { messages, jsonSchema, maxTokens, temperature: TEMPERATURE, ...(signal ? { signal } : {}) },
       interpret,
     );

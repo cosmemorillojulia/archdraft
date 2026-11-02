@@ -42,16 +42,20 @@ export interface ProblemOptions {
   readonly extra?: Record<string, unknown>;
 }
 
-export function problemResponse(problem: AssistProblem, options: ProblemOptions = {}): Response {
-  const status = STATUS[problem];
-  const headers = new Headers({ 'Content-Type': 'application/problem+json' });
-  if (options.retryAfter !== undefined) headers.set('Retry-After', String(options.retryAfter));
-  const body = {
+/** The problem details of `problem`, as the body of a response or of a `problem` event. */
+export function problemBody(problem: AssistProblem, options: ProblemOptions = {}) {
+  return {
     type: problemType(problem),
     title: TITLE[problem],
-    status,
+    status: STATUS[problem],
     ...(options.detail === undefined ? {} : { detail: options.detail }),
     ...options.extra,
   };
-  return new Response(JSON.stringify(body), { status, headers });
+}
+
+export function problemResponse(problem: AssistProblem, options: ProblemOptions = {}): Response {
+  const body = problemBody(problem, options);
+  const headers = new Headers({ 'Content-Type': 'application/problem+json' });
+  if (options.retryAfter !== undefined) headers.set('Retry-After', String(options.retryAfter));
+  return new Response(JSON.stringify(body), { status: body.status, headers });
 }

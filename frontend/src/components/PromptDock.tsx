@@ -19,6 +19,7 @@ import { useEditor } from '../editor/store.ts';
 import { useStrings } from '../i18n/locale.ts';
 import type { LayoutDirection } from '../layout/compute-layout.ts';
 import { EASE_OUT } from '../motion.ts';
+import { AssistantProgress } from './AssistantProgress.tsx';
 import { Button } from './Button.tsx';
 import { MENU_ITEM, MENU_MOTION, useMenu } from './menu.ts';
 
@@ -74,6 +75,7 @@ export function PromptDock({ direction }: { direction: LayoutDirection }) {
 
   return (
     <div className="pointer-events-auto flex w-full max-w-3xl flex-col items-center">
+      <AssistantProgress />
       <form
         onSubmit={(event) => {
           event.preventDefault();

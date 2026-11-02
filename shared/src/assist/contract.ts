@@ -117,6 +117,32 @@ export const AssistResultSchema = z.strictObject({
   warnings: z.array(z.enum(ASSIST_WARNINGS)),
 });
 
+/**
+ * What the assistant is doing while it works, sent as `progress` events when the request asks
+ * for a stream (`Accept: text/event-stream`), before the `result` or the `problem`:
+ *
+ * - `thinking`: the model is reasoning about the request, before it answers.
+ * - `drawing`: the model is writing the answer.
+ * - `checking`: the answer is being validated and reviewed against the design rules.
+ * - `fixing`: the model is asked again, to fix the problems or the risks found.
+ */
+export const ASSIST_STAGES = ['thinking', 'drawing', 'checking', 'fixing'] as const;
+export type AssistStage = (typeof ASSIST_STAGES)[number];
+
+export const ASSIST_PROGRESS_LIMITS = {
+  /** Longest stretch of reasoning sent in one event. */
+  thoughtLength: 4000,
+} as const;
+
+export const AssistProgressSchema = z.strictObject({
+  stage: z.enum(ASSIST_STAGES),
+  /** Reasoning of the model since the last event, for the models that show theirs. */
+  thought: z.string().max(ASSIST_PROGRESS_LIMITS.thoughtLength).optional(),
+  /** Names of the components the answer has written so far, in order. */
+  components: z.array(z.string().max(LIMITS.labelLength)).max(LIMITS.maxNodes).optional(),
+});
+
+export type AssistProgress = z.infer<typeof AssistProgressSchema>;
 export type AssistRequest = z.infer<typeof AssistRequestSchema>;
 export type Proposal = z.infer<typeof ProposalSchema>;
 export type AssistResult = z.infer<typeof AssistResultSchema>;

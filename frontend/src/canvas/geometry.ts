@@ -287,6 +287,19 @@ export function edgeSides(
   direction: LayoutDirection,
   fixed: FixedSides = {},
 ): EdgeSides {
+  return (rankedSides(source, target, direction, fixed)[0] as { sides: EdgeSides }).sides;
+}
+
+/**
+ * Every pair of sides `edgeSides` weighs, from the best one, with its cost. The same pair can
+ * come twice, first as one that follows the flow direction.
+ */
+export function rankedSides(
+  source: Box,
+  target: Box,
+  direction: LayoutDirection,
+  fixed: FixedSides = {},
+): { sides: EdgeSides; cost: number }[] {
   const options: readonly EdgeSides[] =
     fixed.source === undefined && fixed.target === undefined
       ? [
@@ -297,19 +310,16 @@ export function edgeSides(
           fixed.source === undefined ? ALL_SIDES : [fixed.source],
           fixed.target === undefined ? ALL_SIDES : [fixed.target],
         );
-  let best = options[0] as EdgeSides;
-  let bestCost = Infinity;
-  for (const option of options) {
-    const from = sidePoint(source, option.source);
-    const to = sidePoint(target, option.target);
-    const cost =
-      Math.hypot(to.x - from.x, to.y - from.y) + AGAINST_COST * againstSides(from, to, option);
-    if (cost < bestCost) {
-      best = option;
-      bestCost = cost;
-    }
-  }
-  return best;
+  const weighed = options.map((sides) => {
+    const from = sidePoint(source, sides.source);
+    const to = sidePoint(target, sides.target);
+    return {
+      sides,
+      cost: Math.hypot(to.x - from.x, to.y - from.y) + AGAINST_COST * againstSides(from, to, sides),
+    };
+  });
+  // A stable sort keeps the pairs that follow the flow first among equals.
+  return weighed.sort((a, b) => a.cost - b.cost);
 }
 
 /** The side of `box` that a point is closest to, inside or outside it. */

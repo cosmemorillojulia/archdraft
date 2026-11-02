@@ -370,6 +370,16 @@ export const es: Strings = {
     newDiagramHint: 'Describe un diagrama nuevo en lugar de cambiar este',
     edit: 'Cambiar diagrama',
     stop: 'Detener',
+    stages: {
+      thinking: 'Pensando…',
+      drawing: 'Escribiendo la propuesta…',
+      checking: 'Revisando el diseño…',
+      fixing: 'Corrigiendo la propuesta…',
+    },
+    elapsed: (seconds: number) => `${seconds} s`,
+    showThought: 'Ver razonamiento',
+    hideThought: 'Ocultar razonamiento',
+    componentsDrawn: (count: number) => (count === 1 ? '1 componente' : `${count} componentes`),
     working: {
       generate: 'Dibujando el diagrama…',
       edit: 'Cambiando el diagrama…',

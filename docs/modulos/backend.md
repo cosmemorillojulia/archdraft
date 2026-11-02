@@ -79,6 +79,23 @@ Respuesta `200`, siempre con la misma forma:
 - `operations` aparece en las propuestas hechas como edición del diagrama (`edit` e `improve`). Con ellas el editor puede volver a aplicar una mejora sobre un diagrama que ha cambiado desde entonces.
 - `warnings` son códigos que el editor traduce: `proposals-dropped` (alguna mejora no era válida y se dejó fuera), `not-simpler`, `not-more-complete` y `more-findings` (una propuesta da más hallazgos de diseño).
 
+#### Progreso en directo
+
+Con `Accept: text/event-stream` la respuesta es un flujo de _server-sent events_: varios `progress` mientras el agente trabaja y, al final, un `result` con el cuerpo de arriba o un `problem` con los detalles del error (y `retryAfter` si lo hay). Los errores de la petición en sí (cuerpo inválido, demasiado grande) siguen llegando como `application/problem+json` antes de abrir el flujo.
+
+```text
+event: progress
+data: {"stage":"thinking","thought":"The user wants a shop on AWS…"}
+
+event: progress
+data: {"stage":"drawing","components":["Storefront","Orders API"]}
+
+event: result
+data: {"task":"generate","proposals":[…],"attempts":1,"warnings":[]}
+```
+
+`stage` es `thinking`, `drawing`, `checking` o `fixing` (`AssistProgressSchema`). `thought` es el razonamiento nuevo desde el último evento, solo en los modelos que lo muestran (`gpt-oss` en Groq); `components`, los nombres de los componentes escritos hasta ahora, cuando cambian. Enseñarlo no gasta tokens: es lo que el modelo genera de todos modos, reenviado a medida que llega. Workers AI no transmite en modo JSON, así que con él solo llegan las etapas.
+
 ### Errores
 
 `application/problem+json` con `type`, `title`, `status` y `detail`. El editor traduce cada `type`:

@@ -1,5 +1,6 @@
 import type {
   ArchitectureGraph,
+  AssistStage,
   AssistTask,
   AssistWarning,
   DiagramDocument,
@@ -49,9 +50,25 @@ export interface Report {
   readonly after: ArchitectureGraph;
 }
 
+/** How far the assistant has got with the request in flight. */
+export interface Progress {
+  readonly stage: AssistStage;
+  /** The reasoning of the model so far, its latest part, for the models that show theirs. */
+  readonly thought: string;
+  /** The components its answer has written so far. */
+  readonly components: readonly string[];
+  /** When the request went out, in milliseconds since the epoch. */
+  readonly startedAt: number;
+}
+
+/** Most of the reasoning kept: what the panel shows is its end. */
+export const MAX_THOUGHT = 2000;
+
 export interface AssistantState {
   /** The task the assistant is working on, while it is. */
   readonly working: AssistTask | null;
+  /** What it is doing on that task. */
+  readonly progress: Progress | null;
   /** Cancels the request in flight. */
   readonly controller: AbortController | null;
   readonly offer: Offer | null;
@@ -66,6 +83,7 @@ export interface AssistantState {
 
 export const assistantStore = createStore<AssistantState>()(() => ({
   working: null,
+  progress: null,
   controller: null,
   offer: null,
   preview: null,

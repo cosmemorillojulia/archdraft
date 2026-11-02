@@ -18,6 +18,13 @@ const PARTICLE_MAX_S = 4;
 /** Seconds the line takes to draw in; the arrowhead appears as it arrives. */
 const DRAW_S = 0.55;
 
+/** How far, in diagram pixels, an end has to be from where its node rests to count as moving. */
+const MOVED = 2;
+
+function away(point: { x: number; y: number }, rest: { x: number; y: number }): boolean {
+  return Math.abs(point.x - rest.x) > MOVED || Math.abs(point.y - rest.y) > MOVED;
+}
+
 /**
  * A connection: a smooth curve, or a line of right angles, that draws itself in when the
  * diagram builds, dashed when asynchronous, ending in an arrowhead, with a particle in the
@@ -55,6 +62,9 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
     style,
     showLabel,
     route,
+    sourcePoint,
+    targetPoint,
+    obstacles,
     sourceBox,
     targetBox,
     direction,
@@ -69,8 +79,24 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   const fromBox = reconnecting?.end === 'source' ? reconnecting.box : sourceBox;
   const toBox = reconnecting?.end === 'target' ? reconnecting.box : targetBox;
   const sides = trying ?? settled;
-  const start = trying ? sidePoint(fromBox, trying.source) : { x: sourceX, y: sourceY };
-  const tip = trying ? sidePoint(toBox, trying.target) : { x: targetX, y: targetY };
+  // React Flow gives the middle of each side, which follows a node while it is dragged; the
+  // ends of connections that share a side are spread from there.
+  const sourceMiddle = sidePoint(sourceBox, settled.source);
+  const targetMiddle = sidePoint(targetBox, settled.target);
+  const draggedFrom = {
+    x: sourceX + sourcePoint.x - sourceMiddle.x,
+    y: sourceY + sourcePoint.y - sourceMiddle.y,
+  };
+  const draggedTo = {
+    x: targetX + targetPoint.x - targetMiddle.x,
+    y: targetY + targetPoint.y - targetMiddle.y,
+  };
+  const dragged = away(draggedFrom, sourcePoint) || away(draggedTo, targetPoint);
+  const start = trying ? sidePoint(fromBox, trying.source) : dragged ? draggedFrom : sourcePoint;
+  const tip = trying ? sidePoint(toBox, trying.target) : dragged ? draggedTo : targetPoint;
+  // The boxes to go round are where the nodes rest: while an end moves, as when its node is
+  // dragged or the end is taken to another node, the line takes its plain course instead.
+  const moving = dragged || reconnecting !== null;
   const arrow = arrowhead(tip.x, tip.y, sides.target);
   const ends = {
     sourceX: start.x,
@@ -83,7 +109,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   const stored = routePoints(style, ends, route);
   // Another node has no use for the points put for this one.
   const points = preview?.kind === 'points' ? preview.points : reconnecting ? [] : stored;
-  const shape = connectionPath(style, ends, points);
+  const shape = connectionPath(style, ends, points, moving ? [] : obstacles);
   const { path, labelX, labelY } = shape;
   const selected = isSelected(canvas.selection, 'edge', id);
   const active = selected || canvas.edges.has(id);

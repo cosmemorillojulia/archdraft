@@ -1,6 +1,8 @@
 import {
   ASSIST_PROBLEMS,
   type AssistProblem,
+  type AssistProgress,
+  AssistProgressSchema,
   type AssistRequest,
   type AssistResult,
   AssistResultSchema,
@@ -40,22 +42,33 @@ function problemOf(body: unknown): AssistProblem {
   return (typeof type === 'string' && PROBLEM_BY_TYPE.get(type)) || 'model-error';
 }
 
+function retryAfterOf(value: unknown): number | undefined {
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined;
+}
+
 /**
  * Asks the assistant. The answer is checked against the contract before it is
  * returned, like any other data from outside. A cancellation through `signal`
- * goes up as the AbortError it is.
+ * goes up as the AbortError it is. With `onProgress` the answer comes as a
+ * stream, and each step of the work is passed on as it is told; an API that
+ * does not stream answers the same, without them.
  */
 export async function requestAssist(
   request: AssistRequest,
   signal: AbortSignal,
   base: string | undefined = apiUrl(),
+  onProgress?: (progress: AssistProgress) => void,
 ): Promise<AssistResult> {
   if (base === undefined) throw new AssistError('network');
   let response: Response;
   try {
     response = await fetch(`${base}/v1/assist`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(onProgress === undefined ? {} : { Accept: 'text/event-stream, application/json' }),
+      },
       body: JSON.stringify(request),
       signal,
     });
@@ -65,18 +78,89 @@ export async function requestAssist(
     throw new AssistError('network');
   }
 
+  const streamed =
+    response.ok &&
+    onProgress !== undefined &&
+    response.body !== null &&
+    response.headers.get('Content-Type')?.startsWith('text/event-stream') === true;
+  if (streamed && response.body !== null && onProgress !== undefined) {
+    return readEvents(response.body, signal, onProgress);
+  }
   const body: unknown = await response.json().catch(() => undefined);
   if (!response.ok) {
-    const retryAfter = Number(response.headers.get('Retry-After'));
-    throw new AssistError(
-      problemOf(body),
-      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
-    );
+    throw new AssistError(problemOf(body), retryAfterOf(response.headers.get('Retry-After')));
   }
+  return resultOf(body);
+}
+
+function resultOf(body: unknown): AssistResult {
   const result = AssistResultSchema.safeParse(body);
   if (!result.success) {
     console.warn('The assistant answered outside the contract', result.error.issues);
     throw new AssistError('invalid-model-output');
   }
   return result.data;
+}
+
+/**
+ * Reads the server-sent events of a streamed answer: `progress` until one `result` or one
+ * `problem`. Progress that does not follow the contract is skipped; it only tells how the work
+ * goes. A stream that ends before its result counts as the API going away.
+ */
+async function readEvents(
+  body: ReadableStream<Uint8Array>,
+  signal: AbortSignal,
+  onProgress: (progress: AssistProgress) => void,
+): Promise<AssistResult> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const handle = (block: string): AssistResult | undefined => {
+    let event = 'message';
+    const data: string[] = [];
+    for (const line of block.split(/\r?\n/)) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) data.push(line.slice(5).replace(/^ /, ''));
+    }
+    let payload: unknown;
+    try {
+      payload = JSON.parse(data.join('\n'));
+    } catch {
+      return undefined;
+    }
+    if (event === 'progress') {
+      const progress = AssistProgressSchema.safeParse(payload);
+      if (progress.success) onProgress(progress.data);
+      return undefined;
+    }
+    if (event === 'problem') {
+      const retryAfter =
+        typeof payload === 'object' && payload !== null && 'retryAfter' in payload
+          ? retryAfterOf(payload.retryAfter)
+          : undefined;
+      throw new AssistError(problemOf(payload), retryAfter);
+    }
+    return event === 'result' ? resultOf(payload) : undefined;
+  };
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const blocks = buffer.split(/\r?\n\r?\n/);
+      buffer = blocks.pop() ?? '';
+      for (const block of blocks) {
+        const result = handle(block);
+        if (result) return result;
+      }
+    }
+    const result = buffer.trim() === '' ? undefined : handle(buffer);
+    if (result) return result;
+  } catch (error) {
+    if (signal.aborted || error instanceof AssistError) throw error;
+    console.warn('The stream of the assistant broke off', error);
+  } finally {
+    reader.releaseLock();
+  }
+  throw new AssistError('network');
 }

@@ -20,15 +20,14 @@ import {
 import type { LayoutDirection } from '../layout/compute-layout.ts';
 import { groupTint } from '../canvas/appearance.ts';
 import { connectionPath, routePoints } from '../canvas/edge-path.ts';
+import { type EdgeLayout, type EdgePlacement, placeEdges } from '../canvas/edge-layout.ts';
 import {
   absoluteBoxes,
   stackingOrder,
   arrowhead,
   type Box,
   boundsOf,
-  edgeSides,
   nestingDepths,
-  sidePoint,
 } from '../canvas/geometry.ts';
 import type { KindText } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
@@ -293,15 +292,13 @@ function connection(
   style: EdgeStyle,
   route: EdgeRoute | undefined,
   showLabel: boolean,
-  source: Box,
-  target: Box,
+  placement: EdgePlacement,
+  edgeLayout: EdgeLayout,
   obstacles: readonly Box[],
   options: DrawingOptions,
 ): { line: string; label: string } {
-  const { palette, measure, direction } = options;
-  const sides = edgeSides(source, target, direction, route);
-  const from = sidePoint(source, sides.source);
-  const to = sidePoint(target, sides.target);
+  const { palette, measure } = options;
+  const { sides, source: from, target: to } = placement;
   const arrow = arrowhead(to.x, to.y, sides.target);
   const ends = {
     sourceX: from.x,
@@ -311,7 +308,12 @@ function connection(
     sourcePosition: sides.source,
     targetPosition: sides.target,
   };
-  const { path, labelX, labelY } = connectionPath(style, ends, routePoints(style, ends, route));
+  const { path, labelX, labelY } = connectionPath(
+    style,
+    ends,
+    routePoints(style, ends, route),
+    edgeLayout.obstacles,
+  );
   const dashed = resolveEdgeMode(edge) === 'async' ? ' stroke-dasharray="5 5"' : '';
   const line =
     `<path d="${path}" fill="none" stroke="${palette.edge}" stroke-width="1.5"${dashed}/>` +
@@ -361,10 +363,10 @@ export function diagramToSvg(document: DiagramDocument, options: DrawingOptions)
     const box = boxes.get(node.id);
     return box && !isContainerKind(node.kind) ? [box] : [];
   });
+  const edgeLayout = placeEdges(graph, boxes, layout, options.direction);
   const connections = graph.edges.flatMap((edge) => {
-    const source = boxes.get(edge.source);
-    const target = boxes.get(edge.target);
-    if (!source || !target) return [];
+    const placement = edgeLayout.placements.get(edge.id);
+    if (!placement) return [];
     const style = resolveEdgeStyle(layout, edge.id);
     return [
       connection(
@@ -372,8 +374,8 @@ export function diagramToSvg(document: DiagramDocument, options: DrawingOptions)
         style,
         ownEdgeRoute(layout, edge.id),
         showsEdgeLabel(layout, edge.id),
-        source,
-        target,
+        placement,
+        edgeLayout,
         obstacles,
         options,
       ),

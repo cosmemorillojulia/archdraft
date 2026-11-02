@@ -22,6 +22,7 @@ import { AssistError, requestAssist } from './client.ts';
 import {
   assistantStore,
   type AssistantState,
+  MAX_THOUGHT,
   type Offer,
   type ReviewTask,
 } from './assistant-store.ts';
@@ -367,7 +368,7 @@ async function openGenerated(proposal: Proposal, direction: LayoutDirection): Pr
 /** Stops the request in flight, if there is one. */
 export function cancelAssistant(): void {
   assistantStore.getState().controller?.abort();
-  assistantStore.setState({ working: null, controller: null });
+  assistantStore.setState({ working: null, progress: null, controller: null });
 }
 
 /**
@@ -391,6 +392,7 @@ export async function runAssistant(
   const controller = new AbortController();
   assistantStore.setState({
     working: task,
+    progress: { stage: 'thinking', thought: '', components: [], startedAt: Date.now() },
     controller,
     offer: null,
     preview: null,
@@ -401,7 +403,21 @@ export async function runAssistant(
   const isLatest = () => assistantStore.getState().controller === controller;
 
   try {
-    const result = await requestAssist(request, controller.signal);
+    const result = await requestAssist(request, controller.signal, undefined, (step) => {
+      const { progress } = assistantStore.getState();
+      if (!isLatest() || !progress) return;
+      assistantStore.setState({
+        progress: {
+          ...progress,
+          stage: step.stage,
+          thought:
+            step.thought === undefined
+              ? progress.thought
+              : (progress.thought + step.thought).slice(-MAX_THOUGHT),
+          components: step.components ?? progress.components,
+        },
+      });
+    });
     if (!isLatest()) return;
     const [first] = result.proposals;
     if (task === 'generate') {
@@ -434,7 +450,7 @@ export async function runAssistant(
       editorStore.getState().notify(strings.assistant.failed['internal-error']());
     }
   } finally {
-    if (isLatest()) assistantStore.setState({ working: null, controller: null });
+    if (isLatest()) assistantStore.setState({ working: null, progress: null, controller: null });
   }
 }
 

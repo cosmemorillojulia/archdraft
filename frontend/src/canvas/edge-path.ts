@@ -1,6 +1,7 @@
 import type { EdgeRoute, EdgeStyle, Point } from '@archdraft/shared';
 import { getBezierPath, Position } from '@xyflow/react';
-import { OUTWARD, type Side } from './geometry.ts';
+import { type Box, OUTWARD, type Side } from './geometry.ts';
+import { routeAround } from './router.ts';
 
 /** Radius of the corners of a right-angled connection, in diagram pixels. */
 export const CORNER_RADIUS = 6;
@@ -56,15 +57,21 @@ const POSITIONS = {
  * `points` are the points the connection was routed through by hand. A curve passes through
  * each of them, smoothly; a right-angled line turns at them, adding the corners it needs to
  * stay at right angles and to leave and arrive straight. Without points, the connection is
- * the one drawn by default.
+ * the one drawn by default: round the `obstacles` in its way, the boxes of the nodes, when
+ * they are given. A curve that would cross one passes instead through the corners of the
+ * right-angled route round them.
  */
 export function connectionPath(
   style: EdgeStyle,
   ends: ConnectionEnds,
   points: readonly Point[] = [],
+  obstacles: readonly Box[] = [],
 ): ConnectionShape {
   if (style === 'square') {
-    const corners = points.length === 0 ? squarePoints(ends) : orthogonal(ends, points);
+    const corners =
+      points.length > 0
+        ? orthogonal(ends, points)
+        : ((obstacles.length > 0 ? routed(ends, obstacles) : null) ?? squarePoints(ends));
     const label = labelPoint(corners);
     return {
       path: rounded(corners),
@@ -74,7 +81,38 @@ export function connectionPath(
       midpoints: corners.slice(1).map((to, index) => middle(corners[index] as Point, to)),
     };
   }
-  return points.length === 0 ? curvedPath(ends) : throughPath(ends, points);
+  if (points.length > 0) return throughPath(ends, points);
+  if (obstacles.length > 0 && crossesAny(squarePoints(ends), obstacles)) {
+    const around = routed(ends, obstacles);
+    if (around !== null && around.length > 2) return throughPath(ends, around.slice(1, -1));
+  }
+  return curvedPath(ends);
+}
+
+/** The corners of the right-angled route round the obstacles, ends included; null when boxed in. */
+function routed(ends: ConnectionEnds, obstacles: readonly Box[]): Point[] | null {
+  const route = routeAround(
+    { x: ends.sourceX, y: ends.sourceY },
+    ends.sourcePosition,
+    { x: ends.targetX, y: ends.targetY },
+    ends.targetPosition,
+    obstacles,
+  );
+  return route === null ? null : [...route.corners];
+}
+
+/** Whether a line through the corners passes through the inside of one of the boxes. */
+function crossesAny(corners: readonly Point[], boxes: readonly Box[]): boolean {
+  return corners.slice(1).some((to, index) => {
+    const from = corners[index] as Point;
+    return boxes.some(
+      (box) =>
+        Math.max(from.x, to.x) > box.x + SAME &&
+        Math.min(from.x, to.x) < box.x + box.width - SAME &&
+        Math.max(from.y, to.y) > box.y + SAME &&
+        Math.min(from.y, to.y) < box.y + box.height - SAME,
+    );
+  });
 }
 
 /**
