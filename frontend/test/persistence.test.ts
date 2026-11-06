@@ -12,6 +12,7 @@ import {
   openDocumentText,
   openFileText,
   openLink,
+  tidyDiagram,
 } from '../src/editor/open-document.ts';
 import { createEditorStore } from '../src/editor/store.ts';
 import { readSavedDocument, SAVED_DOCUMENT_KEY, startAutosave } from '../src/persist/autosave.ts';
@@ -185,6 +186,51 @@ describe('opening documents', () => {
     };
     expect(inferDirection(sideways)).toBe('LR');
     expect(inferDirection({ ...document, graph: { ...document.graph, edges: [] } })).toBeNull();
+  });
+});
+
+describe('tidyDiagram', () => {
+  const drawn: DiagramDocument = {
+    graph: document.graph,
+    layout: {
+      positions: { user: { x: 900, y: 900 }, api: { x: 0, y: 0 } },
+      sizes: { user: DEFAULT_NODE_SIZE, api: { width: 300, height: 120 } },
+      edgeStyle: 'square',
+      edgeStyles: { 'user-api': 'curved' },
+      edgeLabels: { 'user-api': true },
+      edgeRoutes: { 'user-api': { points: [{ x: 5, y: 5 }] } },
+    },
+  };
+
+  it('lays everything out again in one step, keeping sizes, styles and labels', async () => {
+    const store = createEditorStore();
+    store.getState().load(drawn, { direction: 'LR', templateId: null });
+    expect(await tidyDiagram(store)).toBe(true);
+    const { layout } = store.getState().current?.document ?? drawn;
+    const fresh = await computeLayout(drawn.graph, {
+      direction: 'LR',
+      pinned: { positions: {}, sizes: drawn.layout.sizes },
+    });
+    expect(layout.positions).toEqual(fresh.positions);
+    expect(layout.sizes.api).toEqual({ width: 300, height: 120 });
+    expect(layout).toMatchObject({
+      edgeStyle: 'square',
+      edgeStyles: { 'user-api': 'curved' },
+      edgeLabels: { 'user-api': true },
+    });
+    expect(layout.edgeRoutes).toBeUndefined();
+    store.getState().undo();
+    expect(store.getState().current?.document).toBe(drawn);
+  });
+
+  it('does nothing on an empty diagram, and drops a layout the editor no longer needs', async () => {
+    const store = createEditorStore();
+    expect(await tidyDiagram(store)).toBe(false);
+    store.getState().load(drawn, { direction: 'LR', templateId: null });
+    const tidying = tidyDiagram(store);
+    store.getState().moveNode('user', { x: 10, y: 10 });
+    expect(await tidying).toBe(false);
+    expect(store.getState().current?.document.layout.positions.user).toEqual({ x: 10, y: 10 });
   });
 });
 

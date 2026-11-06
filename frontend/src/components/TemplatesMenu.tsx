@@ -1,4 +1,3 @@
-import { TEMPLATE_IDS } from '@archdraft/shared';
 import { Check, ChevronDown, LayoutGrid, Plus } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { openBlank, openTemplate } from '../editor/open-document.ts';
@@ -6,6 +5,7 @@ import { useEditor } from '../editor/store.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { useMediaQuery, WIDE_SCREEN } from '../media.ts';
 import { dialogStore } from '../onboarding/dialog-store.ts';
+import { TEMPLATE_GROUPS } from '../onboarding/template-groups.ts';
 import { TEMPLATE_ICONS } from '../onboarding/template-icons.ts';
 import { Button } from './Button.tsx';
 import { MENU_ITEM, MENU_MOTION, useMenu } from './menu.ts';
@@ -55,30 +55,36 @@ export function TemplatesMenu() {
               {strings.header.newDiagram}
             </button>
             <div role="separator" className="mx-2 my-1.5 h-px bg-line" />
-            <p className="px-2.5 pb-1 text-xs font-medium text-muted">{strings.prompt.templates}</p>
-            {TEMPLATE_IDS.map((id) => {
-              const Icon = TEMPLATE_ICONS[id];
-              const active = id === templateId;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={active}
-                  onClick={() => {
-                    void openTemplate(id, wide ? 'LR' : 'TB');
-                    close(true);
-                  }}
-                  className={`${MENU_ITEM} aria-checked:font-semibold aria-checked:text-accent`}
-                >
-                  <Icon size={16} aria-hidden="true" className="shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">
-                    {strings.prompt.templateNames[id]}
-                  </span>
-                  {active && <Check size={15} aria-hidden="true" className="shrink-0" />}
-                </button>
-              );
-            })}
+            {TEMPLATE_GROUPS.map((group) => (
+              <div key={group.id} role="group" aria-label={strings.gallery.groups[group.id]}>
+                <p aria-hidden="true" className="px-2.5 pt-1.5 pb-1 text-xs font-medium text-muted">
+                  {strings.gallery.groups[group.id]}
+                </p>
+                {group.templates.map((id) => {
+                  const Icon = TEMPLATE_ICONS[id];
+                  const active = id === templateId;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={active}
+                      onClick={() => {
+                        void openTemplate(id, wide ? 'LR' : 'TB');
+                        close(true);
+                      }}
+                      className={`${MENU_ITEM} aria-checked:font-semibold aria-checked:text-accent`}
+                    >
+                      <Icon size={16} aria-hidden="true" className="shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">
+                        {strings.prompt.templateNames[id]}
+                      </span>
+                      {active && <Check size={15} aria-hidden="true" className="shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
             <div role="separator" className="mx-2 my-1.5 h-px bg-line" />
             <button
               type="button"

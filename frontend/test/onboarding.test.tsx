@@ -9,6 +9,7 @@ import { editorStore } from '../src/editor/store.ts';
 import { en as strings } from '../src/i18n/en.ts';
 import { SOURCE_URL } from '../src/onboarding/AboutDialog.tsx';
 import { dialogStore } from '../src/onboarding/dialog-store.ts';
+import { TEMPLATE_GROUPS, TEMPLATE_LEVELS } from '../src/onboarding/template-groups.ts';
 
 /** The editor with its first diagram open. */
 async function openEditor() {
@@ -111,6 +112,32 @@ describe('template gallery', () => {
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(editorStore.getState().current?.templateId).toBe('rag-chatbot'));
+  });
+
+  it('puts every template in one group, and shows the groups with how complex each one is', async () => {
+    const grouped = TEMPLATE_GROUPS.flatMap((group) => group.templates);
+    expect([...grouped].sort()).toEqual([...TEMPLATE_IDS].sort());
+    const user = await openEditor();
+    dialogStore.getState().show('templates');
+    const gallery = await screen.findByRole('dialog', { name: strings.gallery.title });
+    for (const group of TEMPLATE_GROUPS) {
+      const section = within(gallery).getByRole('region', {
+        name: strings.gallery.groups[group.id],
+      });
+      expect(within(section).getAllByRole('button')).toHaveLength(group.templates.length);
+    }
+    const chat = within(gallery).getByRole('button', {
+      name: new RegExp(strings.prompt.templateNames['websocket-chat']),
+    });
+    expect(chat).toHaveTextContent(strings.gallery.levels[TEMPLATE_LEVELS['websocket-chat']]);
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('button', { name: strings.header.new }));
+    const menu = screen.getByRole('menu', { name: strings.header.new });
+    const data = within(menu).getByRole('group', { name: strings.gallery.groups.data });
+    expect(within(data).getAllByRole('menuitemradio')).toHaveLength(
+      TEMPLATE_GROUPS.find((group) => group.id === 'data')?.templates.length ?? 0,
+    );
   });
 
   it('also opens a blank diagram', async () => {

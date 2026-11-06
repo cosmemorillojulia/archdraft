@@ -164,7 +164,6 @@ describe('App', () => {
   it('switches the diagram from the templates menu in the header', async () => {
     const user = userEvent.setup();
     render(<App />);
-    expect(screen.queryByRole('group', { name: strings.prompt.templates })).toBeNull();
     const button = within(screen.getByRole('banner')).getByRole('button', {
       name: strings.header.new,
     });

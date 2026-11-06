@@ -338,6 +338,14 @@ export const es: Strings = {
     open: 'Galería de plantillas',
     title: 'Empieza con una plantilla',
     subtitle: 'Arquitecturas de referencia para adaptar, o un diagrama en blanco.',
+    groups: {
+      web: 'Web y APIs',
+      services: 'Servicios y procesos',
+      data: 'Datos e IA',
+      platform: 'Plataforma y redes',
+      blank: 'Desde cero',
+    },
+    levels: { simple: 'Sencilla', intermediate: 'Intermedia', complex: 'Compleja' },
     blank: 'Un lienzo vacío: descríbeselo al asistente o añade tú los componentes.',
   },
   empty: {
@@ -496,7 +504,6 @@ export const es: Strings = {
     ],
     generate: 'Generar diagrama',
     unavailable: 'El asistente de IA no está disponible en esta versión',
-    templates: 'Plantillas',
     templateNames: {
       'three-tier-web': 'Tres capas',
       'serverless-api': 'API serverless',
@@ -640,6 +647,7 @@ export const es: Strings = {
       show: 'Mostrar las partículas de las conexiones',
     },
     shortcuts: { label: 'Accesos directos' },
+    tidy: 'Reordenar todo el diagrama',
     edgeLabels: {
       label: 'Etiquetas de las conexiones',
       hide: 'Ocultar las etiquetas de todas las conexiones',
