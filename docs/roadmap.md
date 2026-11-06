@@ -443,12 +443,11 @@ Documentación: contrato y errores en `docs/modulos/backend.md`; cuenta, token y
 
 ### T20. Editor: integración con el agente
 
-Estado: en curso. Hecho el 2026-10-31: cliente, store, barra de descripción con crear y editar, menú del asistente, panel de propuestas, resaltado de cambios, textos en los dos idiomas y tests con `fetch` simulado. Una mejora hecha de operaciones se vuelve a aplicar sobre el diagrama actual si ha cambiado, así que se pueden aplicar varias seguidas. Documentado en `docs/modulos/web.md`.
+Estado: en curso. Hecho el 2026-10-31: cliente, store, barra de descripción con crear y editar, menú del asistente, panel de propuestas, resaltado de cambios, textos en los dos idiomas y tests con `fetch` simulado. Una mejora hecha de operaciones se vuelve a aplicar sobre el diagrama actual si ha cambiado, así que se pueden aplicar varias seguidas. Documentado en `docs/modulos/web.md`. El 2026-11-06 se comprobó que la API está desplegada en Cloudflare y que el editor publicado se construye con `API_URL`.
 
 Pendiente:
 
 - Capturas de la barra, el menú y el panel en escritorio y móvil, claro y oscuro, revisadas con la skill `design-critique`, con la API en marcha (`make api`).
-- Variable `API_URL` del repositorio tras el primer despliegue de la API (`docs/operaciones.md`).
 
 Objetivo: crear, editar, mejorar y rediseñar con IA desde el editor.
 
