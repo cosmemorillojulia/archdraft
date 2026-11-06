@@ -188,6 +188,8 @@ function untidiness(index: GraphIndex, layout: DiagramLayout, direction: LayoutD
     if (id === undefined) return 0;
     const known = starts.get(id);
     if (known !== undefined) return known;
+    // Nodes in a cycle of parents are left out of the layout; this keeps them from recursing.
+    starts.set(id, 0);
     const start =
       (layoutEntry(layout.positions, id)?.[across] ?? 0) +
       startOf(index.nodesById.get(id)?.parentId);
