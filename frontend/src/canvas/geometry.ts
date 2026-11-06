@@ -350,3 +350,13 @@ function distanceToSide(box: Box, side: Side, point: Point): number {
   const across = horizontal ? point.y : point.x;
   return Math.hypot(across - line, along - Math.min(Math.max(along, from), to));
 }
+
+/**
+ * `position` kept on a straight line through `origin`: across or along, whichever way it has
+ * gone further, as a drag with Shift does.
+ */
+export function straightened(position: Point, origin: Point): Point {
+  return Math.abs(position.x - origin.x) >= Math.abs(position.y - origin.y)
+    ? { x: position.x, y: origin.y }
+    : { x: origin.x, y: position.y };
+}

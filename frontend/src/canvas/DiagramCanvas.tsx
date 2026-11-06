@@ -37,8 +37,9 @@ import { ContainerNode } from './ContainerNode.tsx';
 import { ShapeNode } from './ShapeNode.tsx';
 import { type ArchitectureFlowEdge, type ArchitectureFlowNode, toFlow } from './flow.ts';
 import { useStableHandler } from './use-stable-handler.ts';
-import { type Insets, absoluteBoxes, boundsOf, initialViewport } from './geometry.ts';
+import { type Insets, absoluteBoxes, boundsOf, initialViewport, straightened } from './geometry.ts';
 import { CanvasControls } from './CanvasControls.tsx';
+import { registerViewCommands } from './view-commands.ts';
 
 const NODE_TYPES = { component: ComponentNode, container: ContainerNode, shape: ShapeNode };
 const EDGE_TYPES = { architecture: ArchitectureEdge };
@@ -73,6 +74,8 @@ const REVEAL_MS = 300;
 const FOCUS_MS = 450;
 /** Stacking order of the node being dragged: above every group, below the edge labels. */
 const DRAGGED_Z = 1000;
+/** Ends the id of what stands for a node that a drag with Alt copies, where the node stays. */
+const GHOST_SUFFIX = '--copy-source';
 
 const CONNECTION_LINE_STYLE = { stroke: 'var(--accent)', strokeWidth: 1.5 };
 const PRO_OPTIONS = { hideAttribution: true };
@@ -173,8 +176,29 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     position: XYPosition;
     /** The rest of the chosen nodes, which move by the same distance. */
     others: readonly { id: string; position: XYPosition }[];
+    /** With Alt the drag makes copies: these stand for the originals, which stay. */
+    ghosts: readonly ArchitectureFlowNode[];
   } | null>(null);
   const dragStart = useRef<ReadonlyMap<string, XYPosition> | null>(null);
+  /** The node the pointer drags, where it started, and whether letting go copies instead. */
+  const dragFrom = useRef<{
+    id: string;
+    origin: XYPosition;
+    copy: boolean;
+    ghosts: readonly ArchitectureFlowNode[];
+  } | null>(null);
+  // Shift held while dragging keeps the move straight: across or along, whichever is longer.
+  const shiftHeld = useRef(false);
+  useEffect(() => {
+    const track = (event: globalThis.KeyboardEvent | globalThis.PointerEvent) => {
+      shiftHeld.current = event.shiftKey;
+    };
+    const events = ['keydown', 'keyup', 'pointerdown', 'pointermove'] as const;
+    for (const name of events) window.addEventListener(name, track, true);
+    return () => {
+      for (const name of events) window.removeEventListener(name, track, true);
+    };
+  }, []);
   const [nodeDropTargetId, setDropTargetId] = useState<string | null>(null);
   // A tile dragged from the palette lights up the group it would be added to, like a dragged node.
   const paletteDropTargetId = usePaletteDrag(({ drag }) =>
@@ -215,7 +239,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     if (previewing || (!dragging && !resizing && selectedNodeId === null && groupIds.size === 0)) {
       return elements.nodes;
     }
-    return elements.nodes.map((node) => {
+    const placed = elements.nodes.map((node) => {
       if (resizing && fitted && node.id === resizing.id) {
         const { x, y, width, height } = fitted.box;
         return { ...node, position: { x, y }, width, height, measured: { width, height } };
@@ -239,6 +263,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       if (node.id === selectedNodeId || groupIds.has(node.id)) return { ...node, draggable: true };
       return node;
     });
+    return dragging && dragging.ghosts.length > 0 ? [...placed, ...dragging.ghosts] : placed;
   }, [elements.nodes, dragging, fitted, groupIds, previewing, resizing, selectedNodeId]);
 
   // While the review is open, components show their most severe finding, and the chosen
@@ -361,6 +386,26 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     const viewport = fittedViewport();
     if (viewport) void flow.setViewport(viewport, { duration: FIT_DURATION_MS });
   }, [flow, fittedViewport]);
+
+  // Shift + 1 and Shift + 2, as in Excalidraw (editor/shortcuts.ts).
+  useEffect(
+    () =>
+      registerViewCommands({
+        fit,
+        zoomToSelection: () => {
+          const { selection, group } = editorStore.getState();
+          const ids = group.length > 1 ? group : selection?.type === 'node' ? [selection.id] : [];
+          if (ids.length === 0) return;
+          void flow.fitView({
+            nodes: ids.map((id) => ({ id })),
+            duration: FIT_DURATION_MS,
+            padding: 0.3,
+            maxZoom: 1.2,
+          });
+        },
+      }),
+    [fit, flow],
+  );
 
   // When a panel opens or closes beside the diagram, glide the view to stay centred in the free space.
   const previousLeft = useRef(insets.left);
@@ -505,7 +550,10 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
   const onNodesChange = useCallback((changes: NodeChange<ArchitectureFlowNode>[]) => {
     for (const change of changes) {
       if (change.type === 'position' && change.dragging && change.position) {
-        const { id, position } = change;
+        const { id } = change;
+        const from = dragFrom.current;
+        let position = change.position;
+        if (shiftHeld.current && from?.id === id) position = straightened(position, from.origin);
         const start = dragStart.current;
         const origin = start?.get(id);
         const others =
@@ -520,7 +568,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
                   },
                 }))
             : [];
-        setDragging({ id, position, others });
+        setDragging({ id, position, others, ghosts: from?.ghosts ?? [] });
       }
     }
   }, []);
@@ -540,36 +588,68 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
 
   // Handlers given to React Flow keep their identity (see useStableHandler).
   // Moving a node is not editing it: the selection, and so the inspector, stay as they were.
-  const onNodeDragStart = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
-    setHoverId(null);
-    // Dragging one of several chosen nodes drags them all; groups stay where they are. The text
-    // fixed to what moves follows it.
-    const chosen = editorStore.getState().group;
-    const moving = new Set(
-      chosen.includes(node.id)
-        ? elements.nodes
-            .filter((other) => chosen.includes(other.id) && other.type !== 'container')
-            .map((other) => other.id)
-        : [node.id],
-    );
-    const following = elements.nodes.filter((other) => {
-      const host = other.data.node.attachedTo;
-      return host !== undefined && moving.has(host);
-    });
-    const all = [...elements.nodes.filter((other) => moving.has(other.id)), ...following];
-    dragStart.current =
-      all.length > 1 ? new Map(all.map((other) => [other.id, other.position] as const)) : null;
-  });
+  const onNodeDragStart = useStableHandler(
+    (event: MouseEvent | TouchEvent, node: ArchitectureFlowNode) => {
+      setHoverId(null);
+      // Dragging one of several chosen nodes drags them all; groups stay where they are. The text
+      // fixed to what moves follows it.
+      const chosen = editorStore.getState().group;
+      const moving = new Set(
+        chosen.includes(node.id)
+          ? elements.nodes
+              .filter((other) => chosen.includes(other.id) && other.type !== 'container')
+              .map((other) => other.id)
+          : [node.id],
+      );
+      const following = elements.nodes.filter((other) => {
+        const host = other.data.node.attachedTo;
+        return host !== undefined && moving.has(host);
+      });
+      const all = [...elements.nodes.filter((other) => moving.has(other.id)), ...following];
+      dragStart.current =
+        all.length > 1 ? new Map(all.map((other) => [other.id, other.position] as const)) : null;
+      // With Alt, as in Excalidraw, letting go leaves the originals and adds copies there.
+      const copy = event.altKey;
+      dragFrom.current = {
+        id: node.id,
+        origin: node.position,
+        copy,
+        ghosts: copy
+          ? all.map((other) => ({
+              ...other,
+              id: `${other.id}${GHOST_SUFFIX}`,
+              draggable: false,
+              selectable: false,
+              focusable: false,
+              connectable: false,
+            }))
+          : [],
+      };
+    },
+  );
   const onNodeDrag = useStableHandler((_event: unknown, node: ArchitectureFlowNode) =>
     setDropTargetId(dropTargetFor(node)),
   );
   const onNodeDragStop = useStableHandler((_event: unknown, node: ArchitectureFlowNode) => {
     const together = dragging?.others ?? [];
-    if (together.length > 0) {
-      editorStore.getState().moveNodes([{ id: node.id, position: node.position }, ...together]);
+    // Where the node was let go, kept straight if Shift was held.
+    const position = dragging?.id === node.id ? dragging.position : node.position;
+    const from = dragFrom.current;
+    const editor = editorStore.getState();
+    if (from?.copy) {
+      const offset = {
+        x: Math.round(position.x - from.origin.x),
+        y: Math.round(position.y - from.origin.y),
+      };
+      if (offset.x !== 0 || offset.y !== 0) {
+        editor.duplicateNodes([node.id, ...together.map((other) => other.id)], offset);
+      }
+    } else if (together.length > 0) {
+      editor.moveNodes([{ id: node.id, position }, ...together]);
     } else {
-      editorStore.getState().moveNode(node.id, node.position);
+      editor.moveNode(node.id, position);
     }
+    dragFrom.current = null;
     dragStart.current = null;
     setDragging(null);
     setDropTargetId(null);
