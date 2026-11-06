@@ -296,6 +296,22 @@ describe('runAssistant', () => {
     expect(message()).toBe(strings.assistant.warnings['more-findings']);
   });
 
+  it('lays the whole diagram out again for a proposal, unless it removes components', async () => {
+    openShop();
+    apiAnswering(
+      ok(
+        result('improve', [
+          patchProposal('Cache', ADD_CACHE),
+          patchProposal('No database', DROP_DB),
+        ]),
+      ),
+    );
+    await runAssistant('improve', undefined, 'LR');
+    expect(assistantStore.getState().offer).toMatchObject({ active: 0, tidy: true });
+    showProposal(1);
+    expect(assistantStore.getState().offer).toMatchObject({ active: 1, tidy: false });
+  });
+
   it('applies one improvement after another, each on the diagram as it is', async () => {
     openShop();
     apiAnswering(

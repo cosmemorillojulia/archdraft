@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- `@archdraft/web`: a proposal of the assistant is shown and applied with the whole diagram laid out again (Reorder the whole diagram on), unless it removes components, which keeps the layout so that what goes is shown where it was.
 - `@archdraft/web`: the legend that says a proposal is only a preview sits above the prompt (above the panel on phones) instead of at the top of the canvas, where the diagram card covered it.
 - `@archdraft/web`: connections go round the boxes in their way instead of through them. Right-angled lines follow the shortest route with the fewest turns, down the middle of the gaps between boxes; curves that would cross a box pass round it. Each connection takes the pair of sides with the best route, and connections that share a side of a box spread along it instead of meeting at its middle. Exports to SVG and PNG are drawn the same way.
 - `@archdraft/web`: the layout centres a box between the ones it fans out to or gathers from when that is tidier than lining up chains of calls; both placements are tried and the tidier one is kept.
@@ -17,6 +18,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@archdraft/web`: shortcuts taken from Excalidraw and PowerPoint. Alt and a drag leaves the originals and drops copies where it is let go; Shift while dragging keeps the move straight, across or along; Ctrl/⌘ + D duplicates several chosen nodes at once; Ctrl/⌘ + A chooses every node but the groups; Ctrl/⌘ + Shift + an arrow lines the chosen nodes up on that side; Shift + 1 shows the whole diagram and Shift + 2 the selection. The keyboard shortcuts dialog lists them.
 - `@archdraft/web`: help and first steps. An empty diagram shows what to do: example descriptions the assistant draws with a click, the templates and the components. A gallery describes the six templates with their cloud and size. A help menu in the header opens the gallery, the keyboard shortcuts (also with `?`) and an about dialog with the privacy policy: diagrams stay in the browser, links keep them after `#`, and the API does not store what the assistant is sent.
 - `@archdraft/api`: evaluation set of the agent (`backend/evals/`, ADR 0024): 32 cases in Spanish and English for the five tasks, scored by the kinds of component they require, allow and forbid, the connections they need, the design rules, the ids kept and the goal of each task. `pnpm --filter @archdraft/api eval` runs it against the configured model, or a fake with the ideal answers, and writes a report in JSON and Markdown (`docs/evaluacion.md`).
 - `@archdraft/api`, `@archdraft/web`: the assistant shows how it is getting on. Above the prompt a panel tells whether it is thinking, writing, checking or fixing its answer and for how long, shows the end of the reasoning of models that show it (foldable), and lists the components as they are written. `POST /v1/assist` streams `progress` events, then the `result` or the `problem`, to requests that accept `text/event-stream`.

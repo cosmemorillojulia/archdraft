@@ -231,15 +231,15 @@ function watchEditor(): void {
   });
 }
 
-/** `offer` with the proposal at `index` open, kept in place or tidied as suits it. */
+/**
+ * `offer` with the proposal at `index` open. A proposal is shown, and applied, with the whole
+ * diagram laid out again, so that what it adds fits in. One that removes components keeps the
+ * rest in place instead, so that what goes is drawn where it was; the panel can switch either.
+ */
 function activated(offer: Offer, index: number): Offer {
   const proposal = offer.proposals[index];
   if (!proposal) return offer;
-  return {
-    ...offer,
-    active: index,
-    tidy: shouldTidy(offer.basedOn, proposal.graph, proposal.changes),
-  };
+  return { ...offer, active: index, tidy: proposal.changes.nodes.removed.length === 0 };
 }
 
 /** Opens the proposal at `index` in the panel and draws it on the canvas. */

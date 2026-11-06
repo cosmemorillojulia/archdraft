@@ -13,6 +13,7 @@ import {
   nestingDepths,
   OUTWARD,
   sidePoint,
+  straightened,
 } from '../src/canvas/geometry.ts';
 
 const graph: ArchitectureGraph = {
@@ -265,5 +266,14 @@ describe('sidePoint', () => {
     expect(sidePoint(b, 'right')).toEqual({ x: 110, y: 40 });
     expect(sidePoint(b, 'top')).toEqual({ x: 60, y: 20 });
     expect(sidePoint(b, 'bottom')).toEqual({ x: 60, y: 60 });
+  });
+});
+
+describe('straightened', () => {
+  it('keeps a drag on the line it has gone furthest along', () => {
+    const origin = { x: 100, y: 100 };
+    expect(straightened({ x: 180, y: 130 }, origin)).toEqual({ x: 180, y: 100 });
+    expect(straightened({ x: 90, y: -40 }, origin)).toEqual({ x: 100, y: -40 });
+    expect(straightened({ x: 150, y: 150 }, origin)).toEqual({ x: 150, y: 100 });
   });
 });

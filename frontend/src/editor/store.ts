@@ -20,15 +20,19 @@ import { createStore } from 'zustand/vanilla';
 import { currentStrings } from '../i18n/locale.ts';
 import {
   addNode,
+  type AlignSide,
+  alignNodes,
   connect,
   type ConnectionSides,
   duplicate,
+  duplicateNodes,
   type Edit,
   type EdgePatch,
   type EdgeRoutePatch,
   exists,
   moveNode,
   moveNodes,
+  NUDGE,
   type NodePatch,
   nudgeNodes,
   resizeNode,
@@ -139,7 +143,14 @@ export interface EditorActions {
   /** Moves a node in front of or behind the nodes it is stacked with. */
   stackNode: (id: string, move: StackMove) => void;
   removeSelection: () => void;
+  /** Copies the selected node, or the chosen ones, a little away from them. */
   duplicateSelection: () => void;
+  /** Copies nodes `offset` away from them, as letting go of a drag with Alt does. */
+  duplicateNodes: (ids: readonly string[], offset: Point) => void;
+  /** Chooses every node that is not a group. */
+  selectAll: () => void;
+  /** Lines the chosen nodes up on one side of the box around them. */
+  alignSelection: (side: AlignSide) => void;
   select: (selection: Selection | null) => void;
   /** Adds a node to the group of chosen nodes, or takes it out if it is in it. */
   toggleSelected: (id: string) => void;
@@ -260,10 +271,11 @@ export function createEditorStore() {
         selection: result.selection === undefined ? selection : result.selection,
         // An edit that chooses something else ends the group; one that keeps the choice keeps it.
         group:
-          result.selection === undefined &&
+          result.group ??
+          (result.selection === undefined &&
           group.every((id) => exists(result.document, { type: 'node', id }))
             ? group
-            : [],
+            : []),
         connectingFrom: null,
         renaming: null,
         placed: null,
@@ -349,11 +361,31 @@ export function createEditorStore() {
         else if (selection) apply((document) => remove(document, selection));
       },
       duplicateSelection: () => {
-        const { selection } = get();
-        const { group } = get();
-        if (selection?.type === 'node' && group.length < 2) {
+        const { selection, group } = get();
+        if (group.length > 1) {
+          apply((document) => duplicateNodes(document, group, { x: NUDGE, y: NUDGE }));
+        } else if (selection?.type === 'node') {
           apply((document) => duplicate(document, selection.id));
         }
+      },
+      duplicateNodes: (ids, offset) => {
+        if (ids.length > 0) apply((document) => duplicateNodes(document, ids, offset));
+      },
+      selectAll: () => {
+        const nodes = get().current?.document.graph.nodes ?? [];
+        const ids = nodes.filter((node) => !isContainerKind(node.kind)).map((node) => node.id);
+        const last = ids.at(-1);
+        set({
+          selection: last === undefined ? null : { type: 'node', id: last },
+          group: ids.length > 1 ? ids : [],
+          connectingFrom: null,
+          renaming: null,
+          placed: null,
+        });
+      },
+      alignSelection: (side) => {
+        const { group } = get();
+        if (group.length > 1) apply((document) => alignNodes(document, group, side));
       },
       select: (selection) =>
         set({ selection, group: [], connectingFrom: null, renaming: null, placed: null }),

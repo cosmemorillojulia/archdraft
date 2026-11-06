@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
+import { viewCommands } from '../canvas/view-commands.ts';
 import { dialogStore } from '../onboarding/dialog-store.ts';
+import type { AlignSide } from './operations.ts';
 import { reviewStore } from '../review/review-store.ts';
 import { editorStore } from './store.ts';
 
@@ -11,6 +13,12 @@ const ARROWS: Readonly<Record<string, { x: number; y: number }>> = {
   ArrowRight: { x: 1, y: 0 },
   ArrowUp: { x: 0, y: -1 },
   ArrowDown: { x: 0, y: 1 },
+};
+const ALIGN_SIDES: Readonly<Record<string, AlignSide>> = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowUp: 'top',
+  ArrowDown: 'bottom',
 };
 
 /** Whether a key press belongs to a text field rather than to the editor. */
@@ -24,7 +32,10 @@ function isTyping(target: EventTarget | null): boolean {
  *
  * - Delete or Backspace: delete the selection.
  * - Ctrl or ⌘ + Z: undo; with Shift, or Ctrl + Y: redo.
- * - Ctrl or ⌘ + D: duplicate the selected node.
+ * - Ctrl or ⌘ + D: duplicate the selected node, or the chosen ones.
+ * - Ctrl or ⌘ + A: choose every node that is not a group.
+ * - Ctrl or ⌘ + Shift + an arrow: line the chosen nodes up on that side, as in Excalidraw.
+ * - Shift + 1: show the whole diagram; Shift + 2: show the selection, as in Excalidraw.
  * - Alt + an arrow: move the selected node, or the chosen ones, 10 px; with Shift, 1 px. Holding
  *   the key down is one step of the history.
  * - Enter or F2: edit the name of the selected node in its box, when the focus is on that node or
@@ -53,6 +64,20 @@ export function useEditorShortcuts(enabled: boolean): void {
       if (event.altKey) return;
       const command = event.ctrlKey || event.metaKey;
       const key = event.key.toLowerCase();
+      const side = ALIGN_SIDES[event.key];
+      if (side && command && event.shiftKey) {
+        event.preventDefault();
+        editor.alignSelection(side);
+        return;
+      }
+      // By the key, not the character, which Shift turns into ! or " depending on the keyboard.
+      if (event.shiftKey && !command && (event.code === 'Digit1' || event.code === 'Digit2')) {
+        event.preventDefault();
+        const view = viewCommands();
+        if (event.code === 'Digit1') view?.fit();
+        else view?.zoomToSelection();
+        return;
+      }
 
       let handled = true;
       if (command && key === 'z') {
@@ -62,6 +87,8 @@ export function useEditorShortcuts(enabled: boolean): void {
         editor.redo();
       } else if (command && key === 'd') {
         editor.duplicateSelection();
+      } else if (command && key === 'a') {
+        editor.selectAll();
       } else if (!command && (key === 'delete' || key === 'backspace')) {
         handled = editor.selection !== null;
         editor.removeSelection();

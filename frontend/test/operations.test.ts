@@ -18,7 +18,9 @@ import {
   updateDiagram,
   connect,
   containerAt,
+  alignNodes,
   duplicate,
+  duplicateNodes,
   type Edit,
   moveNode,
   reconnect,
@@ -487,6 +489,85 @@ describe('duplicate', () => {
     });
     expect(next.graph.edges).toHaveLength(4);
     expect(errorsOf(next)).toEqual([]);
+  });
+});
+
+describe('duplicateNodes', () => {
+  it('copies several nodes by an offset, with the edges between them, and chooses the copies', () => {
+    const edit = duplicateNodes(document, ['user', 'db', 'api'], { x: 0, y: 300 });
+    const next = edited(edit);
+    expect(next.layout.positions['user-2']).toEqual({ x: 0, y: 400 });
+    expect(next.layout.positions['db-2']).toEqual({ x: 1000, y: 400 });
+    expect(next.layout.positions['api-2']).toEqual({ x: 24, y: 348 });
+    expect(nodeOf(next, 'api-2')).toMatchObject({ parentId: 'subnet' });
+    expect(next.graph.edges.slice(2).map((edge) => [edge.source, edge.target])).toEqual([
+      ['user-2', 'api-2'],
+      ['api-2', 'db-2'],
+    ]);
+    expect(edit.ok && edit.group).toEqual(['user-2', 'db-2', 'api-2']);
+    expect(edit.ok && edit.selection).toEqual({ type: 'node', id: 'api-2' });
+    expect(errorsOf(next)).toEqual([]);
+  });
+
+  it('copies a node inside another chosen one only once, with it', () => {
+    const edit = duplicateNodes(document, ['vpc', 'api'], { x: 0, y: 0 });
+    const next = edited(edit);
+    expect(next.graph.nodes.filter((node) => node.kind === 'service')).toHaveLength(2);
+    expect(nodeOf(next, 'api-2')).toMatchObject({ parentId: 'subnet-2' });
+    expect(edit.ok && edit.group).toBeUndefined();
+  });
+
+  it('moves the points drawn on a copied connection with the copy', () => {
+    const routed: DiagramDocument = {
+      ...document,
+      layout: {
+        ...document.layout,
+        edgeRoutes: { 'api-db': { points: [{ x: 600, y: 200 }] } },
+      },
+    };
+    const next = edited(duplicateNodes(routed, ['api', 'db'], { x: 10, y: 20 }));
+    expect(next.layout.edgeRoutes?.['api-2-db-2']).toEqual({ points: [{ x: 610, y: 220 }] });
+  });
+
+  it('copies nothing that does not exist', () => {
+    expect(duplicateNodes(document, ['nope'], { x: 1, y: 1 })).toEqual({ ok: true, document });
+  });
+});
+
+describe('alignNodes', () => {
+  const boxOf = (doc: DiagramDocument, id: string) => absoluteBoxes(doc.graph, doc.layout).get(id);
+
+  const spread: DiagramDocument = {
+    ...document,
+    layout: {
+      ...document.layout,
+      positions: { ...document.layout.positions, db: { x: 1000, y: 300 } },
+    },
+  };
+
+  it('lines the nodes up on the left and the top with the nearest one', () => {
+    const left = edited(alignNodes(spread, ['user', 'db'], 'left'));
+    expect(boxOf(left, 'db')).toMatchObject({ x: 0, y: 300 });
+    const top = edited(alignNodes(spread, ['user', 'db'], 'top'));
+    expect(boxOf(top, 'db')).toMatchObject({ x: 1000, y: 100 });
+    expect(boxOf(top, 'user')).toMatchObject({ x: 0, y: 100 });
+  });
+
+  it('lines them up on the right and the bottom with the furthest one', () => {
+    const right = edited(alignNodes(document, ['user', 'db'], 'right'));
+    expect(boxOf(right, 'user')?.x).toBe(1000);
+    const bottom = edited(alignNodes(document, ['user', 'api'], 'bottom'));
+    const api = boxOf(document, 'api');
+    expect(boxOf(bottom, 'user')?.y).toBe(api?.y);
+    // Only along the chosen side.
+    expect(boxOf(bottom, 'user')?.x).toBe(0);
+  });
+
+  it('moves what is inside a chosen node with it, and needs two nodes', () => {
+    const next = edited(alignNodes(document, ['region', 'api', 'user'], 'top'));
+    expect(boxOf(next, 'region')?.y).toBe(0);
+    expect(next.layout.positions['api']).toEqual(document.layout.positions['api']);
+    expect(alignNodes(document, ['user'], 'left')).toEqual({ ok: true, document });
   });
 });
 
