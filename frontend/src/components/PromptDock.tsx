@@ -13,6 +13,7 @@ import type { OfferTask } from '@archdraft/shared';
 import { AnimatePresence, m } from 'motion/react';
 import { type KeyboardEvent, useEffect, useId, useState } from 'react';
 import { useAssistant } from '../ai/assistant-store.ts';
+import { PreviewLegend } from '../ai/PreviewLegend.tsx';
 import { apiUrl } from '../ai/client.ts';
 import { cancelAssistant, runAssistant } from '../ai/run-assistant.ts';
 import { useEditor } from '../editor/store.ts';
@@ -75,6 +76,7 @@ export function PromptDock({ direction }: { direction: LayoutDirection }) {
 
   return (
     <div className="pointer-events-auto flex w-full max-w-3xl flex-col items-center">
+      <PreviewLegend />
       <AssistantProgress />
       <form
         onSubmit={(event) => {

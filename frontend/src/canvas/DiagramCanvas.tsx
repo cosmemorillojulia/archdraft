@@ -39,7 +39,6 @@ import { type ArchitectureFlowEdge, type ArchitectureFlowNode, toFlow } from './
 import { useStableHandler } from './use-stable-handler.ts';
 import { type Insets, absoluteBoxes, boundsOf, initialViewport } from './geometry.ts';
 import { CanvasControls } from './CanvasControls.tsx';
-import { PreviewLegend } from './PreviewLegend.tsx';
 
 const NODE_TYPES = { component: ComponentNode, container: ContainerNode, shape: ShapeNode };
 const EDGE_TYPES = { architecture: ArchitectureEdge };
@@ -787,11 +786,6 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
             }}
           />
         )}
-        <AnimatePresence>
-          {previewing && (
-            <PreviewLegend key="legend" top={insets.top} left={insets.left} right={insets.right} />
-          )}
-        </AnimatePresence>
         <div className={`pointer-events-none absolute z-10 ${controlsClassName}`}>
           <CanvasControls
             onFit={fit}
