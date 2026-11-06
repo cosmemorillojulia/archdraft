@@ -48,6 +48,8 @@ export type Edit =
       readonly document: DiagramDocument;
       /** What to select afterwards; `undefined` keeps the current selection. */
       readonly selection?: Selection | null;
+      /** Several nodes to choose afterwards, the last of them being `selection`. */
+      readonly group?: readonly string[];
     }
   | { readonly ok: false; readonly reason: string };
 
@@ -816,8 +818,29 @@ export function removeNodes(document: DiagramDocument, ids: readonly string[]): 
  * to the original in the same container, and selects the copy.
  */
 export function duplicate(document: DiagramDocument, id: string): Edit {
+  return duplicateNodes(document, [id], { x: NUDGE, y: NUDGE });
+}
+
+/**
+ * Copies nodes, each with everything inside it, and the edges between all of those, `offset`
+ * away from the originals in the same containers, and selects the copies. A node inside another
+ * that is copied goes with it.
+ */
+export function duplicateNodes(
+  document: DiagramDocument,
+  roots: readonly string[],
+  offset: Point,
+): Edit {
   const { graph, layout } = document;
-  const ids = subtreeOf(graph, id);
+  const subtrees = roots
+    .filter((root) => graph.nodes.some((node) => node.id === root))
+    .map((root) => ({ root, ids: subtreeOf(graph, root) }));
+  // A root inside another one is copied with it.
+  const tops = subtrees
+    .filter(({ root }) => !subtrees.some((other) => other.root !== root && other.ids.has(root)))
+    .map(({ root }) => root);
+  const topSet = new Set(tops);
+  const ids = new Set(subtrees.flatMap((subtree) => [...subtree.ids]));
   const originals = graph.nodes.filter((node) => ids.has(node.id));
   if (originals.length === 0) return unchanged(document);
   const innerEdges = graph.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
@@ -844,15 +867,18 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
     const label = uniqueLabel(original.label, takenLabels);
     takenLabels.add(label);
     const position = layoutEntry(layout.positions, original.id) ?? ORIGIN;
-    positions[copyOf(original.id)] =
-      original.id === id || original.attachedTo === id
-        ? { x: position.x + NUDGE, y: position.y + NUDGE }
-        : position;
+    // Positions are relative to the container: only what sits where the copy goes is moved.
+    const moves =
+      topSet.has(original.id) ||
+      (original.attachedTo !== undefined && topSet.has(original.attachedTo));
+    positions[copyOf(original.id)] = moves
+      ? { x: position.x + offset.x, y: position.y + offset.y }
+      : position;
     sizes[copyOf(original.id)] =
       layoutEntry(layout.sizes, original.id) ?? sizeOfKind(original.kind);
-    // The copied root stays in the original's container; its contents follow it.
+    // A copied root stays in the original's container; its contents follow it.
     const parentId =
-      original.id === id || original.parentId === undefined
+      topSet.has(original.id) || original.parentId === undefined
         ? original.parentId
         : copyOf(original.parentId);
     const copy = withParent({ ...original, id: copyOf(original.id), label }, parentId);
@@ -875,7 +901,19 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
     const own = ownEdgeStyle(layout, edge.id);
     if (own !== undefined) edgeStyles[edgeId] = own;
     const route = ownEdgeRoute(layout, edge.id);
-    if (route !== undefined) edgeRoutes[edgeId] = route;
+    if (route !== undefined) {
+      // Points drawn by hand are on the diagram, so they move with the copy.
+      edgeRoutes[edgeId] =
+        route.points === undefined
+          ? route
+          : {
+              ...route,
+              points: route.points.map((point) => ({
+                x: point.x + offset.x,
+                y: point.y + offset.y,
+              })),
+            };
+    }
     if (showsEdgeLabel(layout, edge.id)) edgeLabels[edgeId] = true;
     return { ...edge, id: edgeId, source, target };
   });
@@ -885,21 +923,69 @@ export function duplicate(document: DiagramDocument, id: string): Edit {
     nodes: [...graph.nodes, ...nodes],
     edges: [...graph.edges, ...edges],
   };
+  let nextLayout = withEdgeLabels(
+    withEdgeRoutes(withEdgeStyles({ ...layout, positions, sizes }, edgeStyles), edgeRoutes),
+    edgeLabels,
+  );
+  for (const top of tops) nextLayout = growAncestors(nextGraph, nextLayout, copyOf(top));
+  const copiedTops = tops.map(copyOf);
+  const last = copiedTops.at(-1) as string;
   return {
     ok: true,
-    document: {
-      graph: nextGraph,
-      layout: growAncestors(
-        nextGraph,
-        withEdgeLabels(
-          withEdgeRoutes(withEdgeStyles({ ...layout, positions, sizes }, edgeStyles), edgeRoutes),
-          edgeLabels,
-        ),
-        copyOf(id),
-      ),
-    },
-    selection: { type: 'node', id: copyOf(id) },
+    document: { graph: nextGraph, layout: nextLayout },
+    selection: { type: 'node', id: last },
+    ...(copiedTops.length > 1 ? { group: copiedTops } : {}),
   };
+}
+
+/** A side of the box around several nodes, to line them up against. */
+export type AlignSide = 'left' | 'right' | 'top' | 'bottom';
+
+/**
+ * Lines nodes up on one side of the box around them, as in Excalidraw: the left sides with the
+ * leftmost one, and so on. A node inside another that is aligned moves with it.
+ */
+export function alignNodes(
+  document: DiagramDocument,
+  ids: readonly string[],
+  side: AlignSide,
+): Edit {
+  const { graph, layout } = document;
+  const boxes = absoluteBoxes(graph, layout);
+  const chosen = new Set(ids);
+  const parentOf = new Map(graph.nodes.map((node) => [node.id, node.parentId]));
+  const insideChosen = (id: string) => {
+    for (let parent = parentOf.get(id); parent !== undefined; parent = parentOf.get(parent)) {
+      if (chosen.has(parent)) return true;
+    }
+    return false;
+  };
+  const aligned = ids.filter((id) => boxes.has(id) && !insideChosen(id));
+  if (aligned.length < 2) return unchanged(document);
+  const edge = (box: Box) =>
+    side === 'left'
+      ? box.x
+      : side === 'right'
+        ? box.x + box.width
+        : side === 'top'
+          ? box.y
+          : box.y + box.height;
+  const ends = aligned.map((id) => edge(boxes.get(id) as Box));
+  const line = side === 'left' || side === 'top' ? Math.min(...ends) : Math.max(...ends);
+  const horizontal = side === 'left' || side === 'right';
+  return moveNodes(
+    document,
+    aligned.map((id) => {
+      const shift = line - edge(boxes.get(id) as Box);
+      const position = layoutEntry(layout.positions, id) ?? ORIGIN;
+      return {
+        id,
+        position: horizontal
+          ? { x: position.x + shift, y: position.y }
+          : { x: position.x, y: position.y + shift },
+      };
+    }),
+  );
 }
 
 /** Whether applying `patch` to `target` would change nothing. Values are plain data. */
