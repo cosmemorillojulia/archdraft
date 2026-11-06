@@ -167,6 +167,25 @@ describe('prompt', () => {
       ARCHITECTURE_TEMPLATES['static-site-cms'].title,
     );
     expect(titleOf('Something else entirely')).toBe(ARCHITECTURE_TEMPLATES['serverless-api'].title);
+    expect(titleOf('WordPress en máquinas virtuales EC2')).toBe(
+      ARCHITECTURE_TEMPLATES['web-app-on-vms'].title,
+    );
+    expect(titleOf('A nightly cron job that emails a report')).toBe(
+      ARCHITECTURE_TEMPLATES['scheduled-job'].title,
+    );
+    expect(titleOf('Despliegue continuo de contenedores en Kubernetes')).toBe(
+      ARCHITECTURE_TEMPLATES['container-delivery'].title,
+    );
+    expect(titleOf('Conectar la oficina por VPN con un firewall')).toBe(
+      ARCHITECTURE_TEMPLATES['hub-spoke-network'].title,
+    );
+  });
+
+  it('never shows the largest templates as examples, to keep the prompt short', () => {
+    const largest = ARCHITECTURE_TEMPLATES['mlops-pipeline'];
+    expect(exampleGraph('MLOps training pipeline with a model registry').title).not.toBe(
+      largest.title,
+    );
   });
 
   it('asks to read requests safely and to list nodes in the order of the flow', () => {
