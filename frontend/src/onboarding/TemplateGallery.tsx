@@ -2,7 +2,6 @@ import {
   ARCHITECTURE_TEMPLATES,
   isContainerKind,
   isShapeKind,
-  TEMPLATE_IDS,
   type TemplateId,
 } from '@archdraft/shared';
 import { Plus } from 'lucide-react';
@@ -13,6 +12,7 @@ import { useLocale, useStrings } from '../i18n/locale.ts';
 import { localizedTemplate } from '../i18n/templates.ts';
 import { useMediaQuery, WIDE_SCREEN } from '../media.ts';
 import { Modal } from './Modal.tsx';
+import { TEMPLATE_GROUPS, TEMPLATE_LEVELS } from './template-groups.ts';
 import { TEMPLATE_ICONS } from './template-icons.ts';
 
 /** Components of a template, not counting its groups and drawings. */
@@ -27,11 +27,13 @@ interface CardProps {
   name: string;
   description: string;
   meta?: string;
+  /** How complex it is, beside the meta. */
+  badge?: string;
   current?: boolean;
   onChoose: () => void;
 }
 
-function Card({ icon, name, description, meta, current = false, onChoose }: CardProps) {
+function Card({ icon, name, description, meta, badge, current = false, onChoose }: CardProps) {
   return (
     <button
       type="button"
@@ -45,15 +47,24 @@ function Card({ icon, name, description, meta, current = false, onChoose }: Card
         </span>
         <span className="min-w-0 flex-1 font-semibold">{name}</span>
       </span>
-      <span className="text-sm text-muted">{description}</span>
-      {meta !== undefined && <span className="mt-auto pt-1 text-xs text-muted">{meta}</span>}
+      {/* Cut on screen to keep the cards even; the whole text is still read out. */}
+      <span className="line-clamp-3 text-sm text-muted">{description}</span>
+      {(meta !== undefined || badge !== undefined) && (
+        <span className="mt-auto flex items-center justify-between gap-2 pt-1 text-xs text-muted">
+          <span className="min-w-0 truncate">{meta}</span>
+          {badge !== undefined && (
+            <span className="shrink-0 rounded-full border border-line px-2 py-0.5">{badge}</span>
+          )}
+        </span>
+      )}
     </button>
   );
 }
 
 /**
- * The starting points, each with what it is, its cloud and its size, and a blank diagram.
- * Choosing one opens it, as the menu of the header does, and closes the gallery.
+ * The starting points by what they are for (`TEMPLATE_GROUPS`), each with what it is, its cloud,
+ * its size and how complex it is, and a blank diagram. Choosing one opens it, as the menu of the
+ * header does, and closes the gallery.
  */
 export function TemplateGallery({ onClose }: { onClose: () => void }) {
   const strings = useStrings();
@@ -68,34 +79,57 @@ export function TemplateGallery({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       width="wide"
     >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {TEMPLATE_IDS.map((id) => {
-          const Icon = TEMPLATE_ICONS[id];
-          const count = componentCount(id);
-          return (
+      <div className="flex flex-col gap-6">
+        {TEMPLATE_GROUPS.map((group) => (
+          <section key={group.id} aria-labelledby={`gallery-${group.id}`}>
+            <h3
+              id={`gallery-${group.id}`}
+              className="mb-2.5 text-xs font-semibold tracking-wide text-muted uppercase"
+            >
+              {strings.gallery.groups[group.id]}
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {group.templates.map((id) => {
+                const Icon = TEMPLATE_ICONS[id];
+                const count = componentCount(id);
+                return (
+                  <Card
+                    key={id}
+                    icon={<Icon size={17} aria-hidden="true" />}
+                    name={strings.prompt.templateNames[id]}
+                    description={localizedTemplate(id, locale).description}
+                    meta={`${strings.providers[ARCHITECTURE_TEMPLATES[id].provider]} · ${count} ${strings.card.components(count)}`}
+                    badge={strings.gallery.levels[TEMPLATE_LEVELS[id]]}
+                    current={id === current}
+                    onChoose={() => {
+                      void openTemplate(id, direction);
+                      onClose();
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        ))}
+        <section aria-labelledby="gallery-blank">
+          <h3
+            id="gallery-blank"
+            className="mb-2.5 text-xs font-semibold tracking-wide text-muted uppercase"
+          >
+            {strings.gallery.groups.blank}
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Card
-              key={id}
-              icon={<Icon size={17} aria-hidden="true" />}
-              name={strings.prompt.templateNames[id]}
-              description={localizedTemplate(id, locale).description}
-              meta={`${strings.providers[ARCHITECTURE_TEMPLATES[id].provider]} · ${count} ${strings.card.components(count)}`}
-              current={id === current}
+              icon={<Plus size={17} aria-hidden="true" />}
+              name={strings.header.newDiagram}
+              description={strings.gallery.blank}
               onChoose={() => {
-                void openTemplate(id, direction);
+                openBlank(direction);
                 onClose();
               }}
             />
-          );
-        })}
-        <Card
-          icon={<Plus size={17} aria-hidden="true" />}
-          name={strings.header.newDiagram}
-          description={strings.gallery.blank}
-          onChoose={() => {
-            openBlank(direction);
-            onClose();
-          }}
-        />
+          </div>
+        </section>
       </div>
     </Modal>
   );
