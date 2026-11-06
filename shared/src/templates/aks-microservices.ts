@@ -1,0 +1,121 @@
+import type { ArchitectureGraph } from '../schema.ts';
+
+/**
+ * After "Microservices architecture on Azure Kubernetes Service" of the Azure Architecture Center:
+ * https://learn.microsoft.com/azure/architecture/reference-architectures/containers/aks-microservices/aks-microservices
+ */
+export const aksMicroservices = {
+  schemaVersion: 1,
+  title: 'Microservices on Kubernetes',
+  description:
+    'A delivery service split into microservices on a managed Kubernetes cluster. The ingress takes requests; the ingestion service puts them in a queue so that bursts never reach the rest, and the workflow service takes them from there and calls the delivery, scheduling and package services, each with its own data. Images, secrets, identity, deployments and telemetry are shared services.',
+  provider: 'azure',
+  nodes: [
+    { id: 'client', kind: 'web-client', label: 'Client app' },
+    { id: 'region', kind: 'region', label: 'westeurope' },
+    { id: 'vnet', kind: 'network', label: 'Virtual network', parentId: 'region' },
+    { id: 'cluster', kind: 'boundary', label: 'Kubernetes cluster', parentId: 'vnet' },
+    { id: 'ingress', kind: 'load-balancer', label: 'Ingress', parentId: 'cluster' },
+    {
+      id: 'ingestion',
+      kind: 'service',
+      label: 'Ingestion',
+      parentId: 'cluster',
+      attributes: { replicas: 3, autoscaling: true },
+    },
+    { id: 'requests', kind: 'queue', label: 'Delivery requests', parentId: 'vnet' },
+    {
+      id: 'workflow',
+      kind: 'service',
+      label: 'Workflow',
+      parentId: 'cluster',
+      attributes: { replicas: 2, autoscaling: true },
+    },
+    {
+      id: 'delivery',
+      kind: 'service',
+      label: 'Delivery',
+      parentId: 'cluster',
+      attributes: { replicas: 2, autoscaling: true },
+    },
+    {
+      id: 'drone-scheduler',
+      kind: 'service',
+      label: 'Drone scheduler',
+      parentId: 'cluster',
+      attributes: { replicas: 2, autoscaling: true },
+    },
+    {
+      id: 'package',
+      kind: 'service',
+      label: 'Package',
+      parentId: 'cluster',
+      attributes: { replicas: 2, autoscaling: true },
+    },
+    {
+      id: 'delivery-status',
+      kind: 'cache',
+      label: 'Delivery status',
+      service: 'Azure Managed Redis',
+      parentId: 'vnet',
+      attributes: { multiAz: true, encryptedAtRest: true, managed: true },
+    },
+    {
+      id: 'packages',
+      kind: 'nosql-db',
+      label: 'Packages',
+      parentId: 'vnet',
+      attributes: { encryptedAtRest: true, managed: true },
+    },
+    { id: 'shared', kind: 'boundary', label: 'Shared services', parentId: 'region' },
+    { id: 'pipelines', kind: 'ci-cd', label: 'Build and deploy', parentId: 'shared' },
+    { id: 'images', kind: 'container-registry', label: 'Container images', parentId: 'shared' },
+    { id: 'identity', kind: 'identity-provider', label: 'Workload identity', parentId: 'shared' },
+    { id: 'secrets', kind: 'secrets-manager', label: 'Secrets', parentId: 'shared' },
+    { id: 'monitoring', kind: 'monitoring', label: 'Metrics and alerts', parentId: 'shared' },
+    { id: 'tracing', kind: 'tracing', label: 'Distributed tracing', parentId: 'shared' },
+  ],
+  edges: [
+    { id: 'client-ingress', source: 'client', target: 'ingress', protocol: 'https' },
+    {
+      id: 'ingress-ingestion',
+      source: 'ingress',
+      target: 'ingestion',
+      label: 'Schedule a pickup',
+      protocol: 'http',
+    },
+    {
+      id: 'ingress-delivery',
+      source: 'ingress',
+      target: 'delivery',
+      label: 'Delivery status',
+      protocol: 'http',
+    },
+    {
+      id: 'ingestion-requests',
+      source: 'ingestion',
+      target: 'requests',
+      label: 'Enqueue',
+      protocol: 'amqp',
+    },
+    {
+      id: 'requests-workflow',
+      source: 'requests',
+      target: 'workflow',
+      label: 'Consume',
+      protocol: 'amqp',
+    },
+    { id: 'workflow-delivery', source: 'workflow', target: 'delivery', protocol: 'https' },
+    { id: 'workflow-scheduler', source: 'workflow', target: 'drone-scheduler', protocol: 'https' },
+    { id: 'workflow-package', source: 'workflow', target: 'package', protocol: 'https' },
+    { id: 'delivery-status-store', source: 'delivery', target: 'delivery-status', protocol: 'tcp' },
+    { id: 'package-store', source: 'package', target: 'packages', protocol: 'tcp' },
+    {
+      id: 'pipelines-images',
+      source: 'pipelines',
+      target: 'images',
+      label: 'Push images',
+      protocol: 'https',
+    },
+  ],
+} satisfies ArchitectureGraph;

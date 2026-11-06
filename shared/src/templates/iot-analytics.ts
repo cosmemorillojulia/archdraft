@@ -1,0 +1,125 @@
+import type { ArchitectureGraph } from '../schema.ts';
+
+/**
+ * After the solution idea "IoT analytics with Azure Data Explorer" of the Azure Architecture
+ * Center:
+ * https://learn.microsoft.com/azure/architecture/solution-ideas/articles/iot-azure-data-explorer
+ */
+export const iotAnalytics = {
+  schemaVersion: 1,
+  title: 'IoT telemetry and analytics',
+  description:
+    'Devices stream readings into a managed hub. A stream job keeps the latest state of each device for the operations app, while a time series database ingests every reading for history, dashboards and alerts, and exports old data to cheap storage. Models trained on that history score new readings.',
+  provider: 'azure',
+  nodes: [
+    { id: 'devices', kind: 'external-system', label: 'Field devices', provider: 'generic' },
+    { id: 'operator', kind: 'web-client', label: 'Operations app' },
+    { id: 'analyst', kind: 'user', label: 'Analyst' },
+    { id: 'on-call', kind: 'user', label: 'On-call engineer' },
+    { id: 'dashboards', kind: 'external-system', label: 'Dashboards', service: 'Power BI' },
+    { id: 'region', kind: 'region', label: 'northeurope' },
+    { id: 'ingestion', kind: 'boundary', label: 'Ingestion', parentId: 'region' },
+    {
+      id: 'hub',
+      kind: 'stream',
+      label: 'Device hub',
+      service: 'Azure IoT Hub',
+      parentId: 'ingestion',
+    },
+    {
+      id: 'stream-job',
+      kind: 'data-processing',
+      label: 'Near real-time processing',
+      service: 'Azure Stream Analytics',
+      parentId: 'ingestion',
+    },
+    { id: 'serving', kind: 'boundary', label: 'Operations', parentId: 'region' },
+    { id: 'api-management', kind: 'api-gateway', label: 'API', parentId: 'serving' },
+    { id: 'api', kind: 'function', label: 'Operations API', parentId: 'serving' },
+    {
+      id: 'device-state',
+      kind: 'nosql-db',
+      label: 'Device state',
+      parentId: 'serving',
+      attributes: { encryptedAtRest: true, managed: true },
+    },
+    { id: 'analytics', kind: 'boundary', label: 'Analytics', parentId: 'region' },
+    {
+      id: 'history',
+      kind: 'time-series-db',
+      label: 'Telemetry history',
+      parentId: 'analytics',
+      attributes: { encryptedAtRest: true, managed: true },
+    },
+    {
+      id: 'archive',
+      kind: 'object-storage',
+      label: 'Parquet archive',
+      parentId: 'analytics',
+      attributes: { publiclyAccessible: false, encryptedAtRest: true },
+    },
+    { id: 'models', kind: 'ml-platform', label: 'Anomaly models', parentId: 'analytics' },
+    { id: 'alerts', kind: 'workflow', label: 'Alert rules', parentId: 'analytics' },
+    { id: 'email', kind: 'email-service', label: 'Alert email', parentId: 'analytics' },
+  ],
+  edges: [
+    {
+      id: 'devices-hub',
+      source: 'devices',
+      target: 'hub',
+      label: 'Readings over MQTT',
+      protocol: 'other',
+      mode: 'async',
+    },
+    { id: 'hub-stream-job', source: 'hub', target: 'stream-job', protocol: 'event' },
+    {
+      id: 'stream-job-state',
+      source: 'stream-job',
+      target: 'device-state',
+      label: 'Latest state',
+      protocol: 'https',
+    },
+    {
+      id: 'hub-history',
+      source: 'hub',
+      target: 'history',
+      label: 'Ingest every reading',
+      protocol: 'event',
+    },
+    {
+      id: 'history-archive',
+      source: 'history',
+      target: 'archive',
+      label: 'Continuous export',
+      protocol: 'event',
+    },
+    { id: 'operator-api', source: 'operator', target: 'api-management', protocol: 'https' },
+    { id: 'api-management-api', source: 'api-management', target: 'api', protocol: 'https' },
+    { id: 'api-state', source: 'api', target: 'device-state', protocol: 'https' },
+    { id: 'api-history', source: 'api', target: 'history', label: 'Trends', protocol: 'https' },
+    { id: 'analyst-dashboards', source: 'analyst', target: 'dashboards', protocol: 'https' },
+    {
+      id: 'dashboards-history',
+      source: 'dashboards',
+      target: 'history',
+      label: 'Query',
+      protocol: 'https',
+    },
+    {
+      id: 'models-history',
+      source: 'models',
+      target: 'history',
+      label: 'Train and score',
+      protocol: 'https',
+    },
+    {
+      id: 'alerts-history',
+      source: 'alerts',
+      target: 'history',
+      label: 'Check thresholds',
+      protocol: 'https',
+    },
+    { id: 'alerts-email', source: 'alerts', target: 'email', protocol: 'https' },
+    { id: 'email-on-call', source: 'email', target: 'on-call', label: 'Alert', protocol: 'event' },
+  ],
+} satisfies ArchitectureGraph;
