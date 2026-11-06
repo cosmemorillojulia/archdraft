@@ -1,5 +1,5 @@
 import { type ArchitectureGraph, AssistResultSchema } from '@archdraft/shared';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { type AppDependencies, type AssistLogEntry, createApp } from '../src/http/app.ts';
 import { allowedOrigins, type Env, providerFromEnv, reasoningEffortFor } from '../src/http/env.ts';
 import { LlmError } from '../src/llm/errors.ts';
@@ -143,6 +143,109 @@ describe('POST /v1/assist', () => {
     const response = await post(GENERATE);
     expect(response.status).toBe(500);
     expect(await response.json()).toMatchObject({ type: '/problems/internal-error' });
+  });
+});
+
+/** The events of a server-sent stream, with their data parsed. */
+async function eventsOf(response: Response): Promise<{ event: string; data: unknown }[]> {
+  const text = await response.text();
+  return text
+    .split('\n\n')
+    .filter((chunk) => chunk.trim() !== '')
+    .map((chunk) => {
+      const lines = chunk.split('\n');
+      const event =
+        lines
+          .find((line) => line.startsWith('event:'))
+          ?.slice(6)
+          .trim() ?? '';
+      const data = lines
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trim())
+        .join('\n');
+      return { event, data: JSON.parse(data) as unknown };
+    });
+}
+
+const STREAM = { Accept: 'text/event-stream' };
+
+describe('POST /v1/assist as a stream', () => {
+  it('sends the progress of the agent in order, then the result', async () => {
+    const { post, logs } = appAnswering([GOOD_ANSWER]);
+    const response = await post(GENERATE, STREAM);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toContain('text/event-stream');
+
+    const events = await eventsOf(response);
+    const last = events.at(-1);
+    expect(last?.event).toBe('result');
+    expect(AssistResultSchema.parse(last?.data).proposals[0]?.title).toBe('Shop');
+    const progress = events.slice(0, -1);
+    expect(progress.length).toBeGreaterThan(0);
+    expect(progress.every(({ event }) => event === 'progress')).toBe(true);
+    expect(progress[0]?.data).toEqual({ stage: 'thinking' });
+    expect(progress.at(-1)?.data).toEqual({ stage: 'checking' });
+    expect(logs).toEqual([expect.objectContaining({ status: 200, attempts: 1 })]);
+  });
+
+  it('ends with a problem when the model fails, saying when to come back', async () => {
+    const error = new LlmError('rate-limited', 'Spent', { retryAfter: 120 });
+    const { post, logs } = appAnswering([error]);
+    const events = await eventsOf(await post(GENERATE, STREAM));
+    expect(events.at(-1)).toEqual({
+      event: 'problem',
+      data: expect.objectContaining({
+        type: '/problems/rate-limited',
+        status: 429,
+        detail: 'Spent',
+        retryAfter: 120,
+      }) as unknown,
+    });
+    expect(logs[0]).toMatchObject({ status: 429, problem: 'rate-limited', detail: 'Spent' });
+  });
+
+  it('ends with a generic problem on an unexpected failure', async () => {
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { post, logs } = appAnswering([], {
+      provider: () => ({ name: 'broken', complete: () => Promise.reject(new Error('Bug')) }),
+    });
+    const events = await eventsOf(await post(GENERATE, STREAM));
+    quiet.mockRestore();
+    const last = events.at(-1);
+    expect(last?.event).toBe('problem');
+    expect(last?.data).toMatchObject({ type: '/problems/internal-error', status: 500 });
+    expect(last?.data).not.toHaveProperty('detail');
+    expect(last?.data).not.toHaveProperty('retryAfter');
+    expect(logs[0]).toMatchObject({ status: 500, problem: 'internal-error' });
+    expect(logs[0]).not.toHaveProperty('detail');
+  });
+
+  it('tells nobody when the editor goes away', async () => {
+    const controller = new AbortController();
+    const logs: AssistLogEntry[] = [];
+    const app = createApp({
+      provider: () => ({
+        name: 'cancelled',
+        complete: () => {
+          controller.abort();
+          return Promise.reject(new DOMException('Aborted', 'AbortError'));
+        },
+      }),
+      log: (entry) => logs.push(entry),
+    });
+    const response = await app.request(
+      '/v1/assist',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...STREAM },
+        body: JSON.stringify(GENERATE),
+        signal: controller.signal,
+      },
+      ENV,
+    );
+    const events = await eventsOf(response);
+    expect(events.every(({ event }) => event === 'progress')).toBe(true);
+    expect(logs).toEqual([]);
   });
 });
 
