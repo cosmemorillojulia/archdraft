@@ -37,7 +37,14 @@ import { ContainerNode } from './ContainerNode.tsx';
 import { ShapeNode } from './ShapeNode.tsx';
 import { type ArchitectureFlowEdge, type ArchitectureFlowNode, toFlow } from './flow.ts';
 import { useStableHandler } from './use-stable-handler.ts';
-import { type Insets, absoluteBoxes, boundsOf, initialViewport, straightened } from './geometry.ts';
+import {
+  type Insets,
+  absoluteBoxes,
+  boundsOf,
+  initialViewport,
+  snapped,
+  straightened,
+} from './geometry.ts';
 import { CanvasControls } from './CanvasControls.tsx';
 import { registerViewCommands } from './view-commands.ts';
 
@@ -186,6 +193,11 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     origin: XYPosition;
     copy: boolean;
     ghosts: readonly ArchitectureFlowNode[];
+    /** What turns its position, relative to its group, into diagram coordinates. */
+    offset: XYPosition;
+    size: { width: number; height: number };
+    /** Centres of the nodes it connects to that stay where they are, to fall level with. */
+    neighbours: readonly XYPosition[];
   } | null>(null);
   // Shift held while dragging keeps the move straight: across or along, whichever is longer.
   const shiftHeld = useRef(false);
@@ -553,7 +565,12 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
         const { id } = change;
         const from = dragFrom.current;
         let position = change.position;
-        if (shiftHeld.current && from?.id === id) position = straightened(position, from.origin);
+        if (from?.id === id) {
+          // Shift keeps the drag straight; otherwise the node falls level with what it connects to.
+          position = shiftHeld.current
+            ? straightened(position, from.origin)
+            : snapped(position, from.size, from.offset, from.neighbours);
+        }
         const start = dragStart.current;
         const origin = start?.get(id);
         const others =
@@ -610,10 +627,23 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
         all.length > 1 ? new Map(all.map((other) => [other.id, other.position] as const)) : null;
       // With Alt, as in Excalidraw, letting go leaves the originals and adds copies there.
       const copy = event.altKey;
+      const box = boxes.get(node.id);
+      const moved = new Set(all.map((other) => other.id));
+      const neighbours = diagram.graph.edges.flatMap((edge) => {
+        const other =
+          edge.source === node.id ? edge.target : edge.target === node.id ? edge.source : null;
+        const otherBox = other === null || moved.has(other) ? undefined : boxes.get(other);
+        return otherBox
+          ? [{ x: otherBox.x + otherBox.width / 2, y: otherBox.y + otherBox.height / 2 }]
+          : [];
+      });
       dragFrom.current = {
         id: node.id,
         origin: node.position,
         copy,
+        offset: box ? { x: box.x - node.position.x, y: box.y - node.position.y } : { x: 0, y: 0 },
+        size: box ? { width: box.width, height: box.height } : { width: 0, height: 0 },
+        neighbours,
         ghosts: copy
           ? all.map((other) => ({
               ...other,

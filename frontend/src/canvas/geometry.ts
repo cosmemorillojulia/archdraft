@@ -360,3 +360,38 @@ export function straightened(position: Point, origin: Point): Point {
     ? { x: position.x, y: origin.y }
     : { x: origin.x, y: position.y };
 }
+
+/** How close, in diagram pixels, a dragged node has to come to being level with another to snap. */
+export const SNAP_DISTANCE = 8;
+
+/**
+ * `position` nudged so the centre of a box of `size` there lines up with one of `centres`, across
+ * and along independently, when it is within `SNAP_DISTANCE` of it: a node dragged next to the
+ * ones it connects to falls level with them, and their connection runs straight. `offset` turns
+ * the position, relative to its group, into diagram coordinates, which the centres are in.
+ */
+export function snapped(
+  position: Point,
+  size: { width: number; height: number },
+  offset: Point,
+  centres: readonly Point[],
+): Point {
+  const centre = {
+    x: offset.x + position.x + size.width / 2,
+    y: offset.y + position.y + size.height / 2,
+  };
+  const nearest = (axis: 'x' | 'y') => {
+    let best: number | undefined;
+    for (const other of centres) {
+      const gap = other[axis] - centre[axis];
+      if (
+        Math.abs(gap) <= SNAP_DISTANCE &&
+        (best === undefined || Math.abs(gap) < Math.abs(best))
+      ) {
+        best = gap;
+      }
+    }
+    return best ?? 0;
+  };
+  return { x: position.x + nearest('x'), y: position.y + nearest('y') };
+}
