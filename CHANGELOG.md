@@ -99,6 +99,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- `@archdraft/web`: laying out a diagram with a connection to a node caught in a cycle of parents no longer overflows the stack while comparing the two placements.
+- `@archdraft/api`: CI on `main` is green again. The streamed answers of the assistant (progress of the agent, server-sent events of `/v1/assist` and streaming of OpenAI-compatible providers) had no tests, which left the backend below its coverage thresholds.
 - `@archdraft/web`: a selected component or figure shows one outline, the one it has on hover, instead of a second accent ring around it.
 - `@archdraft/web`: dragging a node re-rendered every node and edge at each step and opened the inspector; it is now about twice as cheap and leaves the selection alone. A resize made with a finger was never saved.
 
