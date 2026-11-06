@@ -30,7 +30,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T13 | Backend: Worker con Hono y endpoint /v1/assist                   | T15, T18, T35 | hecha (2026-10-31) |
 | T14 | Backend: interfaz y proveedores LLM                              | T34           | hecha (2026-10-31) |
 | T15 | Backend: contrato, prompts, pipeline y tarea generate            | T06, T14      | hecha (2026-10-31) |
-| T16 | Banco de evaluación: conjunto de casos y métricas                | T15           | pendiente          |
+| T16 | Banco de evaluación: conjunto de casos y métricas                | T15           | hecha (2026-11-06) |
 | T17 | Evaluaciones en CI y elección del modelo                         | T16           | pendiente          |
 | T18 | Operaciones de edición (T18a) y tarea edit del agente (T18b)     | T15, T34      | hecha (2026-10-31) |
 | T19 | API: límites de uso, protección y observabilidad                 | T15           | pendiente          |
@@ -374,6 +374,8 @@ Criterios de aceptación: tests del extractor; proveedor guionizado que devuelve
 Documentación: diseño del prompt en `docs/modulos/backend.md`; modelo provisional anotado, la elección definitiva es de T17.
 
 ### T16. Banco de evaluación: casos y métricas
+
+Estado: hecha (2026-11-06). Documentado en `docs/evaluacion.md` y ADR 0024.
 
 Objetivo: medir la calidad del agente con números.
 

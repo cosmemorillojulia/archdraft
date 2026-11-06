@@ -12,6 +12,7 @@ Referencia:
 
 - [Guía de desarrollo](desarrollo.md): herramientas, configuración, CI y convenciones.
 - [Operaciones](operaciones.md): entornos, acciones manuales, límites de los planes gratuitos y secretos.
+- [Banco de evaluación](evaluacion.md): casos, métricas y uso para medir la calidad del agente.
 - Módulos: [shared](modulos/shared.md), [motor de reglas de diseño](modulos/lint.md), [exportación e importación](modulos/exportacion.md), [disposición automática](modulos/layout.md), [plantillas de arquitectura](modulos/plantillas.md), [editor web](modulos/web.md), [backend y agente de IA](modulos/backend.md).
 
 ## Decisiones registradas
@@ -41,5 +42,6 @@ Referencia:
 | [0021](adr/0021-estructura-frontend-backend-shared.md)             | Estructura en frontend, backend y shared                                            |
 | [0022](adr/0022-agente-con-tareas-tipadas.md)                      | Agente con tareas tipadas y un único endpoint                                       |
 | [0023](adr/0023-asistente-que-revisa-y-ensena-antes-de-aplicar.md) | Un asistente que revisa lo que diseña y lo enseña antes de aplicarlo                |
+| [0024](adr/0024-evaluacion-por-expectativas-de-tipos.md)           | Evaluación por expectativas de tipos, sin diagramas de referencia                   |
 
 Cada nueva página de módulo o ADR se añade a este índice.

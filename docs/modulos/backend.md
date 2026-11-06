@@ -24,6 +24,14 @@ backend/
       prompt.ts           # mensajes: catálogo, reglas de modelado, ejemplo, tarea
       repair.ts           # runWithRepair: llamar, validar y reintentar con los errores
       extract-json.ts     # el objeto JSON de una respuesta con texto alrededor
+  evals/                  # banco de evaluación (docs/evaluacion.md)
+    case.ts               # tipos de un caso y la petición que genera
+    cases.ts              # los 32 casos
+    score.ts              # puntuador puro y resúmenes
+    run.ts                # ejecuta los casos con assist y reintenta los límites de cuota
+    ideal-provider.ts     # modelo falso con la respuesta ideal de cada caso
+    report.ts             # informe en Markdown
+    cli.ts                # pnpm --filter @archdraft/api eval
   test/                   # Vitest con proveedor guionizado y fetch falso
 ```
 
@@ -191,4 +199,4 @@ curl -s localhost:8787/v1/assist -H 'Content-Type: application/json'   -d '{"tas
 ## Pendiente
 
 - T19: límite de uso por IP, tiempos de CPU medidos frente a los 10 ms del plan gratuito.
-- T16 y T17: banco de evaluación de las cinco tareas en `backend/evals/` y elección del modelo con datos.
+- T17: evaluaciones en CI y elección del modelo con los datos del banco (`docs/evaluacion.md`).
