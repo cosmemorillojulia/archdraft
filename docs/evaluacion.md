@@ -24,6 +24,20 @@ Cada ejecución escribe dos ficheros con la fecha y el modelo en el nombre: un J
 
 Workers AI no está disponible desde la línea de comandos, porque solo se alcanza con el binding de un Worker. Con Groq gratis, que limita a unos 8.000 tokens por minuto, conviene `--pause 20` o más: una ejecución completa tarda entonces del orden de un cuarto de hora.
 
+## En CI
+
+`.github/workflows/evals.yml` pasa el banco contra modelos de Groq los lunes a las 03:17 UTC y cuando se lanza a mano desde la pestaña Actions. Cada modelo es un job de la matriz, con su informe Markdown en el resumen del job y los dos ficheros como artefacto (`evals-<modelo>`, con `/` cambiado por `-`). Los jobs no fallan por una nota baja: el resultado es el informe.
+
+| Entrada  | Por defecto                                     | Qué hace                                                     |
+| -------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| `models` | `["openai/gpt-oss-120b", "openai/gpt-oss-20b"]` | Lista JSON de modelos de Groq; la ejecución semanal usa esta |
+| `cases`  | vacío (todos)                                   | Como `--cases`                                               |
+| `pause`  | `20`                                            | Como `--pause`, en segundos                                  |
+
+Necesita el secreto `GROQ_API_KEY` (`docs/operaciones.md`); sin él, cada job lo avisa y termina sin fallar. Los dos modelos por defecto son los de texto que la documentación de Groq, consultada el 2026-11-06, lista como de producción sin reservarlos a Enterprise. Su tabla de límites da para cada uno 30 peticiones y 8.000 tokens por minuto y 200.000 tokens al día, aunque no deja claro si son los del plan gratuito o los del plan Developer; los de la cuenta están en console.groq.com > Settings > Limits. Como los límites son por modelo, los jobs corren en paralelo.
+
+El modelo por defecto de Workers AI, `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, no se puede medir desde Actions, porque solo se alcanza con el binding de un Worker, y Groq ya no ofrece Llama 3.3 70B en el plan gratuito: la documentación lo marca como Enterprise. Su medida queda pendiente de una forma de llamar a Workers AI desde fuera de un Worker.
+
 ## Casos
 
 `backend/evals/cases.ts` tiene 32 casos, 16 en español y 16 en inglés:
@@ -86,4 +100,4 @@ Los tests de `backend/test/evals.test.ts` prueban el puntuador, que es puro, y e
 
 ## Pendiente
 
-- T17: ejecución periódica y bajo demanda en CI con un secreto de Groq, y elección del modelo con estos datos.
+- T17: resultados de los dos modelos, cuando esté el secreto de Groq, y ADR con el modelo por defecto elegido con estos datos.

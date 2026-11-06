@@ -1,0 +1,99 @@
+name: Evals
+
+# Runs the evaluation set of the agent (backend/evals, docs/evaluacion.md)
+# against models of Groq, every week and on demand. Each model leaves its
+# report as an artifact and in the summary of its job. Until the owner adds
+# the GROQ_API_KEY secret (docs/operaciones.md) it says so and stops, instead
+# of failing.
+on:
+  schedule:
+    # Mondays at 03:17 UTC, away from the top of the hour.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Groq models to evaluate, as a JSON list
+        default: '["openai/gpt-oss-120b", "openai/gpt-oss-20b"]'
+        type: string
+      cases:
+        description: Only the cases whose id contains one of these, separated by commas (empty for all)
+        default: ''
+        type: string
+      pause:
+        description: Seconds between cases, for the per-minute limit of the free plan
+        default: '20'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    name: Eval ${{ matrix.model }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # The scheduled run has no inputs, so it takes the same default.
+        model: ${{ fromJSON(inputs.models || '["openai/gpt-oss-120b", "openai/gpt-oss-20b"]') }}
+    env:
+      LLM_BASE_URL: https://api.groq.com/openai/v1
+      LLM_MODEL: ${{ matrix.model }}
+      CASES: ${{ inputs.cases }}
+      PAUSE: ${{ inputs.pause || '20' }}
+    steps:
+      - name: Check that the Groq secret is set
+        id: secrets
+        env:
+          LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          if [ -z "$LLM_API_KEY" ]; then
+            echo "::notice::GROQ_API_KEY is missing, so the evals do not run. See docs/operaciones.md."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.secrets.outputs.present == 'true'
+
+      - uses: pnpm/action-setup@v6
+        if: steps.secrets.outputs.present == 'true'
+
+      - uses: actions/setup-node@v7
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+        if: steps.secrets.outputs.present == 'true'
+
+      - name: Run the evaluation set
+        id: eval
+        if: steps.secrets.outputs.present == 'true'
+        # Only this step gets the key, not the actions of other owners.
+        env:
+          LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          args=(--pause "$PAUSE" --out "$RUNNER_TEMP/evals")
+          if [ -n "$CASES" ]; then args+=(--cases "$CASES"); fi
+          pnpm --filter @archdraft/api eval "${args[@]}"
+          # Artifact names cannot hold the slash of Groq model ids.
+          echo "artifact=evals-${LLM_MODEL//\//-}" >> "$GITHUB_OUTPUT"
+
+      - name: Add the report to the summary
+        if: steps.secrets.outputs.present == 'true'
+        run: cat "$RUNNER_TEMP"/evals/*.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          name: ${{ steps.eval.outputs.artifact }}
+          path: ${{ runner.temp }}/evals/
+          if-no-files-found: error
