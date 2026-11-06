@@ -42,7 +42,6 @@ jobs:
         # The scheduled run has no inputs, so it takes the same default.
         model: ${{ fromJSON(inputs.models || '["openai/gpt-oss-120b", "openai/gpt-oss-20b"]') }}
     env:
-      LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
       LLM_BASE_URL: https://api.groq.com/openai/v1
       LLM_MODEL: ${{ matrix.model }}
       CASES: ${{ inputs.cases }}
@@ -50,6 +49,8 @@ jobs:
     steps:
       - name: Check that the Groq secret is set
         id: secrets
+        env:
+          LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           if [ -z "$LLM_API_KEY" ]; then
             echo "::notice::GROQ_API_KEY is missing, so the evals do not run. See docs/operaciones.md."
@@ -76,6 +77,9 @@ jobs:
       - name: Run the evaluation set
         id: eval
         if: steps.secrets.outputs.present == 'true'
+        # Only this step gets the key, not the actions of other owners.
+        env:
+          LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           args=(--pause "$PAUSE" --out "$RUNNER_TEMP/evals")
           if [ -n "$CASES" ]; then args+=(--cases "$CASES"); fi
