@@ -177,6 +177,152 @@ describe('createOpenAiCompatibleProvider', () => {
   });
 });
 
+/** A streamed answer made of `pieces` of text, cut wherever they are cut; `fail` breaks it after. */
+function eventStream(pieces: readonly string[], fail?: unknown): Response {
+  const encoder = new TextEncoder();
+  let index = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      const piece = pieces[index];
+      index += 1;
+      if (piece !== undefined) controller.enqueue(encoder.encode(piece));
+      else if (fail !== undefined) controller.error(fail);
+      else controller.close();
+    },
+  });
+  return new Response(body, { headers: { 'Content-Type': 'text/event-stream' } });
+}
+
+const chunk = (delta: object) => `data: ${JSON.stringify({ choices: [{ delta }] })}\n\n`;
+
+describe('createOpenAiCompatibleProvider streaming', () => {
+  it('asks for a stream and passes on each piece of the answer and of the reasoning', async () => {
+    const whole =
+      chunk({ reasoning: 'Groq thinks' }) + chunk({ reasoning_content: 'others think' });
+    const { provider, calls } = providerAnswering(() =>
+      Promise.resolve(
+        eventStream([
+          ': keep-alive\r\n\r\n',
+          whole.slice(0, 20),
+          whole.slice(20),
+          chunk({ content: '{"ok":' }),
+          'data: not json\n\n',
+          'data: {"choices":"wrong"}\n\n',
+          chunk({ content: null }),
+          'data: {"choices":[{}]}\n\n',
+          chunk({ content: '1}' }).trimEnd(),
+          '\ndata: [DONE]',
+        ]),
+      ),
+    );
+    const deltas: unknown[] = [];
+
+    const text = await provider.complete({ ...REQUEST, onDelta: (delta) => deltas.push(delta) });
+
+    expect(text).toBe('{"ok":1}');
+    expect(bodyOf(calls[0]?.init)).toMatchObject({ stream: true });
+    expect(deltas).toEqual([
+      { reasoning: 'Groq thinks' },
+      { reasoning: 'others think' },
+      { content: '{"ok":' },
+      { content: '1}' },
+    ]);
+  });
+
+  it('reads the last event even without a final new line', async () => {
+    const { provider } = providerAnswering(() =>
+      Promise.resolve(eventStream([chunk({ content: 'done' }).trimEnd()])),
+    );
+    expect(await provider.complete({ ...REQUEST, onDelta: () => undefined })).toBe('done');
+  });
+
+  it('reports an error the provider sends in the middle of the answer', async () => {
+    const { provider } = providerAnswering(() =>
+      Promise.resolve(
+        eventStream([
+          chunk({ content: '{' }),
+          `data: ${JSON.stringify({ error: { message: 'Overloaded' } })}\n\n`,
+        ]),
+      ),
+    );
+    const error = await failure(provider.complete({ ...REQUEST, onDelta: () => undefined }));
+    expect(error).toBeInstanceOf(LlmError);
+    expect(error).toMatchObject({
+      kind: 'provider',
+      message: 'The model provider failed while answering: Overloaded',
+    });
+  });
+
+  it('reports a streamed error without an explanation', async () => {
+    const { provider } = providerAnswering(() =>
+      Promise.resolve(eventStream(['data: {"error":{}}\n\n'])),
+    );
+    const error = await failure(provider.complete({ ...REQUEST, onDelta: () => undefined }));
+    expect(error).toMatchObject({ message: 'The model provider failed while answering' });
+  });
+
+  it('reports a stream that ends without any answer', async () => {
+    const { provider } = providerAnswering(() =>
+      Promise.resolve(eventStream([chunk({ reasoning: 'only thinking' }), 'data: [DONE]\n\n'])),
+    );
+    const error = await failure(provider.complete({ ...REQUEST, onDelta: () => undefined }));
+    expect(error).toMatchObject({
+      kind: 'provider',
+      message: 'The model provider answered without a message',
+    });
+  });
+
+  it('reports a stream that breaks off as a provider failure', async () => {
+    const cause = new TypeError('network lost');
+    const { provider } = providerAnswering(() =>
+      Promise.resolve(eventStream([chunk({ content: '{' })], cause)),
+    );
+    const error = await failure(provider.complete({ ...REQUEST, onDelta: () => undefined }));
+    expect(error).toBeInstanceOf(LlmError);
+    expect(error).toMatchObject({
+      kind: 'provider',
+      message: 'The answer of the model provider broke off',
+      cause,
+    });
+  });
+
+  it('gives up with a timeout when the stream is too slow', async () => {
+    const { provider } = providerAnswering(
+      (init) =>
+        Promise.resolve(
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                init.signal?.addEventListener('abort', () =>
+                  controller.error(new DOMException('Aborted', 'AbortError')),
+                );
+              },
+            }),
+          ),
+        ),
+      10,
+    );
+    const error = await failure(provider.complete({ ...REQUEST, onDelta: () => undefined }));
+    expect(error).toMatchObject({ kind: 'timeout' });
+  });
+
+  it('passes a cancellation during the stream up as it is', async () => {
+    const controller = new AbortController();
+    const aborted = new DOMException('Aborted', 'AbortError');
+    const { provider } = providerAnswering(() =>
+      Promise.resolve(eventStream([chunk({ content: '{' })], aborted)),
+    );
+    const error = await failure(
+      provider.complete({
+        ...REQUEST,
+        signal: controller.signal,
+        onDelta: () => controller.abort(),
+      }),
+    );
+    expect(error).toBe(aborted);
+  });
+});
+
 describe('parseRetryAfter', () => {
   it('reads seconds and HTTP dates, and ignores what is neither', () => {
     const now = Date.parse('2026-10-31T12:00:00Z');
