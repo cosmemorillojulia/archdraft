@@ -18,6 +18,7 @@ export const NODE_CATEGORIES = [
   'messaging',
   'security',
   'observability',
+  'devops',
   'ai',
   'external',
   'shape',
@@ -36,12 +37,17 @@ export const COMPONENT_KINDS = [
   'cdn',
   'load-balancer',
   'api-gateway',
+  'nat-gateway',
+  'vpn-gateway',
   // compute
   'service',
   'function',
   'vm',
   'kubernetes-cluster',
   'batch-job',
+  'workflow',
+  'scheduler',
+  'data-processing',
   // data
   'relational-db',
   'nosql-db',
@@ -50,19 +56,32 @@ export const COMPONENT_KINDS = [
   'search-index',
   'data-warehouse',
   'vector-db',
+  'file-storage',
+  'graph-db',
+  'time-series-db',
   // messaging
   'queue',
   'topic',
   'stream',
   'event-bus',
+  'email-service',
+  'push-notifications',
   // security
   'waf',
+  'firewall',
   'identity-provider',
   'secrets-manager',
+  'key-management',
   // observability
   'monitoring',
+  'logging',
+  'tracing',
+  // delivery
+  'container-registry',
+  'ci-cd',
   // ai
   'llm',
+  'ml-platform',
   // external
   'external-system',
 ] as const;

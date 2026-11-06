@@ -40,7 +40,7 @@ export function TemplatesMenu() {
             {...MENU_MOTION}
             aria-label={strings.header.new}
             style={{ transformOrigin: 'top left' }}
-            className="floating absolute top-full left-0 z-50 mt-2 w-60 rounded-panel p-1.5 max-md:fixed max-md:top-14 max-md:left-3"
+            className="floating absolute top-full left-0 z-50 mt-2 max-h-[min(36rem,calc(100dvh-5rem))] w-64 overflow-y-auto rounded-panel p-1.5 max-md:fixed max-md:top-14 max-md:left-3"
           >
             <button
               type="button"

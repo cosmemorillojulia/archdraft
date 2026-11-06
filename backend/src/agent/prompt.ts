@@ -78,12 +78,14 @@ const compact = (value: unknown) => JSON.stringify(value);
 /**
  * Words that point to each template, in English and Spanish. The example
  * closest to the request shows the model the shape of what it is asked for.
+ * The largest templates are left out: as examples they would take too much of
+ * the prompt, which the free plan of Groq counts by the minute.
  */
-const EXAMPLE_HINTS: Record<TemplateId, RegExp> = {
+const EXAMPLE_HINTS: Partial<Record<TemplateId, RegExp>> = {
   'serverless-api':
     /\b(serverless|lambda|functions?|funci[oó]n(es)?|api( rest)?|backend|endpoints?)\b/gi,
   'three-tier-web':
-    /\b(three[- ]tier|tres capas|3 capas|monolith|monol[ií]tic[oa]|web app|aplicaci[oó]n web|e-?commerce|tienda|shop|store|vms?|ec2|servidor(es)?|servers?)\b/gi,
+    /\b(three[- ]tier|tres capas|3 capas|monolith|monol[ií]tic[oa]|web app|aplicaci[oó]n web|e-?commerce|tienda|shop|store)\b/gi,
   'event-driven-microservices':
     /\b(microservic\w*|events?|eventos?|queues?|colas?|kafka|pub\/?sub|messaging|mensajer[ií]a|sagas?|orders?|pedidos?)\b/gi,
   'analytics-pipeline':
@@ -91,7 +93,19 @@ const EXAMPLE_HINTS: Record<TemplateId, RegExp> = {
   'rag-chatbot':
     /\b(rag|chat ?bots?|llms?|embeddings?|vector\w*|ai|ia|gpt|assistants?|asistentes?|agents?|agentes?|semantic search|b[uú]squeda sem[aá]ntica)\b/gi,
   'static-site-cms':
-    /\b(static|est[aá]tic[oa]|blog|cms|landing|portfolio|wordpress|headless|documentation site|sitio web|website|marketing)\b/gi,
+    /\b(static|est[aá]tic[oa]|blog|cms|landing|portfolio|headless|documentation site|sitio web|website|marketing)\b/gi,
+  'web-app-on-vms':
+    /\b(wordpress|php|lamp|vms?|virtual machines?|m[aá]quinas? virtuales?|ec2|compute engine|servidor(es)?|servers?)\b/gi,
+  'scheduled-job':
+    /\b(cron|scheduled?|programad[oa]s?|nightly|nocturn[oa]s?|every (day|night|hour)|cada (d[ií]a|noche|hora)|jobs?|tareas?)\b/gi,
+  'websocket-chat':
+    /\b(websockets?|chat|real[- ]time|tiempo real|mensajes? instant[aá]neos?|notifications?|notificaciones?)\b/gi,
+  'container-delivery':
+    /\b(ci\/?cd|continuous (delivery|deployment)|entrega continua|despliegue continuo|deploy\w*|despliegues?|kubernetes|k8s|gke|eks|aks|containers?|contenedores?|docker|gitops|releases?)\b/gi,
+  'video-on-demand':
+    /\b(videos?|v[ií]deos?|vod|transcod\w*|media|hls|dash|streaming de v[ií]deo|video streaming)\b/gi,
+  'hub-spoke-network':
+    /\b(vpn|hub|spokes?|on[- ]?prem\w*|hybrid|h[ií]brid[oa]s?|firewall|office|oficinas?|landing zone)\b/gi,
 };
 
 /** A diagram written well, close to what is asked, so the model sees the format used as intended. */

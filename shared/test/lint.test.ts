@@ -169,6 +169,19 @@ describe('single-point-of-failure', () => {
     );
     expect(findingsOf('single-point-of-failure', graph)).toEqual([]);
   });
+
+  it('ignores the compute the provider scales: workflows, schedulers and data processing', () => {
+    const graph = graphOf(
+      [
+        node('gw', 'api-gateway'),
+        node('flow', 'workflow'),
+        node('cron', 'scheduler'),
+        node('etl', 'data-processing'),
+      ],
+      [edge('gw', 'flow'), edge('cron', 'etl'), edge('flow', 'etl')],
+    );
+    expect(findingsOf('single-point-of-failure', graph)).toEqual([]);
+  });
 });
 
 describe('public-database', () => {
@@ -403,6 +416,9 @@ describe('orphan-component', () => {
       node('metrics', 'monitoring', { parentId: 'region' }),
       node('vault', 'secrets-manager'),
       node('idp', 'identity-provider'),
+      node('logs', 'logging'),
+      node('traces', 'tracing'),
+      node('keys', 'key-management'),
     ]);
     expect(findingsOf('orphan-component', graph)).toEqual([]);
   });

@@ -1,4 +1,9 @@
-import { ARCHITECTURE_TEMPLATES, NODE_CATALOG, isContainerKind } from '@archdraft/shared';
+import {
+  ARCHITECTURE_TEMPLATES,
+  NODE_CATALOG,
+  TEMPLATE_IDS,
+  isContainerKind,
+} from '@archdraft/shared';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -166,7 +171,7 @@ describe('App', () => {
     await user.click(button);
     expect(button).toHaveAttribute('aria-expanded', 'true');
     const menu = screen.getByRole('menu', { name: strings.header.new });
-    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(6);
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(TEMPLATE_IDS.length);
     const rag = within(menu).getByRole('menuitemradio', {
       name: strings.prompt.templateNames['rag-chatbot'],
     });

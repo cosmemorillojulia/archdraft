@@ -1,11 +1,21 @@
 import type { TemplateId } from '@archdraft/shared';
 import {
+  AlarmClock,
   Bot,
+  Boxes,
+  BrainCircuit,
   ChartColumn,
+  Clapperboard,
   CloudCog,
+  Earth,
   Layers,
   type LucideIcon,
+  MessagesSquare,
+  Network,
   Newspaper,
+  RadioTower,
+  Rocket,
+  Server,
   Workflow,
 } from 'lucide-react';
 
@@ -17,4 +27,14 @@ export const TEMPLATE_ICONS = {
   'rag-chatbot': Bot,
   'analytics-pipeline': ChartColumn,
   'static-site-cms': Newspaper,
+  'web-app-on-vms': Server,
+  'scheduled-job': AlarmClock,
+  'websocket-chat': MessagesSquare,
+  'container-delivery': Rocket,
+  'iot-analytics': RadioTower,
+  'video-on-demand': Clapperboard,
+  'aks-microservices': Boxes,
+  'mlops-pipeline': BrainCircuit,
+  'multi-region-dr': Earth,
+  'hub-spoke-network': Network,
 } satisfies Record<TemplateId, LucideIcon>;

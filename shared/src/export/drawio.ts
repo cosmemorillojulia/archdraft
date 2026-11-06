@@ -27,6 +27,7 @@ const CATEGORY_STYLES: Readonly<Record<NodeCategory, string>> = {
   messaging: 'rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;',
   security: 'rounded=1;fillColor=#f8cecc;strokeColor=#b85450;',
   observability: 'rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;',
+  devops: 'rounded=1;fillColor=#d5f0f5;strokeColor=#10739e;',
   ai: 'rounded=1;fillColor=#d0cee2;strokeColor=#56517e;',
   external: 'rounded=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;',
   shape: 'rounded=0;fillColor=#ffffff;strokeColor=#333333;',
