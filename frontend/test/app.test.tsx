@@ -125,6 +125,8 @@ describe('App', () => {
       screen.getByRole('menuitemradio', { name: strings.prompt.templateNames['serverless-api'] }),
     );
     const diagram = await diagramOf(ARCHITECTURE_TEMPLATES['serverless-api'].title);
+    // The nodes are drawn once the layout is ready, which may come after the diagram opens.
+    await within(diagram).findByText('Email service');
     expect(flowNode(diagram, 'Email service')).toHaveTextContent(
       strings.canvas.providerBadges.generic,
     );
