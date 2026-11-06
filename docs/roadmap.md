@@ -37,7 +37,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T20 | Editor: integración con el agente                                | T11, T13      | hecha (2026-11-06) |
 | T21 | Tests de extremo a extremo y accesibilidad                       | T20           | pendiente          |
 | T22 | Rendimiento y presupuesto de tamaño                              | T21           | pendiente          |
-| T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | pendiente          |
+| T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | hecha (2026-11-06) |
 | T24 | Lanzamiento 1.0                                                  | T22, T23, T26 | pendiente          |
 | T25 | Editor: rediseño centrado en el lienzo                           | T07           | hecha (2026-10-24) |
 | T26 | Revisión de diseño y pulido visual                               | T20, T23      | pendiente          |
@@ -489,6 +489,8 @@ Entregables: Playwright con los flujos de cargar plantilla, añadir y conectar n
 Entregables: división del bundle (ELK y exportadores bajo demanda), comprobación del tamaño del JavaScript inicial en CI, Lighthouse CI con umbrales, prueba con un grafo de 200 nodos.
 
 ### T23. Galería de plantillas, estado vacío y onboarding
+
+Estado: hecha (2026-11-06). Documentado en `docs/modulos/web.md` (Ayuda y primeros pasos). Revisado con capturas de escritorio y móvil, claro y oscuro; de la revisión salió apartar el estado vacío de los controles del lienzo en móvil y no repetir allí el botón de componentes.
 
 Entregables: estado vacío con ejemplos de prompt, galería de plantillas, ayuda de atajos de teclado y página de información con la política de privacidad (no se almacenan datos en servidor).
 

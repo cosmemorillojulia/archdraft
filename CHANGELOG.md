@@ -17,6 +17,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@archdraft/web`: help and first steps. An empty diagram shows what to do: example descriptions the assistant draws with a click, the templates and the components. A gallery describes the six templates with their cloud and size. A help menu in the header opens the gallery, the keyboard shortcuts (also with `?`) and an about dialog with the privacy policy: diagrams stay in the browser, links keep them after `#`, and the API does not store what the assistant is sent.
 - `@archdraft/api`: evaluation set of the agent (`backend/evals/`, ADR 0024): 32 cases in Spanish and English for the five tasks, scored by the kinds of component they require, allow and forbid, the connections they need, the design rules, the ids kept and the goal of each task. `pnpm --filter @archdraft/api eval` runs it against the configured model, or a fake with the ideal answers, and writes a report in JSON and Markdown (`docs/evaluacion.md`).
 - `@archdraft/api`, `@archdraft/web`: the assistant shows how it is getting on. Above the prompt a panel tells whether it is thinking, writing, checking or fixing its answer and for how long, shows the end of the reasoning of models that show it (foldable), and lists the components as they are written. `POST /v1/assist` streams `progress` events, then the `result` or the `problem`, to requests that accept `text/event-stream`.
 

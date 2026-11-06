@@ -5,6 +5,9 @@ import { AnimatePresence, LazyMotion, m, MotionConfig } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAssistant } from './ai/assistant-store.ts';
 import { PreviewLegend } from './ai/PreviewLegend.tsx';
+import { useDialog } from './onboarding/dialog-store.ts';
+import { Dialogs } from './onboarding/Dialogs.tsx';
+import { EmptyState } from './onboarding/EmptyState.tsx';
 import { DiagramCanvas } from './canvas/DiagramCanvas.tsx';
 import type { Insets } from './canvas/geometry.ts';
 import {
@@ -174,10 +177,12 @@ function Editor() {
   );
   // While a tile is carried out of the sheet, the diagram under it must be reachable.
   const carrying = usePaletteDrag((state) => state.drag !== null);
+  // A dialog over the editor keeps the focus and screen readers to itself.
+  const dialogOpen = useDialog((state) => state.open !== null);
 
   return (
     <>
-      <div inert={sheetOpen && !carrying} className="flex h-full flex-col">
+      <div inert={(sheetOpen && !carrying) || dialogOpen} className="flex h-full flex-col">
         <Header />
 
         <div className="relative min-h-0 flex-1 overflow-hidden bg-canvas">
@@ -189,6 +194,11 @@ function Editor() {
               inspectorPlacement={wide ? 'side' : 'bottom'}
             />
           </main>
+
+          {/* On phones, clear of the canvas controls on the right and the components button below. */}
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4 pt-28 pb-36 max-md:pt-44 max-md:pr-16 max-md:pb-40">
+            <EmptyState direction={direction} onShowComponents={() => setPaletteOpen(true)} />
+          </div>
 
           {wide && (
             <aside className="pointer-events-none absolute top-3 bottom-3 left-3 z-10 flex items-start">
@@ -256,6 +266,7 @@ function Editor() {
           isOverCanvas={isOverCanvas}
         />
       )}
+      <Dialogs />
       <PaletteDragGhost />
       <PaletteDiscard />
     </>

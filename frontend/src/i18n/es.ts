@@ -269,6 +269,88 @@ export const es: Strings = {
     undo: 'Deshacer',
     redo: 'Rehacer',
   },
+  help: {
+    label: 'Ayuda',
+  },
+  dialogs: {
+    close: 'Cerrar',
+  },
+  gallery: {
+    open: 'Galería de plantillas',
+    title: 'Empieza con una plantilla',
+    subtitle: 'Arquitecturas de referencia para adaptar, o un diagrama en blanco.',
+    blank: 'Un lienzo vacío: descríbeselo al asistente o añade tú los componentes.',
+  },
+  empty: {
+    title: 'Empieza tu diagrama',
+    withAssistant: 'Describe tu sistema en el cuadro de abajo, o prueba uno de estos:',
+    withoutAssistant: 'Empieza con una plantilla, o añade tú los componentes.',
+    examples: 'Descripciones de ejemplo',
+    templates: 'Ver plantillas',
+    components: 'Añadir componentes',
+  },
+  shortcuts: {
+    open: 'Atajos de teclado',
+    title: 'Atajos de teclado',
+    subtitle: 'Funcionan en toda la página salvo mientras escribes en un campo.',
+    groups: [
+      {
+        title: 'General',
+        items: [
+          { action: 'Ver estos atajos', keys: ['?'] },
+          { action: 'Deshacer', keys: ['Ctrl/⌘ + Z'] },
+          { action: 'Rehacer', keys: ['Ctrl/⌘ + Mayús + Z', 'Ctrl + Y'] },
+        ],
+      },
+      {
+        title: 'Selección',
+        items: [
+          { action: 'Borrar lo seleccionado', keys: ['Supr', 'Retroceso'] },
+          { action: 'Duplicar el nodo seleccionado', keys: ['Ctrl/⌘ + D'] },
+          { action: 'Renombrar el nodo seleccionado', keys: ['Enter', 'F2', 'Doble clic'] },
+          { action: 'Mover la selección 10 px', keys: ['Alt + flechas'] },
+          { action: 'Mover la selección 1 px', keys: ['Alt + Mayús + flechas'] },
+          { action: 'Añadir un nodo a la selección', keys: ['Ctrl/⌘/Mayús + clic'] },
+          { action: 'Seleccionar con un recuadro', keys: ['Ctrl/⌘/Mayús + arrastrar'] },
+          { action: 'Quitar la selección o cerrar la revisión', keys: ['Esc'] },
+        ],
+      },
+      {
+        title: 'Lienzo',
+        items: [
+          { action: 'Acercar o alejar', keys: ['Rueda', 'Pellizco'] },
+          { action: 'Desplazarse', keys: ['Arrastrar el fondo'] },
+          { action: 'Dibujar una figura de lados iguales', keys: ['Mayús al dibujar'] },
+          { action: 'Dibujar una figura desde su centro', keys: ['Alt al dibujar'] },
+        ],
+      },
+      {
+        title: 'Asistente',
+        items: [
+          { action: 'Enviar la descripción', keys: ['Enter'] },
+          { action: 'Nueva línea', keys: ['Mayús + Enter'] },
+          { action: 'Detener el asistente', keys: ['Esc'] },
+        ],
+      },
+    ],
+  },
+  about: {
+    open: 'Información y privacidad',
+    title: 'Acerca de Archdraft',
+    subtitle: 'Qué hace y qué pasa con tus diagramas.',
+    intro:
+      'Archdraft convierte la descripción de una arquitectura cloud en un diagrama que puedes editar, revisar con reglas de diseño y exportar. Es gratuito y de código abierto, con licencia MIT.',
+    privacyTitle: 'Privacidad',
+    privacy: [
+      'No hay cuentas ni base de datos. Tu diagrama se guarda solo en este navegador, igual que tus preferencias, como el tema, el idioma y las reglas de diseño que desactives.',
+      'Un enlace para compartir lleva el diagrama comprimido en la parte de la dirección que va tras #, que los navegadores no envían a ningún servidor. Quien tenga el enlace puede abrir el diagrama.',
+      'Cuando usas el asistente, tu descripción y el diagrama van a la API de Archdraft, que los pasa al proveedor del modelo para obtener la respuesta. La API no los guarda: sus registros solo anotan un identificador de la petición, la tarea, el modelo, cuánto tardó y por qué falló, si falló.',
+      'El proveedor del modelo trata lo que recibe según sus propias condiciones. GitHub Pages y Cloudflare, donde están el editor y la API, pueden registrar datos técnicos de cada visita, como la dirección IP.',
+      'Archdraft no usa cookies, analítica ni rastreadores.',
+    ],
+    source: 'El código es público en',
+    sourceLink: 'GitHub',
+  },
   card: {
     components: (count: number) => (count === 1 ? 'componente' : 'componentes'),
     connections: (count: number) => (count === 1 ? 'conexión' : 'conexiones'),

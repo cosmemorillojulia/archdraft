@@ -3,6 +3,7 @@ import { AnimatePresence, m } from 'motion/react';
 import { useStrings } from '../i18n/locale.ts';
 import { useTheme } from '../theme.ts';
 import { Button } from './Button.tsx';
+import { HelpMenu } from './HelpMenu.tsx';
 import { HistoryControls } from './HistoryControls.tsx';
 import { LanguageToggle } from './LanguageToggle.tsx';
 import { ShareMenu } from './ShareMenu.tsx';
@@ -10,7 +11,7 @@ import { TemplatesMenu } from './TemplatesMenu.tsx';
 
 /**
  * Fixed application bar: the product name, what it does, the templates, undo and redo,
- * templates, sharing and files, the language and the theme. The theme state lives here,
+ * sharing and files, the language, the help and the theme. The theme state lives here,
  * so a theme change re-renders only the header while the page blends into the
  * new colours.
  */
@@ -33,6 +34,7 @@ export function Header() {
         <span aria-hidden="true" className="mx-1 h-5 w-px bg-line max-md:hidden" />
         <ShareMenu />
         <LanguageToggle />
+        <HelpMenu />
         <Button
           variant="ghost"
           size="icon"

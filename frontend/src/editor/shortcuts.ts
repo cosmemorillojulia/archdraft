@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { dialogStore } from '../onboarding/dialog-store.ts';
 import { reviewStore } from '../review/review-store.ts';
 import { editorStore } from './store.ts';
 
@@ -29,12 +30,16 @@ function isTyping(target: EventTarget | null): boolean {
  * - Enter or F2: edit the name of the selected node in its box, when the focus is on that node or
  *   on the page. A node that is not selected yet is just selected by Enter, as React Flow does.
  * - Escape: close the design review, or cancel a connection, or clear the selection.
+ * - ?: show the keyboard shortcuts.
+ *
+ * None of them acts while a dialog is open over the editor.
  */
 export function useEditorShortcuts(enabled: boolean): void {
   useEffect(() => {
     if (!enabled) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || isTyping(event.target)) return;
+      if (dialogStore.getState().open !== null) return;
       const editor = editorStore.getState();
       const arrow = ARROWS[event.key];
       if (arrow && event.altKey && !event.ctrlKey && !event.metaKey) {
@@ -60,6 +65,8 @@ export function useEditorShortcuts(enabled: boolean): void {
       } else if (!command && (key === 'delete' || key === 'backspace')) {
         handled = editor.selection !== null;
         editor.removeSelection();
+      } else if (!command && key === '?') {
+        dialogStore.getState().show('shortcuts');
       } else if (!command && key === 'escape') {
         const review = reviewStore.getState();
         if (review.open) {
