@@ -17,6 +17,13 @@ const RANK_COST = 8;
 const PORT_GAP = 16;
 /** The most of a side those ends take up. */
 const PORT_SHARE = 0.6;
+/**
+ * How far apart, across, the ends of a connection between facing sides may be for one of them
+ * to move so that the line runs straight instead of making a small step.
+ */
+const STRAIGHTEN = 24;
+/** How close to a corner an end may move. */
+const CORNER_MARGIN = 12;
 
 /** Where a connection leaves its source and reaches its target. */
 export interface EdgePlacement {
@@ -102,12 +109,83 @@ export function placeEdges(
     });
   }
 
+  const alone = (node: string, side: EdgeSides['source']) =>
+    (sharing.get(`${node}\u0000${side}`)?.length ?? 0) === 1;
   const placements = new Map<string, EdgePlacement>();
-  for (const [id, sides] of sidesOf) {
-    const { source, target } = points.get(id) ?? {};
-    if (source && target) placements.set(id, { sides, source, target });
+  for (const edge of graph.edges) {
+    const sides = sidesOf.get(edge.id);
+    const { source, target } = points.get(edge.id) ?? {};
+    if (!sides || !source || !target) continue;
+    const straight = straightened(
+      {
+        box: boxes.get(edge.source) as Box,
+        point: source,
+        movable: alone(edge.source, sides.source),
+      },
+      {
+        box: boxes.get(edge.target) as Box,
+        point: target,
+        movable: alone(edge.target, sides.target),
+      },
+      sides,
+    );
+    placements.set(edge.id, { sides, ...straight });
   }
   return { placements, obstacles };
+}
+
+interface End {
+  readonly box: Box;
+  readonly point: Point;
+  /** Whether the end has its side to itself, and so can slide along it. */
+  readonly movable: boolean;
+}
+
+/**
+ * The ends of a connection between facing sides that are nearly level, slid along their sides
+ * so the line runs straight: both to the middle of them when each has its side to itself, or
+ * the one that does to the other. An end stays clear of the corners of its box, and ends that
+ * share a side keep their place, so the connections there stay apart.
+ */
+export function straightened(
+  from: End,
+  to: End,
+  sides: EdgeSides,
+): { source: Point; target: Point } {
+  const unchanged = { source: from.point, target: to.point };
+  const across = sides.source === 'left' || sides.source === 'right' ? 'y' : 'x';
+  const facing =
+    across === 'y'
+      ? (sides.source === 'right' && sides.target === 'left') ||
+        (sides.source === 'left' && sides.target === 'right')
+      : (sides.source === 'bottom' && sides.target === 'top') ||
+        (sides.source === 'top' && sides.target === 'bottom');
+  const step = to.point[across] - from.point[across];
+  if (!facing || step === 0 || Math.abs(step) > STRAIGHTEN) return unchanged;
+
+  const span = (end: End) => {
+    const start = across === 'y' ? end.box.y : end.box.x;
+    const length = across === 'y' ? end.box.height : end.box.width;
+    return { min: start + CORNER_MARGIN, max: start + length - CORNER_MARGIN };
+  };
+  const line =
+    from.movable && to.movable
+      ? (from.point[across] + to.point[across]) / 2
+      : from.movable
+        ? to.point[across]
+        : to.movable
+          ? from.point[across]
+          : undefined;
+  if (line === undefined) return unchanged;
+  const fits = (end: End) => {
+    const { min, max } = span(end);
+    return !end.movable || (line >= min && line <= max);
+  };
+  if (!fits(from) || !fits(to)) return unchanged;
+  return {
+    source: { ...from.point, [across]: line },
+    target: { ...to.point, [across]: line },
+  };
 }
 
 /** Of the first few pairs of sides, the one with the cheapest route round the obstacles. */
