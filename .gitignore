@@ -20,3 +20,6 @@ coverage/
 !.claude/skills/commit-message/
 !.claude/skills/design-critique/
 !.claude/skills/ingeniero-senior/
+
+# Reports of the evaluation set; the ones worth keeping go in docs/evaluacion.md.
+backend/evals/reports/

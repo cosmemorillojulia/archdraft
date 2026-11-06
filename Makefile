@@ -10,7 +10,7 @@ endif
 WEB := @archdraft/web
 API := @archdraft/api
 
-.PHONY: help install run api api-remote preview build test coverage watch lint format format-check typecheck check clean
+.PHONY: help install run api api-remote preview build test coverage watch lint format format-check typecheck eval check clean
 
 help: ## Muestra esta ayuda
 	@node -e "require('fs').readFileSync('Makefile','utf8').split('\n').forEach(l=>{const m=l.match(/^([a-z-]+):.*## (.*)/);if(m)console.log('  make '+m[1].padEnd(14)+m[2])})"
@@ -55,6 +55,9 @@ format-check: ## Comprueba el formato sin modificar nada
 
 typecheck: ## Comprueba los tipos en todos los paquetes
 	$(PNPM) typecheck
+
+eval: ## Pasa el banco de evaluación contra el modelo de .env.secrets (docs/evaluacion.md)
+	$(PNPM) --filter $(API) eval
 
 check: ## Lo mismo que el CI: formato, lint, tipos, tests y build
 	$(PNPM) check

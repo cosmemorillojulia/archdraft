@@ -12,16 +12,17 @@ pnpm check
 
 ## Scripts
 
-| Script                                       | Qué hace                                                                                         |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `pnpm check`                                 | Todo lo que ejecuta CI, en el mismo orden: formato, lint, typecheck, tests con cobertura y build |
-| `pnpm test`                                  | Tests de todos los paquetes                                                                      |
-| `pnpm test:coverage`                         | Tests con umbrales de cobertura                                                                  |
-| `pnpm lint`                                  | ESLint con información de tipos                                                                  |
-| `pnpm typecheck`                             | `tsc --noEmit` en cada paquete                                                                   |
-| `pnpm format` / `pnpm format:check`          | Prettier                                                                                         |
-| `pnpm --filter @archdraft/shared test:watch` | Tests de un paquete en modo observación                                                          |
-| `pnpm --filter @archdraft/web dev`           | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)           |
+| Script                                       | Qué hace                                                                                                 |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `pnpm check`                                 | Todo lo que ejecuta CI, en el mismo orden: formato, lint, typecheck, tests con cobertura y build         |
+| `pnpm test`                                  | Tests de todos los paquetes                                                                              |
+| `pnpm test:coverage`                         | Tests con umbrales de cobertura                                                                          |
+| `pnpm lint`                                  | ESLint con información de tipos                                                                          |
+| `pnpm typecheck`                             | `tsc --noEmit` en cada paquete                                                                           |
+| `pnpm format` / `pnpm format:check`          | Prettier                                                                                                 |
+| `pnpm --filter @archdraft/shared test:watch` | Tests de un paquete en modo observación                                                                  |
+| `pnpm --filter @archdraft/web dev`           | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)                   |
+| `pnpm --filter @archdraft/api eval`          | Banco de evaluación del agente contra un modelo; con `--provider ideal`, sin clave (ver `evaluacion.md`) |
 
 ## Herramientas y por qué
 
