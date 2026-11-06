@@ -9,7 +9,7 @@ import {
   type GraphOperation,
   type Proposal,
 } from '@archdraft/shared';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { assistantStore } from '../src/ai/assistant-store.ts';
@@ -425,6 +425,27 @@ describe('PromptDock', () => {
     await user.click(screen.getByRole('button', { name: strings.prompt.generate }));
     await waitFor(() => expect(currentGraph()?.title).toBe('Other'));
     expect(bodies[1]).toMatchObject({ task: 'generate', prompt: 'Another shop' });
+  });
+
+  it('says above the prompt that a proposal on the canvas is not applied yet', async () => {
+    openShop();
+    apiAnswering(ok(result('improve', [patchProposal('Cache', ADD_CACHE)])));
+    render(<PromptDock direction="LR" />);
+    expect(screen.queryByText(strings.assistant.previewing)).not.toBeInTheDocument();
+
+    await runAssistant('improve', undefined, 'LR');
+    const legend = await screen.findByText(strings.assistant.previewing);
+    const form = screen.getByRole('textbox', { name: strings.assistant.editLabel }).closest('form');
+    // It comes before the prompt, so that the cards at the top of the canvas never cover it.
+    expect(form).not.toBeNull();
+    expect(
+      legend.compareDocumentPosition(form as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    act(() => closeOffer());
+    await waitFor(() =>
+      expect(screen.queryByText(strings.assistant.previewing)).not.toBeInTheDocument(),
+    );
   });
 
   it('asks for improvements from the assistant menu', async () => {

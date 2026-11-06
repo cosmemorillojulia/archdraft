@@ -34,7 +34,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T17 | Evaluaciones en CI y elección del modelo                         | T16           | pendiente          |
 | T18 | Operaciones de edición (T18a) y tarea edit del agente (T18b)     | T15, T34      | hecha (2026-10-31) |
 | T19 | API: límites de uso, protección y observabilidad                 | T15           | pendiente          |
-| T20 | Editor: integración con el agente                                | T11, T13      | en curso           |
+| T20 | Editor: integración con el agente                                | T11, T13      | hecha (2026-11-06) |
 | T21 | Tests de extremo a extremo y accesibilidad                       | T20           | pendiente          |
 | T22 | Rendimiento y presupuesto de tamaño                              | T21           | pendiente          |
 | T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | pendiente          |
@@ -443,11 +443,7 @@ Documentación: contrato y errores en `docs/modulos/backend.md`; cuenta, token y
 
 ### T20. Editor: integración con el agente
 
-Estado: en curso. Hecho el 2026-10-31: cliente, store, barra de descripción con crear y editar, menú del asistente, panel de propuestas, resaltado de cambios, textos en los dos idiomas y tests con `fetch` simulado. Una mejora hecha de operaciones se vuelve a aplicar sobre el diagrama actual si ha cambiado, así que se pueden aplicar varias seguidas. Documentado en `docs/modulos/web.md`. El 2026-11-06 se comprobó que la API está desplegada en Cloudflare y que el editor publicado se construye con `API_URL`.
-
-Pendiente:
-
-- Capturas de la barra, el menú y el panel en escritorio y móvil, claro y oscuro, revisadas con la skill `design-critique`, con la API en marcha (`make api`).
+Estado: hecha (2026-11-06). Cliente, store, barra de descripción con crear y editar, menú del asistente, panel de propuestas, resaltado de cambios, textos en los dos idiomas y tests con `fetch` simulado. Una mejora hecha de operaciones se vuelve a aplicar sobre el diagrama actual si ha cambiado, así que se pueden aplicar varias seguidas. La API está desplegada en Cloudflare y el editor publicado se construye con `API_URL`. Revisado con capturas de escritorio en claro y oscuro con la API real; de la revisión salió mover la leyenda de la vista previa, que quedaba bajo la tarjeta del diagrama, encima de la barra de descripción. Las capturas en móvil quedan para T26. Documentado en `docs/modulos/web.md`.
 
 Objetivo: crear, editar, mejorar y rediseñar con IA desde el editor.
 
@@ -505,3 +501,9 @@ Objetivo: que el editor completo se sienta premium antes del lanzamiento, revisa
 Entregables: revisión con la skill `design-critique` sobre capturas de Playwright de todos los flujos (escritorio y móvil, claro y oscuro); estados de hover, foco, carga, vacío y error coherentes en todos los paneles; microinteracciones de los flujos principales; pruebas de regresión visual con capturas de Playwright para las pantallas clave.
 
 Criterios de aceptación: ningún hallazgo crítico ni moderado abierto en la revisión; las pruebas de regresión visual corren en CI.
+
+Hallazgos previos (revisión de T20, 2026-11-06):
+
+- Capturas del asistente en móvil, claro y oscuro, que no se hicieron en T20.
+- Tras aplicar un cambio, el encuadre deja componentes bajo el panel lateral del resumen (en la captura, «Secretos» queda tapado y su conexión parece acabar en el vacío).
+- El subtítulo del panel de propuestas se corta («Arreglos para la revisión y lo que se...»).

@@ -4,6 +4,7 @@ import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import { AnimatePresence, LazyMotion, m, MotionConfig } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAssistant } from './ai/assistant-store.ts';
+import { PreviewLegend } from './ai/PreviewLegend.tsx';
 import { DiagramCanvas } from './canvas/DiagramCanvas.tsx';
 import type { Insets } from './canvas/geometry.ts';
 import {
@@ -237,7 +238,8 @@ function Editor() {
           </AnimatePresence>
 
           {!wide && (
-            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-30 flex justify-center">
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-30 flex flex-col items-center">
+              <PreviewLegend />
               <PanelSlot placement="bottom" />
             </div>
           )}
