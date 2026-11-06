@@ -41,6 +41,14 @@ const KINDS: Record<NodeKind, KindText> = {
     description: 'Punto de entrada gestionado para APIs: enrutado, autenticación y límites',
   },
   waf: { label: 'Firewall de aplicaciones web', description: 'Filtra el tráfico HTTP malicioso' },
+  'nat-gateway': {
+    label: 'Puerta de enlace NAT',
+    description: 'Salida a internet para las subredes privadas',
+  },
+  'vpn-gateway': {
+    label: 'Puerta de enlace VPN',
+    description: 'Enlace cifrado con una oficina u otra red',
+  },
   service: { label: 'Servicio', description: 'Servicio en contenedores siempre en marcha' },
   function: { label: 'Función', description: 'Función serverless que se ejecuta por eventos' },
   vm: { label: 'Máquina virtual', description: 'Servidor virtual que gestionas tú' },
@@ -51,6 +59,15 @@ const KINDS: Record<NodeKind, KindText> = {
   'batch-job': {
     label: 'Proceso por lotes',
     description: 'Trabajo finito, programado o bajo demanda',
+  },
+  workflow: {
+    label: 'Flujo de trabajo',
+    description: 'Orquesta los pasos de un proceso, con reintentos y estado',
+  },
+  scheduler: { label: 'Programador', description: 'Lanza trabajos o llamadas según un horario' },
+  'data-processing': {
+    label: 'Procesado de datos',
+    description: 'Pipelines de ETL gestionados, por lotes o en streaming',
   },
   'relational-db': {
     label: 'Base de datos relacional',
@@ -74,6 +91,18 @@ const KINDS: Record<NodeKind, KindText> = {
     label: 'Base de datos vectorial',
     description: 'Búsqueda por similitud sobre embeddings',
   },
+  'file-storage': {
+    label: 'Almacenamiento de ficheros',
+    description: 'Sistema de ficheros compartido que montan los servidores',
+  },
+  'graph-db': {
+    label: 'Base de datos de grafos',
+    description: 'Nodos y relaciones, consultados recorriéndolos',
+  },
+  'time-series-db': {
+    label: 'Base de datos de series temporales',
+    description: 'Mediciones indexadas por el tiempo',
+  },
   queue: { label: 'Cola', description: 'Cola de mensajes punto a punto' },
   topic: { label: 'Tema', description: 'Difusión por publicación y suscripción' },
   stream: {
@@ -81,13 +110,39 @@ const KINDS: Record<NodeKind, KindText> = {
     description: 'Registro ordenado de eventos que se puede releer',
   },
   'event-bus': { label: 'Bus de eventos', description: 'Enrutador de eventos basado en reglas' },
+  'email-service': {
+    label: 'Servicio de correo',
+    description: 'Envía correos transaccionales y masivos',
+  },
+  'push-notifications': {
+    label: 'Notificaciones push',
+    description: 'Envía notificaciones a móviles y navegadores',
+  },
   'identity-provider': {
     label: 'Proveedor de identidad',
     description: 'Autenticación y directorio de usuarios',
   },
   'secrets-manager': { label: 'Gestor de secretos', description: 'Guarda credenciales y claves' },
-  monitoring: { label: 'Monitorización', description: 'Métricas, registros y alertas' },
+  'key-management': {
+    label: 'Gestión de claves',
+    description: 'Claves de cifrado y su rotación',
+  },
+  monitoring: { label: 'Monitorización', description: 'Métricas, paneles y alertas' },
+  logging: { label: 'Registros', description: 'Recogida y búsqueda centralizada de logs' },
+  tracing: { label: 'Trazas', description: 'Sigue una petición a través de los servicios' },
+  'container-registry': {
+    label: 'Registro de contenedores',
+    description: 'Guarda y sirve imágenes de contenedor',
+  },
+  'ci-cd': {
+    label: 'Pipeline de CI/CD',
+    description: 'Compila, prueba y despliega cada cambio',
+  },
   llm: { label: 'LLM', description: 'Modelo de lenguaje grande alojado' },
+  'ml-platform': {
+    label: 'Plataforma de ML',
+    description: 'Entrena, registra y sirve modelos de aprendizaje automático',
+  },
   'external-system': {
     label: 'Sistema externo',
     description: 'API o sistema de terceros fuera de tu control',
@@ -419,6 +474,7 @@ export const es: Strings = {
       messaging: 'Mensajería',
       security: 'Seguridad',
       observability: 'Observabilidad',
+      devops: 'Entrega de software',
       ai: 'IA',
       external: 'Externos',
       shape: 'Figuras',

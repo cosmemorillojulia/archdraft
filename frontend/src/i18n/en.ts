@@ -246,6 +246,7 @@ export const en = {
       messaging: 'Messaging',
       security: 'Security',
       observability: 'Observability',
+      devops: 'Delivery',
       ai: 'AI',
       external: 'External',
       shape: 'Shapes',

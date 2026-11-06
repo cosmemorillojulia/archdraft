@@ -41,6 +41,8 @@
   --cat-security-bg: #fdebf0;
   --cat-observability: #2f7d32;
   --cat-observability-bg: #e8f5e8;
+  --cat-devops: #0e6a8f;
+  --cat-devops-bg: #e2f2f8;
   --cat-ai: #a3299b;
   --cat-ai-bg: #fbe9f9;
   --cat-external: #5d6471;
@@ -88,6 +90,8 @@
   --cat-security-bg: #3d1f29;
   --cat-observability: #7dd683;
   --cat-observability-bg: #1d3420;
+  --cat-devops: #6ccbee;
+  --cat-devops-bg: #142f3b;
   --cat-ai: #f19ae8;
   --cat-ai-bg: #3a1f38;
   --cat-external: #aab1bd;

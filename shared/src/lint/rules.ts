@@ -37,7 +37,13 @@ function callersFrom(
 const ids = (items: readonly { id: string }[]) => items.map((item) => item.id);
 
 /** Serverless functions scale per request, so replica counts do not apply. */
-const SELF_SCALING_KINDS: ReadonlySet<NodeKind> = new Set<ComponentKind>(['function']);
+/** Compute the provider runs and scales by itself: one of them is not a single point of failure. */
+const SELF_SCALING_KINDS: ReadonlySet<NodeKind> = new Set<ComponentKind>([
+  'function',
+  'workflow',
+  'scheduler',
+  'data-processing',
+]);
 
 const singlePointOfFailure: LintRule = {
   id: 'single-point-of-failure',
@@ -233,7 +239,10 @@ const syncCycle: LintRule = {
 /** Cross-cutting services are usually drawn without edges to keep diagrams readable. */
 const CROSS_CUTTING_KINDS: ReadonlySet<NodeKind> = new Set<ComponentKind>([
   'monitoring',
+  'logging',
+  'tracing',
   'secrets-manager',
+  'key-management',
   'identity-provider',
 ]);
 

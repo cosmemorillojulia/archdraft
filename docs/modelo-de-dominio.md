@@ -67,19 +67,20 @@ Definidos en `kinds.ts` como listas `as const`, de las que salen a la vez los ti
 
 ### Tipos de nodo
 
-| Categoría     | Tipos                                                                                                 |
-| ------------- | ----------------------------------------------------------------------------------------------------- |
-| actor         | `user`, `web-client`, `mobile-client`                                                                 |
-| edge          | `dns`, `cdn`, `load-balancer`, `api-gateway`                                                          |
-| compute       | `service`, `function`, `vm`, `kubernetes-cluster`, `batch-job`                                        |
-| data          | `relational-db`, `nosql-db`, `cache`, `object-storage`, `search-index`, `data-warehouse`, `vector-db` |
-| messaging     | `queue`, `topic`, `stream`, `event-bus`                                                               |
-| security      | `waf`, `identity-provider`, `secrets-manager`                                                         |
-| observability | `monitoring`                                                                                          |
-| ai            | `llm`                                                                                                 |
-| external      | `external-system`                                                                                     |
-| shape         | `box`, `circle`, `diamond`, `note`                                                                    |
-| container     | `region`, `availability-zone`, `network`, `subnet`, `boundary`                                        |
+| Categoría     | Tipos                                                                                                                                               |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| actor         | `user`, `web-client`, `mobile-client`                                                                                                               |
+| edge          | `dns`, `cdn`, `load-balancer`, `api-gateway`, `nat-gateway`, `vpn-gateway`                                                                          |
+| compute       | `service`, `function`, `vm`, `kubernetes-cluster`, `batch-job`, `workflow`, `scheduler`, `data-processing`                                          |
+| data          | `relational-db`, `nosql-db`, `cache`, `object-storage`, `search-index`, `data-warehouse`, `vector-db`, `file-storage`, `graph-db`, `time-series-db` |
+| messaging     | `queue`, `topic`, `stream`, `event-bus`, `email-service`, `push-notifications`                                                                      |
+| security      | `waf`, `identity-provider`, `secrets-manager`, `key-management`                                                                                     |
+| observability | `monitoring`, `logging`, `tracing`                                                                                                                  |
+| devops        | `container-registry`, `ci-cd`                                                                                                                       |
+| ai            | `llm`, `ml-platform`                                                                                                                                |
+| external      | `external-system`                                                                                                                                   |
+| shape         | `box`, `circle`, `diamond`, `note`                                                                                                                  |
+| container     | `region`, `availability-zone`, `network`, `subnet`, `boundary`                                                                                      |
 
 ### Figuras genéricas
 
