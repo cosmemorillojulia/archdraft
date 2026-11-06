@@ -50,6 +50,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T33 | Editor: fluidez al mover, cambiar el tamaño y añadir             | T31           | hecha (2026-10-25) |
 | T34 | Repositorio en frontend, backend y shared                        | T33           | hecha (2026-10-31) |
 | T35 | Backend: tareas improve, simplify y extend del agente            | T18           | hecha (2026-10-31) |
+| T36 | Catálogo ampliado y plantillas de referencia                     | T06           | hecha (2026-11-06) |
 
 ## Fase 0: fundamentos
 
@@ -145,6 +146,22 @@ Entregables: `packages/core/src/templates/` con seis plantillas: aplicación web
 Criterios de aceptación: todas pasan `parseArchitectureGraph` sin avisos y `lintGraph` sin errores; los avisos restantes están justificados en la documentación.
 
 Documentación: `docs/modulos/plantillas.md`.
+
+### T36. Catálogo ampliado y plantillas de referencia
+
+Estado: hecha (2026-11-06). Documentado en `docs/modulos/plantillas.md` y `docs/modelo-de-dominio.md`.
+
+Objetivo: que el catálogo y las plantillas cubran lo que usa a diario un equipo de desarrollo, con plantillas sencillas y complejas basadas en arquitecturas que hoy están en producción.
+
+Entregables:
+
+- Diecisiete tipos nuevos: `nat-gateway`, `vpn-gateway`, `workflow`, `scheduler`, `data-processing`, `file-storage`, `graph-db`, `time-series-db`, `email-service`, `push-notifications`, `firewall`, `key-management`, `logging`, `tracing`, `container-registry`, `ci-cd` y `ml-platform`, con la categoría nueva `devops` (entrega de software), sus productos en AWS, Google Cloud y Azure, iconos, colores, nombres en los dos idiomas y su papel en las reglas (cómputo gestionado sin punto único de fallo, servicios transversales sin aristas).
+- Diez plantillas nuevas a partir de arquitecturas de referencia publicadas por los proveedores, con la fuente citada: aplicación web en máquinas virtuales, tarea programada, chat en tiempo real, entrega continua de contenedores, telemetría IoT, vídeo bajo demanda, microservicios en Kubernetes, MLOps, recuperación ante desastres multirregión y red hub and spoke.
+- Textos en español de las plantillas, iconos en la galería y el menú, y ejemplos del prompt solo con las plantillas que caben en el presupuesto de tokens.
+
+Criterios de aceptación: las plantillas son válidas, normalizadas y sin hallazgos del motor de reglas; tests de las reglas con los tipos nuevos y de la elección del ejemplo del prompt; capturas de las plantillas nuevas revisadas.
+
+Pendiente para más adelante: plantillas de pagos, SaaS multiinquilino y búsqueda; revisar con el banco de evaluación (T17) si los tipos nuevos mejoran o empeoran las generaciones.
 
 ## Fase 2: editor
 
