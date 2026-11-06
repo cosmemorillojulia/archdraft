@@ -294,6 +294,17 @@ const definitions = {
     icon: 'route',
     services: { aws: 'Amazon EventBridge', gcp: 'Eventarc', azure: 'Azure Event Grid' },
   },
+  firewall: {
+    category: 'security',
+    label: 'Network firewall',
+    description: 'Filters traffic between networks and to the internet',
+    icon: 'brick-wall',
+    services: {
+      aws: 'AWS Network Firewall',
+      gcp: 'Cloud Next Generation Firewall',
+      azure: 'Azure Firewall',
+    },
+  },
   'identity-provider': {
     category: 'security',
     label: 'Identity provider',

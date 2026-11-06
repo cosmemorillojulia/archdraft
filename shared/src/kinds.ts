@@ -68,6 +68,7 @@ export const COMPONENT_KINDS = [
   'push-notifications',
   // security
   'waf',
+  'firewall',
   'identity-provider',
   'secrets-manager',
   'key-management',
