@@ -64,6 +64,8 @@ Cada paquete tiene su `tsconfig.json`, que extiende la base y define sus `types`
 
 Tiene permisos de solo lectura, cancela ejecuciones anteriores de la misma rama y un tiempo máximo de 15 minutos.
 
+`.github/workflows/evals.yml` pasa el banco de evaluación contra modelos de Groq cada semana y bajo demanda (`docs/evaluacion.md`).
+
 Dependabot (`.github/dependabot.yml`) propone actualizaciones semanales de npm, agrupando las de desarrollo, y mensuales de las acciones de GitHub.
 
 ## Flujo de trabajo
