@@ -1,11 +1,13 @@
 import { ARCHITECTURE_TEMPLATES, isContainerKind } from '@archdraft/shared';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App.tsx';
 import { absoluteBoxes } from '../src/canvas/geometry.ts';
 import { registerViewCommands } from '../src/canvas/view-commands.ts';
 import { editorStore } from '../src/editor/store.ts';
+import { openBlank } from '../src/editor/open-document.ts';
+import { en as strings } from '../src/i18n/en.ts';
 
 const TEMPLATE = ARCHITECTURE_TEMPLATES['three-tier-web'];
 
@@ -59,6 +61,24 @@ describe('Excalidraw shortcuts', () => {
     await user.keyboard('{Shift>}2{/Shift}');
     expect(commands.zoomToSelection).toHaveBeenCalledOnce();
     unregister();
+  });
+});
+
+describe('the button that reorders the whole diagram', () => {
+  it('lays the diagram out again as one step, and is off on an empty diagram', async () => {
+    const user = await openEditor();
+    const shortcuts = screen.getByRole('group', { name: strings.canvas.shortcuts.label });
+    const button = within(shortcuts).getByRole('button', { name: strings.canvas.tidy });
+    editorStore.getState().moveNode('monitoring', { x: 5000, y: 5000 });
+    const moved = document();
+    await user.click(button);
+    await waitFor(() => expect(document()).not.toBe(moved));
+    expect(document().layout.positions.monitoring).not.toEqual({ x: 5000, y: 5000 });
+    editorStore.getState().undo();
+    expect(document()).toBe(moved);
+
+    openBlank('LR');
+    await waitFor(() => expect(button).toBeDisabled());
   });
 });
 

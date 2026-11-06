@@ -1,18 +1,20 @@
 import { DEFAULT_EDGE_STYLE, showsEdgeLabel } from '@archdraft/shared';
-import { Activity, CornerDownRight, Spline, Tag } from 'lucide-react';
-import { memo } from 'react';
+import { Activity, CornerDownRight, LayoutDashboard, Spline, Tag } from 'lucide-react';
+import { memo, useState } from 'react';
 import { Button } from '../components/Button.tsx';
+import { tidyDiagram } from '../editor/open-document.ts';
 import { editorStore, useEditor } from '../editor/store.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { preferencesStore, usePreferences } from '../preferences.ts';
+import { viewCommands } from './view-commands.ts';
 import { CONTROL_GROUP, TOUCH_SIZE } from './ZoomControls.tsx';
 
 /**
  * Shortcuts to the settings of the view that are worth having at hand, in a column of their
  * own next to the zoom: the switch between curved and right-angled connections and the one for
- * the particles that travel along them, and the one that shows or hides the labels of all of
- * them at once. Each shortcut is one button here; new ones go in the
- * same column.
+ * the particles that travel along them, the one that shows or hides the labels of all of
+ * them at once, and the one that lays the whole diagram out again and shows it whole. Each
+ * shortcut is one button here; new ones go in the same column.
  */
 export const CanvasShortcuts = memo(function CanvasShortcuts() {
   const strings = useStrings();
@@ -35,6 +37,15 @@ export const CanvasShortcuts = memo(function CanvasShortcuts() {
   const labelsLabel = allLabelsShown
     ? strings.canvas.edgeLabels.hide
     : strings.canvas.edgeLabels.show;
+  const hasNodes = useEditor((state) => (state.current?.document.graph.nodes.length ?? 0) > 0);
+  const [tidying, setTidying] = useState(false);
+  const tidy = async () => {
+    setTidying(true);
+    const done = await tidyDiagram();
+    setTidying(false);
+    // Once the canvas has drawn the new layout, the view takes it in whole.
+    if (done) requestAnimationFrame(() => viewCommands()?.fit());
+  };
   return (
     <div role="group" aria-label={strings.canvas.shortcuts.label} className={CONTROL_GROUP}>
       <Button
@@ -74,6 +85,22 @@ export const CanvasShortcuts = memo(function CanvasShortcuts() {
         onClick={() => editorStore.getState().setEdgeLabels('all', !allLabelsShown)}
       >
         <Tag size={16} aria-hidden="true" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={TOUCH_SIZE}
+        aria-label={strings.canvas.tidy}
+        title={strings.canvas.tidy}
+        aria-busy={tidying}
+        disabled={!hasNodes || tidying}
+        onClick={() => void tidy()}
+      >
+        <LayoutDashboard
+          size={16}
+          aria-hidden="true"
+          className={tidying ? 'motion-safe:animate-pulse' : ''}
+        />
       </Button>
     </div>
   );

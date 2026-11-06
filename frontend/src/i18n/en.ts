@@ -102,6 +102,14 @@ export const en = {
     open: 'Template gallery',
     title: 'Start from a template',
     subtitle: 'Reference architectures to adapt, or a blank diagram.',
+    groups: {
+      web: 'Web and APIs',
+      services: 'Services and processes',
+      data: 'Data and AI',
+      platform: 'Platform and networks',
+      blank: 'From scratch',
+    },
+    levels: { simple: 'Simple', intermediate: 'Intermediate', complex: 'Complex' },
     blank: 'An empty canvas: describe it to the assistant or add the components yourself.',
   },
   empty: {
@@ -264,7 +272,6 @@ export const en = {
     ],
     generate: 'Generate diagram',
     unavailable: 'The AI assistant is not available in this version',
-    templates: 'Templates',
     templateNames: {
       'three-tier-web': 'Three-tier web',
       'serverless-api': 'Serverless API',
@@ -406,6 +413,7 @@ export const en = {
       show: 'Show the particles on connections',
     },
     shortcuts: { label: 'Shortcuts' },
+    tidy: 'Reorder the whole diagram',
     edgeLabels: {
       label: 'Connection labels',
       hide: 'Hide the labels of every connection',

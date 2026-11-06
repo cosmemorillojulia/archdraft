@@ -7,6 +7,7 @@ import {
   importDocument,
   importDrawio,
   importMermaid,
+  isContainerKind,
   layoutEntry,
   type TemplateId,
 } from '@archdraft/shared';
@@ -48,6 +49,47 @@ export async function openTemplate(
       store.getState().notify(currentStrings().canvas.layoutFailed);
     }
   }
+}
+
+/**
+ * Lays the whole open diagram out again with ELK, as one step of the history: every node gets
+ * a new place, components keep the size given to them, and connections keep their style and
+ * their labels but lose the points drawn on them. If the diagram changes while ELK works, the
+ * new layout is dropped. Resolves to whether it was applied.
+ */
+export async function tidyDiagram(store = editorStore): Promise<boolean> {
+  const current = store.getState().current;
+  if (!current || current.document.graph.nodes.length === 0) return false;
+  const { graph, layout } = current.document;
+  // Groups grow to fit what is inside; components keep the size they were given.
+  const sizes = Object.fromEntries(
+    graph.nodes
+      .filter((node) => !isContainerKind(node.kind))
+      .flatMap((node) => {
+        const size = layoutEntry(layout.sizes, node.id);
+        return size === undefined ? [] : [[node.id, size] as const];
+      }),
+  );
+  let fresh: DiagramLayout;
+  try {
+    fresh = await layoutDiagram(graph, current.direction, { positions: {}, sizes });
+  } catch (error) {
+    console.error('Could not lay out the diagram', error);
+    store.getState().notify(currentStrings().canvas.layoutFailed);
+    return false;
+  }
+  if (store.getState().current?.document !== current.document) return false;
+  const { edgeStyle, edgeStyles, edgeLabels } = layout;
+  store.getState().replaceDocument({
+    graph,
+    layout: {
+      ...fresh,
+      ...(edgeStyle === undefined ? {} : { edgeStyle }),
+      ...(edgeStyles === undefined ? {} : { edgeStyles }),
+      ...(edgeLabels === undefined ? {} : { edgeLabels }),
+    },
+  });
+  return true;
 }
 
 /** Opens an empty diagram, titled in the language of the interface. Undo returns to the previous one. */
