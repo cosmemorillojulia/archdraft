@@ -7,7 +7,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 - Se trabaja en la primera tarea con estado `pendiente` cuyas dependencias estén todas `hecha`. Una tarea `en curso` tiene prioridad sobre cualquier pendiente.
 - Si CI está en rojo en `main`, antes de nada se arregla en una rama `fix/...`.
 - Si una tarea no cabe en una iteración, se implementa un subconjunto coherente que deje `main` en verde, se marca `en curso` y se añade debajo una lista `Pendiente:` con lo que falta.
-- Si una tarea depende de una acción manual del propietario (ver `operaciones.md`), se implementa todo lo posible sin ella y la acción queda anotada en la tabla de acciones pendientes.
+- Si una tarea depende de una acción manual del propietario (ver `operaciones.md`), se implementa todo lo posible sin ella y la acción queda anotada en la tabla de acciones pendientes. Si lo único que le falta a una tarea `en curso` es esa acción, no bloquea: se trabaja en la siguiente pendiente hasta que se haga.
 - Al cerrar una tarea: estado `hecha (AAAA-MM-DD)`, entrada en `CHANGELOG.md` y documentación actualizada.
 - Las tareas nuevas que surjan se añaden al final de su fase con el siguiente número libre; no se renumeran las existentes.
 
@@ -31,7 +31,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T14 | Backend: interfaz y proveedores LLM                              | T34           | hecha (2026-10-31) |
 | T15 | Backend: contrato, prompts, pipeline y tarea generate            | T06, T14      | hecha (2026-10-31) |
 | T16 | Banco de evaluación: conjunto de casos y métricas                | T15           | hecha (2026-11-06) |
-| T17 | Evaluaciones en CI y elección del modelo                         | T16           | pendiente          |
+| T17 | Evaluaciones en CI y elección del modelo                         | T16           | en curso           |
 | T18 | Operaciones de edición (T18a) y tarea edit del agente (T18b)     | T15, T34      | hecha (2026-10-31) |
 | T19 | API: límites de uso, protección y observabilidad                 | T15           | pendiente          |
 | T20 | Editor: integración con el agente                                | T11, T13      | hecha (2026-11-06) |
@@ -407,6 +407,14 @@ Criterios de aceptación: el puntuador es puro y tiene tests; la CLI funciona co
 Documentación: `docs/evaluacion.md` con metodología y limitaciones.
 
 ### T17. Evaluaciones en CI y elección del modelo
+
+Estado: en curso. Workflow `evals.yml` semanal y manual contra `openai/gpt-oss-120b` y `openai/gpt-oss-20b` de Groq, con el informe en el resumen de cada job y como artefacto; sin el secreto se salta sin fallar. Documentado en `docs/evaluacion.md`.
+
+Pendiente:
+
+- Añadir `GROQ_API_KEY` (acción manual en `docs/operaciones.md`) y lanzar Evals a mano. Sin el secreto no se puede avanzar: hasta entonces se trabaja en la siguiente tarea pendiente.
+- Resultados de los dos modelos en `docs/evaluacion.md` y ADR con el modelo por defecto y su justificación numérica.
+- El modelo de Workers AI no se puede medir desde Actions (`docs/evaluacion.md`, En CI).
 
 Objetivo: comparar modelos y elegir el de producción con datos.
 
