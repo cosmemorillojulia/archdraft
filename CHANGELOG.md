@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- `@archdraft/web`: a proposal of the assistant is shown and applied with the whole diagram laid out again (Reorder the whole diagram on), unless it removes components, which keeps the layout so that what goes is shown where it was.
 - `@archdraft/web`: the legend that says a proposal is only a preview sits above the prompt (above the panel on phones) instead of at the top of the canvas, where the diagram card covered it.
 - `@archdraft/web`: connections go round the boxes in their way instead of through them. Right-angled lines follow the shortest route with the fewest turns, down the middle of the gaps between boxes; curves that would cross a box pass round it. Each connection takes the pair of sides with the best route, and connections that share a side of a box spread along it instead of meeting at its middle. Exports to SVG and PNG are drawn the same way.
 - `@archdraft/web`: the layout centres a box between the ones it fans out to or gathers from when that is tidier than lining up chains of calls; both placements are tried and the tidier one is kept.
