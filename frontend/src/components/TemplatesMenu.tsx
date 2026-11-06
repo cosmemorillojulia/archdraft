@@ -1,37 +1,19 @@
-import { TEMPLATE_IDS, type TemplateId } from '@archdraft/shared';
-import {
-  Bot,
-  Check,
-  ChartColumn,
-  ChevronDown,
-  CloudCog,
-  Layers,
-  Plus,
-  type LucideIcon,
-  Newspaper,
-  Workflow,
-} from 'lucide-react';
+import { TEMPLATE_IDS } from '@archdraft/shared';
+import { Check, ChevronDown, LayoutGrid, Plus } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { openBlank, openTemplate } from '../editor/open-document.ts';
 import { useEditor } from '../editor/store.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { useMediaQuery, WIDE_SCREEN } from '../media.ts';
+import { dialogStore } from '../onboarding/dialog-store.ts';
+import { TEMPLATE_ICONS } from '../onboarding/template-icons.ts';
 import { Button } from './Button.tsx';
 import { MENU_ITEM, MENU_MOTION, useMenu } from './menu.ts';
 
-const TEMPLATE_ICONS = {
-  'three-tier-web': Layers,
-  'serverless-api': CloudCog,
-  'event-driven-microservices': Workflow,
-  'rag-chatbot': Bot,
-  'analytics-pipeline': ChartColumn,
-  'static-site-cms': Newspaper,
-} satisfies Record<TemplateId, LucideIcon>;
-
 /**
- * Header button with a menu of the starting templates. The one the diagram
- * was opened from is checked. Choosing one replaces the diagram, which the
- * history can undo.
+ * Header button with a menu of the starting templates, and a way to the gallery
+ * that describes them. The one the diagram was opened from is checked.
+ * Choosing one replaces the diagram, which the history can undo.
  */
 export function TemplatesMenu() {
   const strings = useStrings();
@@ -97,6 +79,19 @@ export function TemplatesMenu() {
                 </button>
               );
             })}
+            <div role="separator" className="mx-2 my-1.5 h-px bg-line" />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                close(true);
+                dialogStore.getState().show('templates');
+              }}
+              className={MENU_ITEM}
+            >
+              <LayoutGrid size={16} aria-hidden="true" className="shrink-0" />
+              {strings.gallery.open}
+            </button>
           </m.div>
         )}
       </AnimatePresence>

@@ -92,6 +92,88 @@ export const en = {
     undo: 'Undo',
     redo: 'Redo',
   },
+  help: {
+    label: 'Help',
+  },
+  dialogs: {
+    close: 'Close',
+  },
+  gallery: {
+    open: 'Template gallery',
+    title: 'Start from a template',
+    subtitle: 'Reference architectures to adapt, or a blank diagram.',
+    blank: 'An empty canvas: describe it to the assistant or add the components yourself.',
+  },
+  empty: {
+    title: 'Start your diagram',
+    withAssistant: 'Describe your system in the box below, or try one of these:',
+    withoutAssistant: 'Start from a template, or add the components yourself.',
+    examples: 'Example descriptions',
+    templates: 'Browse templates',
+    components: 'Add components',
+  },
+  shortcuts: {
+    open: 'Keyboard shortcuts',
+    title: 'Keyboard shortcuts',
+    subtitle: 'They work anywhere on the page except while you type in a field.',
+    groups: [
+      {
+        title: 'General',
+        items: [
+          { action: 'Show these shortcuts', keys: ['?'] },
+          { action: 'Undo', keys: ['Ctrl/⌘ + Z'] },
+          { action: 'Redo', keys: ['Ctrl/⌘ + Shift + Z', 'Ctrl + Y'] },
+        ],
+      },
+      {
+        title: 'Selection',
+        items: [
+          { action: 'Delete what is selected', keys: ['Delete', 'Backspace'] },
+          { action: 'Duplicate the selected node', keys: ['Ctrl/⌘ + D'] },
+          { action: 'Rename the selected node', keys: ['Enter', 'F2', 'Double click'] },
+          { action: 'Move the selection 10 px', keys: ['Alt + arrows'] },
+          { action: 'Move the selection 1 px', keys: ['Alt + Shift + arrows'] },
+          { action: 'Add a node to the selection', keys: ['Ctrl/⌘/Shift + click'] },
+          { action: 'Select with a box', keys: ['Ctrl/⌘/Shift + drag'] },
+          { action: 'Clear the selection or close the review', keys: ['Esc'] },
+        ],
+      },
+      {
+        title: 'Canvas',
+        items: [
+          { action: 'Zoom in or out', keys: ['Wheel', 'Pinch'] },
+          { action: 'Move around', keys: ['Drag the background'] },
+          { action: 'Draw a shape with equal sides', keys: ['Shift while drawing'] },
+          { action: 'Draw a shape from its centre', keys: ['Alt while drawing'] },
+        ],
+      },
+      {
+        title: 'Assistant',
+        items: [
+          { action: 'Send the description', keys: ['Enter'] },
+          { action: 'New line', keys: ['Shift + Enter'] },
+          { action: 'Stop the assistant', keys: ['Esc'] },
+        ],
+      },
+    ],
+  },
+  about: {
+    open: 'About and privacy',
+    title: 'About Archdraft',
+    subtitle: 'What it does and what happens to your diagrams.',
+    intro:
+      'Archdraft turns a description of a cloud architecture into a diagram you can edit, review against design rules and export. It is free and open source, under the MIT licence.',
+    privacyTitle: 'Privacy',
+    privacy: [
+      'There are no accounts and no database. Your diagram is saved only in this browser, and so are your preferences, such as the theme, the language and the design rules you turn off.',
+      'A share link carries the diagram compressed in the part of the address after #, which browsers do not send to any server. Anyone with the link can open the diagram.',
+      'When you use the assistant, your description and the diagram go to the Archdraft API, which passes them to the model provider to get the answer. The API does not keep them: its logs record only an id of the request, the task, the model, how long it took and why it failed, if it did.',
+      'The model provider handles what it receives under its own terms. GitHub Pages and Cloudflare, which host the editor and the API, may log technical data of each visit, such as the IP address.',
+      'Archdraft uses no cookies, analytics or trackers.',
+    ],
+    source: 'The code is public on',
+    sourceLink: 'GitHub',
+  },
   card: {
     components: (count: number) => (count === 1 ? 'component' : 'components'),
     connections: (count: number) => (count === 1 ? 'connection' : 'connections'),

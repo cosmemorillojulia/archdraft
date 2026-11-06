@@ -5,6 +5,8 @@ import { AnimatePresence, LazyMotion, m, MotionConfig } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAssistant } from './ai/assistant-store.ts';
 import { PreviewLegend } from './ai/PreviewLegend.tsx';
+import { useDialog } from './onboarding/dialog-store.ts';
+import { Dialogs } from './onboarding/Dialogs.tsx';
 import { DiagramCanvas } from './canvas/DiagramCanvas.tsx';
 import type { Insets } from './canvas/geometry.ts';
 import {
@@ -174,10 +176,12 @@ function Editor() {
   );
   // While a tile is carried out of the sheet, the diagram under it must be reachable.
   const carrying = usePaletteDrag((state) => state.drag !== null);
+  // A dialog over the editor keeps the focus and screen readers to itself.
+  const dialogOpen = useDialog((state) => state.open !== null);
 
   return (
     <>
-      <div inert={sheetOpen && !carrying} className="flex h-full flex-col">
+      <div inert={(sheetOpen && !carrying) || dialogOpen} className="flex h-full flex-col">
         <Header />
 
         <div className="relative min-h-0 flex-1 overflow-hidden bg-canvas">
@@ -256,6 +260,7 @@ function Editor() {
           isOverCanvas={isOverCanvas}
         />
       )}
+      <Dialogs />
       <PaletteDragGhost />
       <PaletteDiscard />
     </>

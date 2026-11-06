@@ -5,6 +5,7 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import { assistantStore } from '../src/ai/assistant-store.ts';
 import { editorStore } from '../src/editor/store.ts';
 import { localeStore } from '../src/i18n/locale.ts';
+import { dialogStore } from '../src/onboarding/dialog-store.ts';
 import { preferencesStore } from '../src/preferences.ts';
 import { reviewStore } from '../src/review/review-store.ts';
 
@@ -69,6 +70,7 @@ afterEach(() => {
   // Each test starts with an empty editor.
   editorStore.setState(editorStore.getInitialState(), true);
   reviewStore.setState(reviewStore.getInitialState(), true);
+  dialogStore.setState(dialogStore.getInitialState(), true);
   assistantStore.getState().controller?.abort();
   assistantStore.setState(assistantStore.getInitialState(), true);
   preferencesStore.setState(preferencesStore.getInitialState(), true);
