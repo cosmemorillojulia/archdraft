@@ -7,6 +7,7 @@ import { useAssistant } from './ai/assistant-store.ts';
 import { PreviewLegend } from './ai/PreviewLegend.tsx';
 import { useDialog } from './onboarding/dialog-store.ts';
 import { Dialogs } from './onboarding/Dialogs.tsx';
+import { EmptyState } from './onboarding/EmptyState.tsx';
 import { DiagramCanvas } from './canvas/DiagramCanvas.tsx';
 import type { Insets } from './canvas/geometry.ts';
 import {
@@ -193,6 +194,11 @@ function Editor() {
               inspectorPlacement={wide ? 'side' : 'bottom'}
             />
           </main>
+
+          {/* On phones, clear of the canvas controls on the right and the components button below. */}
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4 pt-28 pb-36 max-md:pt-44 max-md:pr-16 max-md:pb-40">
+            <EmptyState direction={direction} onShowComponents={() => setPaletteOpen(true)} />
+          </div>
 
           {wide && (
             <aside className="pointer-events-none absolute top-3 bottom-3 left-3 z-10 flex items-start">
