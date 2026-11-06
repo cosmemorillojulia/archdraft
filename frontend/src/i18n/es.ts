@@ -41,6 +41,10 @@ const KINDS: Record<NodeKind, KindText> = {
     description: 'Punto de entrada gestionado para APIs: enrutado, autenticación y límites',
   },
   waf: { label: 'Firewall de aplicaciones web', description: 'Filtra el tráfico HTTP malicioso' },
+  firewall: {
+    label: 'Firewall de red',
+    description: 'Filtra el tráfico entre redes y hacia internet',
+  },
   'nat-gateway': {
     label: 'Puerta de enlace NAT',
     description: 'Salida a internet para las subredes privadas',
@@ -500,6 +504,16 @@ export const es: Strings = {
       'rag-chatbot': 'Chatbot RAG',
       'analytics-pipeline': 'Analítica',
       'static-site-cms': 'Web estática',
+      'web-app-on-vms': 'Web en máquinas virtuales',
+      'scheduled-job': 'Tarea programada',
+      'websocket-chat': 'Chat en tiempo real',
+      'container-delivery': 'Entrega de contenedores',
+      'iot-analytics': 'Analítica IoT',
+      'video-on-demand': 'Vídeo bajo demanda',
+      'aks-microservices': 'Microservicios en Kubernetes',
+      'mlops-pipeline': 'MLOps',
+      'multi-region-dr': 'Recuperación multirregión',
+      'hub-spoke-network': 'Red hub and spoke',
     },
   },
   assistant: {
