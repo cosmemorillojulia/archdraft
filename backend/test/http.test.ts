@@ -1,9 +1,17 @@
 import { type ArchitectureGraph, AssistResultSchema } from '@archdraft/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { type AppDependencies, type AssistLogEntry, createApp } from '../src/http/app.ts';
-import { allowedOrigins, type Env, providerFromEnv, reasoningEffortFor } from '../src/http/env.ts';
+import {
+  allowedOrigins,
+  type Env,
+  providerFromEnv,
+  reasoningEffortFor,
+  type UsageCounterNamespace,
+} from '../src/http/env.ts';
+import { consumeDailyUse } from '../src/http/usage.ts';
 import { LlmError } from '../src/llm/errors.ts';
 import { createScriptedProvider, type ScriptedTurn } from '../src/llm/scripted-provider.ts';
+import { memoryStorage } from './memory-storage.ts';
 
 const ENV: Env = { ALLOWED_ORIGINS: 'https://editor.example, http://localhost:5173' };
 
@@ -246,6 +254,101 @@ describe('POST /v1/assist as a stream', () => {
     const events = await eventsOf(response);
     expect(events.every(({ event }) => event === 'progress')).toBe(true);
     expect(logs).toEqual([]);
+  });
+});
+
+describe('daily limit per address', () => {
+  const NOON = Date.parse('2026-11-10T12:00:00Z');
+
+  /** Durable Objects in memory, one per name, as the `USAGE` binding hands them out. */
+  function usageNamespace() {
+    const objects = new Map<string, ReturnType<typeof memoryStorage>>();
+    const namespace: UsageCounterNamespace = {
+      getByName: (name) => ({
+        consume: (limit) => {
+          const object = objects.get(name) ?? memoryStorage();
+          objects.set(name, object);
+          return consumeDailyUse(object.storage, limit, NOON);
+        },
+      }),
+    };
+    return { namespace, objects };
+  }
+
+  function limitedApp(env: Env, turns: ScriptedTurn[] = [GOOD_ANSWER, GOOD_ANSWER, GOOD_ANSWER]) {
+    const logs: AssistLogEntry[] = [];
+    const scripted = createScriptedProvider(turns);
+    const app = createApp({ provider: () => scripted.provider, log: (entry) => logs.push(entry) });
+    const post = (body: unknown, headers: Record<string, string> = {}) =>
+      app.request(
+        '/v1/assist',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify(body),
+        },
+        { ...ENV, ...env },
+      );
+    return { post, logs, requests: scripted.requests };
+  }
+
+  const FROM = (address: string) => ({ 'CF-Connecting-IP': address });
+
+  it('answers 429 with Retry-After once an address has used its requests for the day', async () => {
+    const { namespace } = usageNamespace();
+    const { post, logs, requests } = limitedApp({ USAGE: namespace, DAILY_ASSIST_LIMIT: '2' });
+    expect((await post(GENERATE, FROM('203.0.113.7'))).status).toBe(200);
+    expect((await post(GENERATE, FROM('203.0.113.7'))).status).toBe(200);
+
+    const refused = await post(GENERATE, FROM('203.0.113.7'));
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get('Content-Type')).toBe('application/problem+json');
+    expect(refused.headers.get('Retry-After')).toBe(String(12 * 3600));
+    expect(await refused.json()).toMatchObject({
+      type: '/problems/rate-limited',
+      status: 429,
+      detail: 'This address has made its 2 requests for today',
+    });
+    // The model is not called for a refused request, and the refusal is logged.
+    expect(requests).toHaveLength(2);
+    expect(logs.at(-1)).toMatchObject({ status: 429, problem: 'daily-limit' });
+    expect(JSON.stringify(logs)).not.toContain('203.0.113.7');
+  });
+
+  it('keeps a count for each address', async () => {
+    const { namespace, objects } = usageNamespace();
+    const { post } = limitedApp({ USAGE: namespace, DAILY_ASSIST_LIMIT: '1' });
+    expect((await post(GENERATE, FROM('203.0.113.7'))).status).toBe(200);
+    expect((await post(GENERATE, FROM('198.51.100.1'))).status).toBe(200);
+    expect(objects.size).toBe(2);
+  });
+
+  it('refuses before opening a stream, so the editor gets a plain problem', async () => {
+    const { namespace } = usageNamespace();
+    const { post } = limitedApp({ USAGE: namespace, DAILY_ASSIST_LIMIT: '1' });
+    await post(GENERATE, FROM('203.0.113.7'));
+    const refused = await post(GENERATE, { ...FROM('203.0.113.7'), ...STREAM });
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get('Content-Type')).toBe('application/problem+json');
+    expect(refused.headers.get('Retry-After')).toBe(String(12 * 3600));
+  });
+
+  it('does not count requests the contract rejects', async () => {
+    const { namespace, objects } = usageNamespace();
+    const { post } = limitedApp({ USAGE: namespace, DAILY_ASSIST_LIMIT: '1' });
+    expect((await post({ task: 'generate' }, FROM('203.0.113.7'))).status).toBe(400);
+    expect(objects.size).toBe(0);
+  });
+
+  it('lets requests through and says so when the counter fails', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const failing: UsageCounterNamespace = {
+      getByName: () => ({ consume: () => Promise.reject(new Error('Exceeded allowed rows')) }),
+    };
+    const { post } = limitedApp({ USAGE: failing });
+    expect((await post(GENERATE, FROM('203.0.113.7'))).status).toBe(200);
+    expect(error).toHaveBeenCalledWith('Usage counter failed', expect.any(Error));
+    error.mockRestore();
   });
 });
 
