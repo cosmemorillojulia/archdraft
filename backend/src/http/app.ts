@@ -8,6 +8,7 @@ import { LlmError } from '../llm/errors.ts';
 import type { LlmProvider } from '../llm/provider.ts';
 import { allowedOrigins, type Env, providerFromEnv } from './env.ts';
 import { PROBLEM_OF, problemBody, problemResponse } from './problems.ts';
+import { dailyLimitFrom, type UsageDecision, usageKey } from './usage.ts';
 
 /** One line per call to the agent. Never the prompt or the diagram (docs/arquitectura.md §7). */
 export interface AssistLogEntry {
@@ -37,6 +38,26 @@ function logJson(entry: AssistLogEntry): void {
   // Workers Logs indexes JSON written to the console.
   // eslint-disable-next-line no-console
   console.log(JSON.stringify(entry));
+}
+
+/**
+ * Counts the request against the daily use of its address (ADR 0025).
+ * Undefined when there is no counter to ask: none is bound, as in local
+ * tests, or it failed. A failing counter lets requests through rather than
+ * take the assistant down with it; the failure is logged.
+ */
+async function consumeUse(
+  env: Env,
+  address: string | undefined,
+  limit: number,
+): Promise<UsageDecision | undefined> {
+  if (!env.USAGE) return undefined;
+  try {
+    return await env.USAGE.getByName(await usageKey(address)).consume(limit);
+  } catch (error) {
+    console.error('Usage counter failed', error);
+    return undefined;
+  }
 }
 
 /**
@@ -107,6 +128,16 @@ export function createApp(dependencies: AppDependencies = {}) {
       }
       const started = now();
       const entry = { requestId: c.get('requestId'), task: request.task, provider: provider.name };
+
+      const limit = dailyLimitFrom(c.env.DAILY_ASSIST_LIMIT);
+      const usage = await consumeUse(c.env, c.req.header('CF-Connecting-IP'), limit);
+      if (usage?.allowed === false) {
+        log({ ...entry, status: 429, durationMs: now() - started, problem: 'daily-limit' });
+        return problemResponse('rate-limited', {
+          detail: `This address has made its ${limit} requests for today`,
+          retryAfter: usage.retryAfter,
+        });
+      }
 
       if (c.req.header('Accept')?.includes('text/event-stream') === true) {
         return streamSSE(c, async (stream) => {

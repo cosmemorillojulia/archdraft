@@ -8,7 +8,14 @@
   "vars": {
     // The editor on GitHub Pages and in local development.
     "ALLOWED_ORIGINS": "https://cosmemorillojulia.github.io,http://localhost:5173",
+    // Requests to /v1/assist per address and day (ADR 0025).
+    "DAILY_ASSIST_LIMIT": "10",
   },
+  // One counter of daily use per address; SQLite is the only backend of the free plan.
+  "durable_objects": {
+    "bindings": [{ "name": "USAGE", "class_name": "UsageCounter" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UsageCounter"] }],
   // Logs written as JSON are searchable in Workers Logs.
   "observability": { "enabled": true },
 }
