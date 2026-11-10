@@ -182,6 +182,7 @@ export const en = {
       'There are no accounts and no database. Your diagram is saved only in this browser, and so are your preferences, such as the theme, the language and the design rules you turn off.',
       'A share link carries the diagram compressed in the part of the address after #, which browsers do not send to any server. Anyone with the link can open the diagram.',
       'When you use the assistant, your description and the diagram go to the Archdraft API, which passes them to the model provider to get the answer. The API does not keep them: its logs record only an id of the request, the task, the model, how long it took and why it failed, if it did.',
+      'To share the free quota of the model, each address may use the assistant a few times a day. The API counts the requests of each address under a hash of it, never the address itself, and forgets the count at midnight UTC.',
       'The model provider handles what it receives under its own terms. GitHub Pages and Cloudflare, which host the editor and the API, may log technical data of each visit, such as the IP address.',
       'Archdraft uses no cookies, analytics or trackers.',
     ],
