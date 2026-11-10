@@ -65,7 +65,7 @@ El repositorio tiene tres paquetes, uno por carpeta (ADR 0021): lo que corre en 
 | Paquete    | Nombre              | Responsabilidad                                                                                                                     | Tecnología                                         | Despliegue         | Estado                                                              |
 | ---------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------ | ------------------------------------------------------------------- |
 | `frontend` | `@archdraft/web`    | Editor visual, revisión en vivo, exportación, persistencia local y disposición automática (`src/layout`, en un Web Worker)          | React, Vite, Tailwind, React Flow, Zustand, ELK.js | GitHub Pages       | Hecho (T04, T07 a T12, T25 a T33); integración con el agente en T20 |
-| `backend`  | `@archdraft/api`    | Capa HTTP (`src/http`), proveedores LLM (`src/llm`) y agente: prompts, pipeline con reintentos y tareas (`src/agent`)               | Hono, Cloudflare Workers, Workers AI               | Cloudflare Workers | Hecho (T13 a T15, T18, T35); límites de uso en T19                  |
+| `backend`  | `@archdraft/api`    | Capa HTTP (`src/http`), proveedores LLM (`src/llm`) y agente: prompts, pipeline con reintentos y tareas (`src/agent`)               | Hono, Cloudflare Workers, Workers AI               | Cloudflare Workers | Hecho (T13 a T15, T18, T19, T35)                                    |
 | `shared`   | `@archdraft/shared` | Modelo de dominio: esquema, catálogo, índice del grafo, validación, reglas de diseño, exportadores, plantillas y contrato de la API | TypeScript puro, Zod                               | Librería interna   | Hecho (T01 a T06, T15, T18)                                         |
 
 La regla de dependencias es estricta: `frontend` y `backend` dependen de `shared`; `shared` no depende de nadie, y `frontend` y `backend` nunca se importan entre sí. Lo que necesitan los dos lados, como el contrato de `/v1/assist`, va en `shared`. El banco de evaluación vive en `backend/evals/` y ejecuta el mismo agente que la API: lo que se mide es lo que se despliega (`evaluacion.md`). El código de dominio y el agente no hacen E/S por su cuenta; reciben `fetch` o el proveedor por parámetro, así que se prueban sin red, sin navegador y sin Worker.
@@ -134,6 +134,7 @@ flowchart LR
   prov --> oai[API compatible con OpenAI]
   repair -->|grafo| parse[parseArchitectureGraph]
   repair -->|operaciones| patch[applyPatch]
+  route --> usage[("UsageCounter<br/>Durable Object por dirección")]
   route --> err[Errores RFC 9457]
 ```
 
@@ -192,7 +193,7 @@ El documento, con su disposición, se serializa, se comprime y se codifica en el
 - CORS restringido al dominio del editor.
 - Límites de tamaño en la entrada: prompt de 4.000 caracteres como máximo y cuerpo de 64 KB, más los límites del esquema (200 nodos, 400 aristas).
 - La salida del modelo es dato, nunca código: se valida con esquemas estrictos y se renderiza como texto. Los exportadores escapan las etiquetas según el formato de destino (XML y HTML en draw.io, comillas y entidades en Mermaid).
-- Límite de uso por IP para proteger la cuota diaria (T19).
+- Límite diario de peticiones por dirección, contado en un Durable Object por dirección que se borra a medianoche UTC (T19, ADR 0025).
 
 ### Privacidad
 
@@ -227,10 +228,10 @@ Los pasos manuales necesarios (activar Pages, cuenta de Cloudflare, secretos) es
 
 ## 9. Riesgos técnicos
 
-| Riesgo                                                     | Probabilidad | Impacto | Mitigación                                                                                          |
-| ---------------------------------------------------------- | ------------ | ------- | --------------------------------------------------------------------------------------------------- |
-| Los modelos gratuitos generan JSON inválido con frecuencia | Media        | Alto    | JSON Schema, reintentos con errores, few-shot, medición en evals                                    |
-| El parseo y la validación superan 10 ms de CPU             | Baja         | Medio   | Medir en T19; si ocurre, validar en el cliente y dejar en el Worker solo la comprobación de esquema |
-| La cuota diaria se agota                                   | Media        | Medio   | Límite por IP, proveedor alternativo, editor útil sin IA                                            |
-| Cambios en los planes gratuitos                            | Media        | Alto    | Proveedores intercambiables, documentación de límites con fecha                                     |
-| Diagramas grandes lentos en el lienzo                      | Baja         | Medio   | Límite de 200 nodos, memoización, disposición en worker                                             |
+| Riesgo                                                     | Probabilidad | Impacto | Mitigación                                                                                                                                                                                            |
+| ---------------------------------------------------------- | ------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Los modelos gratuitos generan JSON inválido con frecuencia | Media        | Alto    | JSON Schema, reintentos con errores, few-shot, medición en evals                                                                                                                                      |
+| El parseo y la validación superan 10 ms de CPU             | Baja         | Medio   | Medido en T19: 2 a 4 ms con 200 nodos, más en la primera petición de cada isolate (`docs/modulos/backend.md`); si se repite en producción, validar en el cliente y dejar en el Worker solo el esquema |
+| La cuota diaria se agota                                   | Media        | Medio   | Límite diario por dirección (ADR 0025), proveedor alternativo, editor útil sin IA                                                                                                                     |
+| Cambios en los planes gratuitos                            | Media        | Alto    | Proveedores intercambiables, documentación de límites con fecha                                                                                                                                       |
+| Diagramas grandes lentos en el lienzo                      | Baja         | Medio   | Límite de 200 nodos, memoización, disposición en worker                                                                                                                                               |
