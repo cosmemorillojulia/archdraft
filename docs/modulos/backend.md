@@ -150,7 +150,7 @@ Para que una sola persona no gaste la cuota diaria del modelo (ADR 0025):
 - Solo cuentan las peticiones que cumplen el contrato; las rechazadas con 400 o 413 no gastan. Una petición que pasa el límite no se escribe, así que tampoco gasta filas del plan gratuito de Durable Objects.
 - Pasado el límite: 429 `rate-limited` con `Retry-After` hasta las 00:00 UTC, el `detail` «This address has made its N requests for today» y una línea de registro con `problem: "daily-limit"`. El editor ya traduce este tipo y dice cuánto esperar.
 - La primera petición del día programa una alarma a las 00:00 UTC que borra el objeto. Si la alarma se retrasa, una cuenta de un día anterior se ignora.
-- Sin el binding `USAGE`, como en los tests de otras partes o en una configuración sin Durable Objects, no hay límite. Si el contador falla, la petición sigue y se registra `Usage counter failed`: el límite protege la cuota, pero no debe apagar el asistente.
+- Sin el binding `USAGE`, como en la mayoría de los tests, no hay límite. Si el contador falla, la petición sigue y se registra `Usage counter failed`: el límite protege la cuota, pero no debe apagar el asistente.
 
 ### Tiempo de CPU
 

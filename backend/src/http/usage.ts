@@ -11,8 +11,6 @@ export const DEFAULT_DAILY_ASSIST_LIMIT = 10;
 
 export interface UsageDecision {
   readonly allowed: boolean;
-  /** Requests left today once this one is counted. */
-  readonly remaining: number;
   /** Seconds until 00:00 UTC, when every count starts again. */
   readonly retryAfter: number;
 }
@@ -52,10 +50,10 @@ export async function consumeDailyUse(
   const stored = await storage.get<StoredUsage>(USAGE_KEY);
   // An alarm may run late: a count from an earlier day no longer counts.
   const used = stored?.day === day ? stored.count : 0;
-  if (used >= limit) return { allowed: false, remaining: 0, retryAfter };
+  if (used >= limit) return { allowed: false, retryAfter };
   await storage.put(USAGE_KEY, { day, count: used + 1 } satisfies StoredUsage);
   if (used === 0) await storage.setAlarm(now + retryAfter * 1000);
-  return { allowed: true, remaining: limit - used - 1, retryAfter };
+  return { allowed: true, retryAfter };
 }
 
 /** `DAILY_ASSIST_LIMIT` as a whole number of at least 1, or the default. */

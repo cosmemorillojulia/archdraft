@@ -16,7 +16,6 @@ describe('consumeDailyUse', () => {
     const decisions = [];
     for (let i = 0; i < 4; i++) decisions.push(await consumeDailyUse(storage, 3, NOON));
     expect(decisions.map((decision) => decision.allowed)).toEqual([true, true, true, false]);
-    expect(decisions.map((decision) => decision.remaining)).toEqual([2, 1, 0, 0]);
     expect(decisions[3]?.retryAfter).toBe(12 * 3600);
   });
 
@@ -45,7 +44,7 @@ describe('consumeDailyUse', () => {
   it('counts a request made at the last second of a day in that day', async () => {
     const { storage } = memoryStorage();
     const decision = await consumeDailyUse(storage, 1, Date.parse('2026-11-10T23:59:59.500Z'));
-    expect(decision).toEqual({ allowed: true, remaining: 0, retryAfter: 1 });
+    expect(decision).toEqual({ allowed: true, retryAfter: 1 });
   });
 });
 
