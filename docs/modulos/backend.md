@@ -6,13 +6,16 @@ API de Archdraft: un Cloudflare Worker con Hono que ejecuta el agente de IA. El 
 
 ```
 backend/
-  wrangler.jsonc          # Worker, binding AI de Workers AI, ALLOWED_ORIGINS, logs
+  wrangler.jsonc          # Worker, bindings AI y USAGE, ALLOWED_ORIGINS, DAILY_ASSIST_LIMIT, logs
   src/
-    index.ts              # punto de entrada del Worker: createApp()
+    index.ts              # punto de entrada del Worker: createApp() y el Durable Object
+    usage-counter.ts      # Durable Object UsageCounter: uso diario de una dirección
+    cloudflare-workers.d.ts # la parte de cloudflare:workers que se usa
     http/
-      app.ts              # rutas, middlewares, registro por petición
+      app.ts              # rutas, middlewares, límite diario, registro por petición
       env.ts              # Env del Worker y elección del proveedor
       problems.ts         # errores application/problem+json (RFC 9457)
+      usage.ts            # cuenta diaria pura, límite y clave de cada dirección
     llm/
       provider.ts         # LlmProvider: mensajes in, texto out
       errors.ts           # LlmError y sus cuatro tipos; Retry-After; plazos
@@ -32,6 +35,9 @@ backend/
     ideal-provider.ts     # modelo falso con la respuesta ideal de cada caso
     report.ts             # informe en Markdown
     cli.ts                # pnpm --filter @archdraft/api eval
+  bench/
+    cpu.ts                # tiempo de CPU de las peticiones más grandes
+    cli.ts                # pnpm --filter @archdraft/api bench:cpu
   test/                   # Vitest con proveedor guionizado y fetch falso
 ```
 
@@ -108,23 +114,62 @@ data: {"task":"generate","proposals":[…],"attempts":1,"warnings":[]}
 
 `application/problem+json` con `type`, `title`, `status` y `detail`. El editor traduce cada `type`:
 
-| `type`                           | Estado | Cuándo                                                      |
-| -------------------------------- | ------ | ----------------------------------------------------------- |
-| `/problems/invalid-request`      | 400    | El cuerpo no es JSON o no sigue el contrato (`errors[]`)    |
-| `/problems/payload-too-large`    | 413    | El cuerpo pasa de 64 KB                                     |
-| `/problems/rate-limited`         | 429    | Cuota del proveedor agotada; `Retry-After` en segundos      |
-| `/problems/model-error`          | 502    | El proveedor falla, no responde o no hay modelo configurado |
-| `/problems/invalid-model-output` | 502    | El modelo no dio una respuesta válida tras los reintentos   |
-| `/problems/model-timeout`        | 504    | El modelo tardó más de 60 s                                 |
-| `/problems/not-found`            | 404    | Ruta desconocida                                            |
-| `/problems/internal-error`       | 500    | Fallo inesperado                                            |
+| `type`                           | Estado | Cuándo                                                                                  |
+| -------------------------------- | ------ | --------------------------------------------------------------------------------------- |
+| `/problems/invalid-request`      | 400    | El cuerpo no es JSON o no sigue el contrato (`errors[]`)                                |
+| `/problems/payload-too-large`    | 413    | El cuerpo pasa de 64 KB                                                                 |
+| `/problems/rate-limited`         | 429    | Límite diario de la dirección o cuota del proveedor agotados; `Retry-After` en segundos |
+| `/problems/model-error`          | 502    | El proveedor falla, no responde o no hay modelo configurado                             |
+| `/problems/invalid-model-output` | 502    | El modelo no dio una respuesta válida tras los reintentos                               |
+| `/problems/model-timeout`        | 504    | El modelo tardó más de 60 s                                                             |
+| `/problems/not-found`            | 404    | Ruta desconocida                                                                        |
+| `/problems/internal-error`       | 500    | Fallo inesperado                                                                        |
 
 ### Middlewares
 
 - `X-Request-Id`: se respeta el de la petición si es un slug de hasta 64 caracteres; si no, se genera uno. Vuelve en la respuesta.
 - CORS: solo los orígenes de `ALLOWED_ORIGINS` (separados por comas), con `X-Request-Id` y `Retry-After` expuestos.
 - Límite de cuerpo de 64 KB y validación con el contrato antes de llamar al modelo.
+- Límite diario por dirección (ver Límites de uso) antes de llamar al modelo y antes de abrir el flujo de eventos.
 - Un registro JSON por llamada al agente: identificador, tarea, proveedor, estado, duración, intentos y, si falla, su tipo y su explicación. Nunca el prompt ni el diagrama.
+
+## Límites de uso
+
+Para que una sola persona no gaste la cuota diaria del modelo (ADR 0025):
+
+| Límite                         | Valor                                         | Dónde                                          |
+| ------------------------------ | --------------------------------------------- | ---------------------------------------------- |
+| Peticiones por dirección y día | 10 (`DAILY_ASSIST_LIMIT`)                     | `http/usage.ts`, Durable Object `UsageCounter` |
+| Cuerpo de la petición          | 64 KB                                         | `ASSIST_LIMITS.bodyBytes`                      |
+| Descripción o instrucción      | 4.000 caracteres                              | `AssistRequestSchema`                          |
+| Diagrama                       | 200 nodos y 400 aristas, más los del esquema  | `LIMITS` de `shared`                           |
+| Cada llamada al modelo         | 60 s, como mucho tres llamadas por reparación | `MODEL_TIMEOUT_MS`, `runWithRepair`            |
+| Respuesta del modelo           | 4.500, 2.500 o 3.500 tokens según la tarea    | `MAX_TOKENS` en `agent/assist.ts`              |
+
+- La dirección es la cabecera `CF-Connecting-IP`: la IPv4 entera o los primeros 64 bits de la IPv6, porque una conexión suele tener un /64 completo y podría cambiar de dirección dentro de él. Una IPv4 escrita como IPv6 (`::ffff:a.b.c.d`) cuenta como esa IPv4. El contador se llama con su huella SHA-256, nunca con la dirección, y la dirección no aparece en los registros.
+- Solo cuentan las peticiones que cumplen el contrato; las rechazadas con 400 o 413 no gastan. Una petición que pasa el límite no se escribe, así que tampoco gasta filas del plan gratuito de Durable Objects.
+- Pasado el límite: 429 `rate-limited` con `Retry-After` hasta las 00:00 UTC, el `detail` «This address has made its N requests for today» y una línea de registro con `problem: "daily-limit"`. El editor ya traduce este tipo y dice cuánto esperar.
+- La primera petición del día programa una alarma a las 00:00 UTC que borra el objeto. Si la alarma se retrasa, una cuenta de un día anterior se ignora.
+- Sin el binding `USAGE`, como en la mayoría de los tests, no hay límite. Si el contador falla, la petición sigue y se registra `Usage counter failed`: el límite protege la cuota, pero no debe apagar el asistente.
+
+### Tiempo de CPU
+
+El plan gratuito de Workers admite 10 ms de CPU por petición; esperar al modelo no cuenta. `pnpm --filter @archdraft/api bench:cpu [veces]` mide en Node.js, con un modelo que responde al instante, lo que sí cuenta: leer el cuerpo, validarlo con el contrato, escribir el prompt, extraer y validar la respuesta, la revisión de diseño y los cambios, con el diagrama más grande que admite el esquema (200 nodos). Zod se pone en modo `jitless`, porque en Workers no puede compilar sus comprobaciones con `new Function`.
+
+Resultado el 2026-11-10, tres ejecuciones de 100 peticiones por caso en una máquina Linux de desarrollo con Node.js 22 (milisegundos de CPU):
+
+| Caso                  | Primera petición | Mediana | Máximo  |
+| --------------------- | ---------------- | ------- | ------- |
+| `generate`, 200 nodos | 47 a 54          | 2 a 3   | 47 a 54 |
+| `edit`, 200 nodos     | 8 a 14           | 3 a 4   | 17      |
+| `improve`, 200 nodos  | 5 a 7            | 4       | 7       |
+| `extend`, 200 nodos   | 4 a 6            | 2 a 4   | 9       |
+
+Lectura:
+
+- Con el proceso caliente, todas las tareas quedan en 2 a 4 ms, por debajo de los 10 ms incluso con el diagrama más grande. Los máximos de 15 a 17 ms de `edit` son esporádicos, probablemente recolección de basura.
+- La primera petición de un proceso nuevo pasa de 10 ms: compila el código y los esquemas por primera vez (solo la primera validación de una petición con 200 nodos se lleva unos 20 ms). En Workers equivale a la primera petición de cada isolate. La documentación de Cloudflare dice que cada isolate tiene cierta flexibilidad para pasarse del límite de vez en cuando, y que solo se corta si ocurre de forma sostenida; con diagramas normales, mucho más pequeños, el coste es menor.
+- Son medidas en Node.js, que comparte motor (V8) con Workers pero no máquina; sirven para comparar y para detectar regresiones, no como cifra exacta de producción. El tiempo real se comprueba en las métricas del Worker en el panel de Cloudflare (acción pendiente en `docs/operaciones.md`).
 
 ## Proveedores
 
@@ -138,7 +183,7 @@ data: {"task":"generate","proposals":[…],"attempts":1,"warnings":[]}
 `LLM_MODEL` cambia el modelo de cualquiera de los dos. `LLM_REASONING_EFFORT` (`low`, `medium` o `high`) dice cuánto razona un modelo de razonamiento del proveedor compatible con OpenAI; con `gpt-oss` es `low` si no se indica, porque sus razonamientos salen de los tokens de la respuesta y, con los límites del plan gratuito de Groq, `medium` puede dejar el diagrama cortado. A los demás modelos no se les envía. Datos comprobados en la documentación oficial el 2026-10-31:
 
 - Workers AI admite modo JSON en seis modelos; el de 70B es el más capaz de ellos. En modo JSON, `response` puede llegar ya como objeto: el adaptador lo convierte en texto. Si el modelo no consigue el esquema, el binding falla con «JSON Mode couldn't be met», que se trata como respuesta inválida. Los errores de cuota se tratan como límite de uso hasta las 00:00 UTC, cuando se reinicia la asignación diaria.
-- Coste del modelo de 70B: 26.668 neurons por millón de tokens de entrada y 204.805 por millón de salida. Con 10.000 neurons al día, una generación típica (unos 3.000 tokens de entrada, el prompt mide unos 10.400 caracteres, y 2.000 de salida: unos 490 neurons) da para unas veinte al día; una edición, menos. Por eso el límite por IP de T19 es necesario antes de abrir la API.
+- Coste del modelo de 70B: 26.668 neurons por millón de tokens de entrada y 204.805 por millón de salida. Con 10.000 neurons al día, una generación típica (unos 3.000 tokens de entrada, el prompt mide unos 10.400 caracteres, y 2.000 de salida: unos 490 neurons) da para unas veinte al día; una edición, menos. Por eso existe el límite diario por dirección (Límites de uso).
 - Groq acepta `json_object` en todos sus modelos; la URL base es `https://api.groq.com/openai/v1`.
 - Groq retiró `llama-3.3-70b-versatile` y `llama-3.1-8b-instant` para cuentas gratuitas el 2026-08-16 y recomienda `openai/gpt-oss-120b`, el modelo por defecto. Su plan gratuito admite 8.000 tokens por minuto y cuenta también los reservados para la respuesta, así que los límites de salida del agente (4.500 tokens para un grafo completo) dejan sitio para un prompt de unos 3.000. Los modelos y límites de Groq cambian a menudo: consultarlos en `console.groq.com/docs/models` y en la página Limits de la cuenta.
 - Cuando el proveedor rechaza una petición, el error lleva su estado y su explicación (por ejemplo, un modelo retirado o una clave inválida), y aparece en el `detail` de la respuesta y en el registro.
@@ -198,5 +243,4 @@ curl -s localhost:8787/v1/assist -H 'Content-Type: application/json'   -d '{"tas
 
 ## Pendiente
 
-- T19: límite de uso por IP, tiempos de CPU medidos frente a los 10 ms del plan gratuito.
 - T17: evaluaciones en CI y elección del modelo con los datos del banco (`docs/evaluacion.md`).

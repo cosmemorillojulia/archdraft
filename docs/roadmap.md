@@ -33,7 +33,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T16 | Banco de evaluación: conjunto de casos y métricas                | T15           | hecha (2026-11-06) |
 | T17 | Evaluaciones en CI y elección del modelo                         | T16           | en curso           |
 | T18 | Operaciones de edición (T18a) y tarea edit del agente (T18b)     | T15, T34      | hecha (2026-10-31) |
-| T19 | API: límites de uso, protección y observabilidad                 | T15           | pendiente          |
+| T19 | API: límites de uso, protección y observabilidad                 | T15           | hecha (2026-11-10) |
 | T20 | Editor: integración con el agente                                | T11, T13      | hecha (2026-11-06) |
 | T21 | Tests de extremo a extremo y accesibilidad                       | T20           | pendiente          |
 | T22 | Rendimiento y presupuesto de tamaño                              | T21           | pendiente          |
@@ -438,6 +438,8 @@ Criterios de aceptación: tests de cada operación y de parches que dejarían el
 Documentación: `docs/modelo-de-dominio.md`, `docs/modulos/shared.md` y `docs/modulos/backend.md`.
 
 ### T19. Límites de uso, protección y observabilidad
+
+Estado: hecha (2026-11-10). Documentado en `docs/modulos/backend.md` (Límites de uso, Tiempo de CPU) y ADR 0025. Límite diario por dirección en un Durable Object con SQLite que se borra a medianoche UTC, 10 peticiones por defecto. Los límites de tamaño y de tiempo por llamada ya existían desde T13 y T15 y se reúnen en una tabla. El tiempo de CPU se mide con `bench:cpu`: 2 a 4 ms con 200 nodos con el proceso caliente y más de 10 ms en la primera petición de un proceso. Quedan dos comprobaciones manuales tras el despliegue en `docs/operaciones.md`.
 
 Objetivo: proteger la cuota gratuita y poder diagnosticar problemas.
 

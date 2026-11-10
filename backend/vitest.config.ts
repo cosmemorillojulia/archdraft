@@ -6,8 +6,9 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts', 'evals/**/*.ts'],
-      // The command line only reads arguments and writes files; what it runs is tested.
-      exclude: ['evals/cli.ts'],
+      // The command line only reads arguments and writes files, and the Durable Object
+      // only hands its storage to `consumeDailyUse`; what both run is tested.
+      exclude: ['evals/cli.ts', 'src/usage-counter.ts', 'src/**/*.d.ts'],
       reporter: ['text', 'json-summary'],
       thresholds: {
         lines: 90,

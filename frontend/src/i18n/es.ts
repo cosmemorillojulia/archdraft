@@ -418,6 +418,7 @@ export const es: Strings = {
       'No hay cuentas ni base de datos. Tu diagrama se guarda solo en este navegador, igual que tus preferencias, como el tema, el idioma y las reglas de diseño que desactives.',
       'Un enlace para compartir lleva el diagrama comprimido en la parte de la dirección que va tras #, que los navegadores no envían a ningún servidor. Quien tenga el enlace puede abrir el diagrama.',
       'Cuando usas el asistente, tu descripción y el diagrama van a la API de Archdraft, que los pasa al proveedor del modelo para obtener la respuesta. La API no los guarda: sus registros solo anotan un identificador de la petición, la tarea, el modelo, cuánto tardó y por qué falló, si falló.',
+      'Para repartir la cuota gratuita del modelo, cada dirección puede usar el asistente unas cuantas veces al día. La API cuenta las peticiones de cada dirección con una huella (hash) de ella, nunca con la dirección en sí, y olvida la cuenta a medianoche UTC.',
       'El proveedor del modelo trata lo que recibe según sus propias condiciones. GitHub Pages y Cloudflare, donde están el editor y la API, pueden registrar datos técnicos de cada visita, como la dirección IP.',
       'Archdraft no usa cookies, analítica ni rastreadores.',
     ],
