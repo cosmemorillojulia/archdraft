@@ -9,6 +9,12 @@ import {
   DEFAULT_WORKERS_AI_MODEL,
   type WorkersAiBinding,
 } from '../llm/workers-ai.ts';
+import type { UsageDecision } from './usage.ts';
+
+/** The binding of the `UsageCounter` Durable Objects (`usage-counter.ts`), reached by RPC. */
+export interface UsageCounterNamespace {
+  getByName(name: string): { consume(limit: number): Promise<UsageDecision> };
+}
 
 /** Bindings, variables and secrets of the Worker (wrangler.jsonc, docs/operaciones.md). */
 export interface Env {
@@ -22,6 +28,10 @@ export interface Env {
   readonly LLM_API_KEY?: string;
   /** `low`, `medium` or `high`, for reasoning models; see `reasoningEffortFor`. */
   readonly LLM_REASONING_EFFORT?: string;
+  /** Daily counters per address; without it, as in the tests, there is no limit. */
+  readonly USAGE?: UsageCounterNamespace;
+  /** Requests to `/v1/assist` per address and day; see `dailyLimitFrom`. */
+  readonly DAILY_ASSIST_LIMIT?: string;
 }
 
 /**
