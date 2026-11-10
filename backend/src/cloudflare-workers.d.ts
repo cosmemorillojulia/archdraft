@@ -4,10 +4,16 @@
  * with those of Node.js that the tests run on (see `llm/workers-ai.ts`).
  */
 declare module 'cloudflare:workers' {
-  import type { UsageStorage } from './http/usage.ts';
+  /** What `consumeDailyUse` needs (`http/usage.ts`), and `deleteAll` for the alarm. */
+  interface DurableObjectStorage {
+    get<T>(key: string): Promise<T | undefined>;
+    put(key: string, value: unknown): Promise<void>;
+    setAlarm(scheduledTimeMs: number): Promise<void>;
+    deleteAll(): Promise<void>;
+  }
 
   interface DurableObjectState {
-    readonly storage: UsageStorage & { deleteAll(): Promise<void> };
+    readonly storage: DurableObjectStorage;
   }
 
   export abstract class DurableObject<Env = unknown> {
