@@ -10,6 +10,7 @@
     "dev:remote": "wrangler dev --env-file ../.env.defaults --env-file ../.env.secrets",
     "build": "wrangler deploy --dry-run --outdir dist",
     "eval": "node evals/cli.ts",
+    "bench:cpu": "node bench/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
