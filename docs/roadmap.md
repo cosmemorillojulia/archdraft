@@ -509,7 +509,7 @@ Documentación: `docs/modulos/backend.md`; ADR 0022 sobre el agente con tareas t
 
 ### T21. Tests de extremo a extremo y accesibilidad
 
-Estado: hecha (2026-11-11). Documentado en `docs/modulos/web.md` (Tests de extremo a extremo), `docs/desarrollo.md` y ADR 0026. Trece tests en Chromium contra el build de producción: seis flujos del editor más el aviso de límite de uso del asistente, con la API simulada con `page.route`, y siete pantallas revisadas con axe (WCAG 2.1 AA) sin violaciones graves ni críticas, en claro, oscuro y móvil. No hizo falta corregir el editor: la única violación encontrada era el contraste a mitad del fundido del cambio de tema, y los tests esperan a que terminen las transiciones. Job `e2e` en CI.
+Estado: hecha (2026-11-11). Documentado en `docs/modulos/web.md` (Tests de extremo a extremo), `docs/desarrollo.md` y ADR 0026. Trece tests en Chromium contra el build de producción: seis flujos del editor más el aviso de límite de uso del asistente, con la API simulada con `page.route`, y siete pantallas revisadas con axe (WCAG 2.1 AA) sin violaciones graves ni críticas, en claro, oscuro y móvil. No hizo falta corregir el editor: la única violación encontrada era el contraste a mitad del fundido del cambio de tema, y los tests esperan a que terminen las transiciones. Job `e2e` en CI. Detectado al escribirlos y anotado para T26: la paleta en escritorio dice «Click to add at the centre», pero un clic con el ratón coge el mosaico para colocarlo con otro clic; solo el teclado añade en el centro.
 
 Entregables: Playwright con los flujos de cargar plantilla, añadir y conectar nodos, ver hallazgos, exportar Mermaid, compartir y abrir un enlace, y generar con la API simulada; comprobaciones con axe sin violaciones graves; job de CI.
 
@@ -531,7 +531,7 @@ Entregables: README final con capturas generadas con Playwright, revisión compl
 
 Objetivo: que el editor completo se sienta premium antes del lanzamiento, revisado como lo haría un diseñador.
 
-Entregables: revisión con la skill `design-critique` sobre capturas de Playwright de todos los flujos (escritorio y móvil, claro y oscuro); estados de hover, foco, carga, vacío y error coherentes en todos los paneles; microinteracciones de los flujos principales; pruebas de regresión visual con capturas de Playwright para las pantallas clave.
+Entregables: revisión con la skill `design-critique` sobre capturas de Playwright de todos los flujos (escritorio y móvil, claro y oscuro); estados de hover, foco, carga, vacío y error coherentes en todos los paneles; microinteracciones de los flujos principales; pruebas de regresión visual con capturas de Playwright para las pantallas clave. Pendiente de T21: que la indicación de la paleta en escritorio diga que un clic coge el mosaico y otro lo coloca.
 
 Criterios de aceptación: ningún hallazgo crítico ni moderado abierto en la revisión; las pruebas de regresión visual corren en CI.
 
