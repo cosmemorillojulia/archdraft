@@ -35,7 +35,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T18 | Operaciones de edición (T18a) y tarea edit del agente (T18b)     | T15, T34      | hecha (2026-10-31) |
 | T19 | API: límites de uso, protección y observabilidad                 | T15           | hecha (2026-11-10) |
 | T20 | Editor: integración con el agente                                | T11, T13      | hecha (2026-11-06) |
-| T21 | Tests de extremo a extremo y accesibilidad                       | T20           | pendiente          |
+| T21 | Tests de extremo a extremo y accesibilidad                       | T20           | hecha (2026-11-11) |
 | T22 | Rendimiento y presupuesto de tamaño                              | T21           | pendiente          |
 | T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | hecha (2026-11-06) |
 | T24 | Lanzamiento 1.0                                                  | T22, T23, T26 | pendiente          |
@@ -509,6 +509,8 @@ Documentación: `docs/modulos/backend.md`; ADR 0022 sobre el agente con tareas t
 
 ### T21. Tests de extremo a extremo y accesibilidad
 
+Estado: hecha (2026-11-11). Documentado en `docs/modulos/web.md` (Tests de extremo a extremo), `docs/desarrollo.md` y ADR 0026. Trece tests en Chromium contra el build de producción: seis flujos del editor más el aviso de límite de uso del asistente, con la API simulada con `page.route`, y siete pantallas revisadas con axe (WCAG 2.1 AA) sin violaciones graves ni críticas, en claro, oscuro y móvil. No hizo falta corregir el editor: la única violación encontrada era el contraste a mitad del fundido del cambio de tema, y los tests esperan a que terminen las transiciones. Job `e2e` en CI. Detectado al escribirlos y anotado para T26: la paleta en escritorio dice «Click to add at the centre», pero un clic con el ratón coge el mosaico para colocarlo con otro clic; solo el teclado añade en el centro.
+
 Entregables: Playwright con los flujos de cargar plantilla, añadir y conectar nodos, ver hallazgos, exportar Mermaid, compartir y abrir un enlace, y generar con la API simulada; comprobaciones con axe sin violaciones graves; job de CI.
 
 ### T22. Rendimiento y presupuesto de tamaño
@@ -529,7 +531,7 @@ Entregables: README final con capturas generadas con Playwright, revisión compl
 
 Objetivo: que el editor completo se sienta premium antes del lanzamiento, revisado como lo haría un diseñador.
 
-Entregables: revisión con la skill `design-critique` sobre capturas de Playwright de todos los flujos (escritorio y móvil, claro y oscuro); estados de hover, foco, carga, vacío y error coherentes en todos los paneles; microinteracciones de los flujos principales; pruebas de regresión visual con capturas de Playwright para las pantallas clave.
+Entregables: revisión con la skill `design-critique` sobre capturas de Playwright de todos los flujos (escritorio y móvil, claro y oscuro); estados de hover, foco, carga, vacío y error coherentes en todos los paneles; microinteracciones de los flujos principales; pruebas de regresión visual con capturas de Playwright para las pantallas clave. Pendiente de T21: que la indicación de la paleta en escritorio diga que un clic coge el mosaico y otro lo coloca.
 
 Criterios de aceptación: ningún hallazgo crítico ni moderado abierto en la revisión; las pruebas de regresión visual corren en CI.
 

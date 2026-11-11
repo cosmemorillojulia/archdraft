@@ -215,11 +215,17 @@ El documento, con su disposición, se serializa, se comprime y se codifica en el
 - Logs estructurados en JSON con identificador de petición, visibles en Workers Logs.
 - Métricas de calidad de la generación en los informes del banco de evaluación.
 
+### Calidad
+
+- Tests unitarios con Vitest en los tres paquetes y cobertura mínima en `shared` y `frontend/src/layout` (ADR 0010).
+- Tests de extremo a extremo con Playwright y axe contra el build del editor, con la API simulada, en un job propio de CI (T21, ADR 0026).
+- Banco de evaluación del agente, fuera de CI de cada push ([evaluacion.md](evaluacion.md)).
+
 ## 8. Despliegue
 
 ```mermaid
 flowchart LR
-  dev[Push a main] --> ci[GitHub Actions: check]
+  dev[Push a main] --> ci[GitHub Actions: check y e2e]
   ci -->|verde| pages[Build web → GitHub Pages]
   ci -->|verde y secretos presentes| wr[wrangler deploy → Cloudflare Workers]
 ```

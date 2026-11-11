@@ -12,27 +12,29 @@ pnpm check
 
 ## Scripts
 
-| Script                                       | Qué hace                                                                                                 |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `pnpm check`                                 | Todo lo que ejecuta CI, en el mismo orden: formato, lint, typecheck, tests con cobertura y build         |
-| `pnpm test`                                  | Tests de todos los paquetes                                                                              |
-| `pnpm test:coverage`                         | Tests con umbrales de cobertura                                                                          |
-| `pnpm lint`                                  | ESLint con información de tipos                                                                          |
-| `pnpm typecheck`                             | `tsc --noEmit` en cada paquete                                                                           |
-| `pnpm format` / `pnpm format:check`          | Prettier                                                                                                 |
-| `pnpm --filter @archdraft/shared test:watch` | Tests de un paquete en modo observación                                                                  |
-| `pnpm --filter @archdraft/web dev`           | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)                   |
-| `pnpm --filter @archdraft/api eval`          | Banco de evaluación del agente contra un modelo; con `--provider ideal`, sin clave (ver `evaluacion.md`) |
+| Script                                       | Qué hace                                                                                                   |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `pnpm check`                                 | Todo lo que ejecuta CI, en el mismo orden: formato, lint, typecheck, tests con cobertura y build           |
+| `pnpm test`                                  | Tests de todos los paquetes                                                                                |
+| `pnpm test:coverage`                         | Tests con umbrales de cobertura                                                                            |
+| `pnpm lint`                                  | ESLint con información de tipos                                                                            |
+| `pnpm typecheck`                             | `tsc --noEmit` en cada paquete                                                                             |
+| `pnpm format` / `pnpm format:check`          | Prettier                                                                                                   |
+| `pnpm test:e2e`                              | Tests de extremo a extremo y de accesibilidad del editor con Playwright (ver «Tests de extremo a extremo») |
+| `pnpm --filter @archdraft/shared test:watch` | Tests de un paquete en modo observación                                                                    |
+| `pnpm --filter @archdraft/web dev`           | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)                     |
+| `pnpm --filter @archdraft/api eval`          | Banco de evaluación del agente contra un modelo; con `--provider ideal`, sin clave (ver `evaluacion.md`)   |
 
 ## Herramientas y por qué
 
-| Herramienta                | Versión   | Motivo                                                                                                                          |
-| -------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| TypeScript                 | 6.0       | Modo estricto; la 7.0 aún no la soporta `typescript-eslint` (ADR 0003)                                                          |
-| ESLint + typescript-eslint | 10 / 8.72 | Configuración plana con `recommendedTypeChecked`: detecta promesas sin esperar, uso inseguro de `any` y aserciones innecesarias |
-| Prettier                   | 3         | Formato sin discusiones; ESLint no se ocupa del estilo                                                                          |
-| Vitest                     | 5         | Rápido, compatible con Vite (que usará el editor) y con cobertura V8 integrada                                                  |
-| pnpm workspaces            | 10        | ADR 0002                                                                                                                        |
+| Herramienta                | Versión     | Motivo                                                                                                                          |
+| -------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript                 | 6.0         | Modo estricto; la 7.0 aún no la soporta `typescript-eslint` (ADR 0003)                                                          |
+| ESLint + typescript-eslint | 10 / 8.72   | Configuración plana con `recommendedTypeChecked`: detecta promesas sin esperar, uso inseguro de `any` y aserciones innecesarias |
+| Prettier                   | 3           | Formato sin discusiones; ESLint no se ocupa del estilo                                                                          |
+| Vitest                     | 5           | Rápido, compatible con Vite (que usará el editor) y con cobertura V8 integrada                                                  |
+| pnpm workspaces            | 10          | ADR 0002                                                                                                                        |
+| Playwright + axe-core      | 1.64 / 4.14 | Tests de extremo a extremo del editor en Chromium y comprobaciones de accesibilidad (ADR 0026)                                  |
 
 Reglas de ESLint añadidas a la configuración recomendada:
 
@@ -62,7 +64,18 @@ Cada paquete tiene su `tsconfig.json`, que extiende la base y define sus `types`
 1. Instala con `pnpm install --frozen-lockfile`: si el lockfile no corresponde con `package.json`, falla.
 2. Ejecuta formato, lint, typecheck, tests con cobertura y build.
 
-Tiene permisos de solo lectura, cancela ejecuciones anteriores de la misma rama y un tiempo máximo de 15 minutos.
+Un segundo job, `e2e`, instala Chromium con `playwright install --with-deps` y ejecuta `pnpm test:e2e`; si falla, sube el informe HTML y las trazas como artefacto `e2e-report`. Los dos jobs corren en paralelo, tienen permisos de solo lectura, cancelan ejecuciones anteriores de la misma rama y un tiempo máximo de 15 minutos. El despliegue de Pages espera a que terminen los dos en verde.
+
+## Tests de extremo a extremo
+
+`frontend/playwright.config.ts` construye el editor en `frontend/e2e/.dist` con la API en `http://localhost:4173/api` y lo sirve con `vite preview` en el puerto 4173 (ADR 0026). Los tests (`frontend/e2e/*.spec.ts`) no necesitan el backend: el asistente se contesta con `page.route`.
+
+```bash
+pnpm --filter @archdraft/web exec playwright install chromium   # una vez
+pnpm test:e2e
+```
+
+Si el navegador no se puede descargar, `PLAYWRIGHT_CHROMIUM_PATH` apunta a un Chromium ya instalado. Fuera de CI se reutiliza un servidor que ya escuche en el puerto 4173; si se cambia el editor, hay que pararlo para que se vuelva a construir. Los resultados quedan en `frontend/e2e/.results` (trazas de los tests fallidos), ignorados por git. No forman parte de `pnpm check`.
 
 `.github/workflows/evals.yml` pasa el banco de evaluación contra modelos de Groq cada semana y bajo demanda (`docs/evaluacion.md`).
 

@@ -1,6 +1,10 @@
 node_modules/
 dist/
 coverage/
+# Build, results and report of the end-to-end tests.
+frontend/e2e/.dist/
+frontend/e2e/.results/
+frontend/e2e/.report/
 .wrangler/
 .dev.vars
 .env

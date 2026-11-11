@@ -10,6 +10,8 @@ Estado: estructura y despliegue (T07), lienzo con React Flow y zoom (T08), redis
 frontend/
   index.html              # aplica el tema guardado antes del primer pintado
   vite.config.ts          # base /archdraft/, plugins de React y Tailwind, configuración de Vitest
+  playwright.config.ts    # tests de extremo a extremo contra el build, con la API en el mismo origen
+  e2e/                    # flujos del editor y comprobaciones con axe (Playwright)
   public/favicon.svg      # logo (G3); apple-touch-icon.png, la misma figura para iOS
   src/
     main.tsx              # punto de entrada
@@ -570,6 +572,7 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 - Foco visible con contorno de 2 px; el buscador muestra un anillo al enfocarse.
 - Botones de solo icono con `aria-label`; estado de la revisión anunciado con `role="status"`.
 - Contrastes AA medidos (ver tokens); `prefers-reduced-motion` respetado.
+- axe revisa las pantallas principales en cada push, sin violaciones graves ni críticas de WCAG 2.1 AA (ver «Tests de extremo a extremo»).
 
 ## Tests
 
@@ -591,6 +594,13 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 - `icons.test.ts`: cada icono de `KIND_ICONS` es el que nombra el catálogo de core. Detectó que Lucide renombró `waves` a `waves-horizontal`.
 
 Revisión visual: build servido con `vite preview` y capturado con Playwright en Chromium a 1440 × 900 en claro y oscuro, con la paleta abierta y cerrada, con un nodo resaltado y con varias plantillas, y a 390 × 844; además, un vídeo de 15 s del recorrido para revisar el movimiento. Sin errores en la consola. La skill `design-critique` (`.claude/skills`) guía la revisión de las capturas.
+
+### Tests de extremo a extremo
+
+Con Playwright en Chromium, contra el build de producción y la API simulada (ADR 0026, cómo ejecutarlos en `desarrollo.md`). `e2e/fixtures.ts` abre el editor sin nada guardado y hace fallar el test ante cualquier excepción o `console.error` de la página; los nombres accesibles son los selectores, así que un test roto suele señalar también un problema de accesibilidad.
+
+- `editor.spec.ts`: abrir una plantilla desde el menú New; en un diagrama en blanco, añadir un usuario con el ratón (el mosaico sigue al puntero hasta el clic en el lienzo) y un servicio con el teclado (en el centro), conectarlos con Connect y ver el hallazgo en la revisión; descargar y copiar Mermaid (mismo texto, nombre de fichero del título); un enlace abierto en otro navegador sin nada guardado muestra el mismo diagrama y se quita de la dirección; generar desde la barra de descripción con la API simulada (petición `generate`, diagrama abierto y deshacer de vuelta al blanco) y el aviso de límite de uso con `Retry-After`.
+- `accessibility.spec.ts`: axe con WCAG 2.1 A y AA, sin violaciones `serious` ni `critical`, en el editor en claro y en oscuro, con la paleta abierta, con un componente en el inspector, con la revisión abierta, en el menú de compartir, en la galería de plantillas y en un móvil de 390 × 844 con la hoja de componentes. Antes de analizar espera a que terminen las animaciones finitas: a mitad del fundido del tema, los textos atenuados pasan por colores sin contraste suficiente que no son los de la página.
 
 ## Despliegue
 
