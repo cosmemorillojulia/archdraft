@@ -35,7 +35,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T18 | Operaciones de edición (T18a) y tarea edit del agente (T18b)     | T15, T34      | hecha (2026-10-31) |
 | T19 | API: límites de uso, protección y observabilidad                 | T15           | hecha (2026-11-10) |
 | T20 | Editor: integración con el agente                                | T11, T13      | hecha (2026-11-06) |
-| T21 | Tests de extremo a extremo y accesibilidad                       | T20           | pendiente          |
+| T21 | Tests de extremo a extremo y accesibilidad                       | T20           | hecha (2026-11-11) |
 | T22 | Rendimiento y presupuesto de tamaño                              | T21           | pendiente          |
 | T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | hecha (2026-11-06) |
 | T24 | Lanzamiento 1.0                                                  | T22, T23, T26 | pendiente          |
@@ -508,6 +508,8 @@ Documentación: `docs/modulos/backend.md`; ADR 0022 sobre el agente con tareas t
 ## Fase 4: calidad y lanzamiento
 
 ### T21. Tests de extremo a extremo y accesibilidad
+
+Estado: hecha (2026-11-11). Documentado en `docs/modulos/web.md` (Tests de extremo a extremo), `docs/desarrollo.md` y ADR 0026. Trece tests en Chromium contra el build de producción: seis flujos del editor más el aviso de límite de uso del asistente, con la API simulada con `page.route`, y siete pantallas revisadas con axe (WCAG 2.1 AA) sin violaciones graves ni críticas, en claro, oscuro y móvil. No hizo falta corregir el editor: la única violación encontrada era el contraste a mitad del fundido del cambio de tema, y los tests esperan a que terminen las transiciones. Job `e2e` en CI.
 
 Entregables: Playwright con los flujos de cargar plantilla, añadir y conectar nodos, ver hallazgos, exportar Mermaid, compartir y abrir un enlace, y generar con la API simulada; comprobaciones con axe sin violaciones graves; job de CI.
 

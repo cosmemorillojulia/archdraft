@@ -19,6 +19,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@archdraft/web`: end-to-end tests with Playwright against the production build (ADR 0026): opening a template, adding and connecting components, the design review, exporting Mermaid, sharing a link, and generating with a simulated API, plus axe checks for serious WCAG 2.1 AA violations on the main screens in light, dark and phone layouts. `pnpm test:e2e` runs them, and a new `e2e` job in CI runs them on every push.
 - `@archdraft/api`: a daily limit of requests to `POST /v1/assist` per address (ADR 0025), 10 by default (`DAILY_ASSIST_LIMIT`). Each IPv4 address or IPv6 /64 is counted in a SQLite Durable Object named by a hash of it, deleted at midnight UTC; past the limit the API answers `429 rate-limited` with `Retry-After` until then, before calling the model or opening a stream. Requests the contract rejects do not count, and a failing counter lets requests through and logs it. The privacy notes of the editor say so.
 - `@archdraft/api`: `pnpm --filter @archdraft/api bench:cpu` measures the CPU time of the largest requests of each task against the 10 ms of the free plan of Workers (`docs/modulos/backend.md`).
 - CI: the `Evals` workflow runs the evaluation set against `openai/gpt-oss-120b` and `openai/gpt-oss-20b` of Groq every Monday and on demand, with the report in the summary of each job and as an artifact. It needs the `GROQ_API_KEY` secret and is skipped without it (`docs/evaluacion.md`).

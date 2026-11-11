@@ -44,5 +44,6 @@ Referencia:
 | [0023](adr/0023-asistente-que-revisa-y-ensena-antes-de-aplicar.md)  | Un asistente que revisa lo que diseña y lo enseña antes de aplicarlo                |
 | [0024](adr/0024-evaluacion-por-expectativas-de-tipos.md)            | Evaluación por expectativas de tipos, sin diagramas de referencia                   |
 | [0025](adr/0025-limite-diario-por-direccion-con-durable-objects.md) | Límite diario por dirección con Durable Objects                                     |
+| [0026](adr/0026-tests-de-extremo-a-extremo-sobre-el-build.md)       | Tests de extremo a extremo sobre el build, con la API simulada y en un job propio   |
 
 Cada nueva página de módulo o ADR se añade a este índice.
