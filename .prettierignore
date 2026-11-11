@@ -1,6 +1,7 @@
 pnpm-lock.yaml
 **/dist
 **/coverage
+frontend/e2e/.*/
 **/.wrangler
 .claude
 .agents

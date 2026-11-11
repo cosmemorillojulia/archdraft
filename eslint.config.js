@@ -10,6 +10,7 @@ export default defineConfig(
     ignores: [
       '**/dist/**',
       '**/coverage/**',
+      'frontend/e2e/.*/**',
       '**/node_modules/**',
       '**/.wrangler/**',
       '.agents/**',
