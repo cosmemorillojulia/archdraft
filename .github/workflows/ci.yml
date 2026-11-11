@@ -42,3 +42,35 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:coverage
       - run: pnpm build
+
+  e2e:
+    name: End-to-end and accessibility tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The Chromium of the installed Playwright version, with the libraries it needs.
+      - run: pnpm --filter @archdraft/web exec playwright install --with-deps chromium
+
+      - run: pnpm test:e2e
+
+      - name: Upload the report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report
+          path: |
+            frontend/e2e/.report/
+            frontend/e2e/.results/
+          retention-days: 14
+          include-hidden-files: true
