@@ -74,3 +74,34 @@ jobs:
             frontend/e2e/.results/
           retention-days: 14
           include-hidden-files: true
+
+  lighthouse:
+    name: Lighthouse
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The build also checks the size budget of the initial JavaScript and CSS.
+      - run: pnpm --filter @archdraft/web build
+
+      # Three runs of the production build with the Google Chrome of the runner (lighthouserc.json).
+      - run: pnpm --filter @archdraft/web test:lighthouse
+
+      - name: Upload the reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse
+          path: frontend/.lighthouseci/
+          retention-days: 14
+          include-hidden-files: true
