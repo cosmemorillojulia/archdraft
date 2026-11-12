@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:lighthouse": "pnpm dlx @lhci/cli@0.16.1 autorun"
   },
   "dependencies": {
     "@archdraft/shared": "workspace:*",
