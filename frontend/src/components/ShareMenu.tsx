@@ -140,6 +140,7 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
   const linkId = useId();
   const noteId = useId();
   const [exporters, setExporters] = useState<Exporters | null>(null);
+  const [exportersFailed, setExportersFailed] = useState(false);
 
   // Ready before the first click, so that copying stays within the click, as browsers require.
   useEffect(() => {
@@ -150,7 +151,7 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
       })
       .catch((error: unknown) => {
         console.error('Could not load the exporters', error);
-        if (current) setExportFailed(true);
+        if (current) setExportersFailed(true);
       });
     return () => {
       current = false;
@@ -318,6 +319,7 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
         <div className="flex flex-col gap-1 text-xs text-muted" aria-live="polite">
           <p>{strings.share.exportHint}</p>
           {exportFailed && <p className="text-danger">{strings.share.exportFailed}</p>}
+          {exportersFailed && <p className="text-danger">{strings.share.exportersFailed}</p>}
         </div>
       </section>
 

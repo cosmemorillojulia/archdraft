@@ -220,7 +220,7 @@ export async function openFileText(
     readers = await import('./foreign-formats.ts');
   } catch (error) {
     console.error('Could not load the readers of other formats', error);
-    store.getState().notify(strings.persist.openFailed.file(String(error)));
+    store.getState().notify(strings.persist.openFailed.file(strings.persist.readersFailed));
     return false;
   }
   const result = drawio ? await readers.importDrawio(text) : readers.importMermaid(text);
