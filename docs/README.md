@@ -45,5 +45,6 @@ Referencia:
 | [0024](adr/0024-evaluacion-por-expectativas-de-tipos.md)            | Evaluación por expectativas de tipos, sin diagramas de referencia                   |
 | [0025](adr/0025-limite-diario-por-direccion-con-durable-objects.md) | Límite diario por dirección con Durable Objects                                     |
 | [0026](adr/0026-tests-de-extremo-a-extremo-sobre-el-build.md)       | Tests de extremo a extremo sobre el build, con la API simulada y en un job propio   |
+| [0027](adr/0027-presupuesto-de-tamano-y-lighthouse-ci.md)           | Presupuesto de tamaño con un script propio y Lighthouse CI sin instalarlo           |
 
 Cada nueva página de módulo o ADR se añade a este índice.

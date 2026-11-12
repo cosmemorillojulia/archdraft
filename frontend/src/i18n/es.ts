@@ -714,6 +714,8 @@ export const es: Strings = {
     exportHint:
       'Mermaid para READMEs y documentos, draw.io para seguir editando allí, SVG y PNG como imagen.',
     exportFailed: 'No se ha podido crear la imagen. Vuelve a intentarlo o exporta SVG.',
+    exportersFailed:
+      'No se han podido descargar los formatos de exportación. Comprueba la conexión y vuelve a abrir este menú.',
     file: 'Fichero',
     download: 'Descargar JSON',
     openFile: 'Abrir o importar un fichero',
@@ -730,6 +732,8 @@ export const es: Strings = {
         `No se ha podido recuperar el diagrama guardado en este navegador. ${reason}`,
     },
     linkDamaged: 'Está incompleto o dañado.',
+    readersFailed:
+      'No se ha podido descargar una parte del editor. Comprueba la conexión y vuelve a intentarlo.',
     linkTooLarge: 'Es demasiado grande.',
     saveFailed:
       'Este navegador no deja guardar los cambios y se perderán al cerrar la página. Descarga el fichero JSON para conservarlos.',

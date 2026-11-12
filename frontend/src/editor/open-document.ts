@@ -5,8 +5,6 @@ import {
   type DiagramDocument,
   type DiagramLayout,
   importDocument,
-  importDrawio,
-  importMermaid,
   isContainerKind,
   layoutEntry,
   type TemplateId,
@@ -17,6 +15,7 @@ import { layoutDiagram } from '../canvas/layout-client.ts';
 import { decodeDocument, linkPayload, ShareLinkError } from '../persist/share-link.ts';
 import { currentStrings, localeStore, type Locale } from '../i18n/locale.ts';
 import { localizedTemplate } from '../i18n/templates.ts';
+import type * as ForeignFormats from './foreign-formats.ts';
 import { editorStore } from './store.ts';
 
 /** Where a diagram comes from, for the message when it cannot be opened. */
@@ -216,7 +215,15 @@ export async function openFileText(
   const request = ++latestRequest;
   const strings = currentStrings();
   const drawio = /<(mxfile|mxGraphModel|diagram)[\s>]/.test(trimmed.slice(0, 4000));
-  const result = drawio ? await importDrawio(text) : importMermaid(text);
+  let readers: typeof ForeignFormats;
+  try {
+    readers = await import('./foreign-formats.ts');
+  } catch (error) {
+    console.error('Could not load the readers of other formats', error);
+    store.getState().notify(strings.persist.openFailed.file(strings.persist.readersFailed));
+    return false;
+  }
+  const result = drawio ? await readers.importDrawio(text) : readers.importMermaid(text);
   if (!result.success) {
     store.getState().notify(strings.persist.openFailed.file(result.message));
     return false;

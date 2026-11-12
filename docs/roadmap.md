@@ -36,7 +36,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T19 | API: límites de uso, protección y observabilidad                 | T15           | hecha (2026-11-10) |
 | T20 | Editor: integración con el agente                                | T11, T13      | hecha (2026-11-06) |
 | T21 | Tests de extremo a extremo y accesibilidad                       | T20           | hecha (2026-11-11) |
-| T22 | Rendimiento y presupuesto de tamaño                              | T21           | pendiente          |
+| T22 | Rendimiento y presupuesto de tamaño                              | T21           | hecha (2026-11-12) |
 | T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | hecha (2026-11-06) |
 | T24 | Lanzamiento 1.0                                                  | T22, T23, T26 | pendiente          |
 | T25 | Editor: rediseño centrado en el lienzo                           | T07           | hecha (2026-10-24) |
@@ -514,6 +514,8 @@ Estado: hecha (2026-11-11). Documentado en `docs/modulos/web.md` (Tests de extre
 Entregables: Playwright con los flujos de cargar plantilla, añadir y conectar nodos, ver hallazgos, exportar Mermaid, compartir y abrir un enlace, y generar con la API simulada; comprobaciones con axe sin violaciones graves; job de CI.
 
 ### T22. Rendimiento y presupuesto de tamaño
+
+Estado: hecha (2026-11-12). Documentado en `docs/modulos/web.md` (Rendimiento) y ADR 0027. ELK ya se cargaba bajo demanda en el worker desde T08; ahora también los exportadores del menú de compartir y los lectores de Mermaid y draw.io, y el JavaScript inicial baja de 285 a 276 kB comprimidos según Vite. El build falla si el JavaScript inicial pasa de 280 KiB o el CSS de 15 KiB; Lighthouse CI corre en un job propio con la mediana de tres ejecuciones, y un test de extremo a extremo abre, dispone y edita un diagrama de 200 nodos (unos 2 s en local).
 
 Entregables: división del bundle (ELK y exportadores bajo demanda), comprobación del tamaño del JavaScript inicial en CI, Lighthouse CI con umbrales, prueba con un grafo de 200 nodos.
 

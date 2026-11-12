@@ -487,6 +487,8 @@ export const en = {
     exportHint:
       'Mermaid for READMEs and documents, draw.io to keep editing there, SVG and PNG as images.',
     exportFailed: 'The image could not be created. Try again, or export SVG.',
+    exportersFailed:
+      'The export formats could not be downloaded. Check your connection and open this menu again.',
     file: 'File',
     download: 'Download JSON',
     openFile: 'Open or import a file',
@@ -503,6 +505,8 @@ export const en = {
         `The diagram saved in this browser could not be restored. ${reason}`,
     },
     linkDamaged: 'It is incomplete or damaged.',
+    readersFailed:
+      'Part of the editor could not be downloaded. Check your connection and try again.',
     linkTooLarge: 'It is too large.',
     saveFailed:
       'Changes cannot be saved in this browser and will be lost when the page closes. Download the JSON file to keep them.',

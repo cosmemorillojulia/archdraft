@@ -203,7 +203,8 @@ El documento, con su disposición, se serializa, se comprime y se codifica en el
 ### Rendimiento
 
 - ELK se carga de forma diferida y se ejecuta en un Web Worker.
-- División del bundle por rutas y funcionalidades; presupuesto de tamaño verificado en CI (T22).
+- Los exportadores y los lectores de otros formatos se cargan bajo demanda; el build falla si el JavaScript o el CSS iniciales pasan de su presupuesto, y Lighthouse CI comprueba la puntuación y las métricas de carga en cada push (T22, ADR 0027).
+- Un test de extremo a extremo abre, dispone y edita un diagrama de 200 nodos, el máximo del esquema.
 
 ### Disponibilidad y degradación
 
@@ -219,13 +220,14 @@ El documento, con su disposición, se serializa, se comprime y se codifica en el
 
 - Tests unitarios con Vitest en los tres paquetes y cobertura mínima en `shared` y `frontend/src/layout` (ADR 0010).
 - Tests de extremo a extremo con Playwright y axe contra el build del editor, con la API simulada, en un job propio de CI (T21, ADR 0026).
+- Presupuesto de tamaño en el build y Lighthouse CI en un job propio (T22, ADR 0027).
 - Banco de evaluación del agente, fuera de CI de cada push ([evaluacion.md](evaluacion.md)).
 
 ## 8. Despliegue
 
 ```mermaid
 flowchart LR
-  dev[Push a main] --> ci[GitHub Actions: check y e2e]
+  dev[Push a main] --> ci[GitHub Actions: check, e2e y lighthouse]
   ci -->|verde| pages[Build web → GitHub Pages]
   ci -->|verde y secretos presentes| wr[wrangler deploy → Cloudflare Workers]
 ```
