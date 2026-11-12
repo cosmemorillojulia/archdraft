@@ -102,12 +102,13 @@ frontend/
 
 ## Scripts
 
-| Script                                 | Qué hace                                                            |
-| -------------------------------------- | ------------------------------------------------------------------- |
-| `pnpm --filter @archdraft/web dev`     | Servidor de desarrollo en `http://localhost:5173/archdraft/`        |
-| `pnpm --filter @archdraft/web build`   | Build de producción en `frontend/dist`                              |
-| `pnpm --filter @archdraft/web preview` | Sirve el build en `http://localhost:4173/archdraft/` para revisarlo |
-| `pnpm --filter @archdraft/web test`    | Tests en jsdom                                                      |
+| Script                                         | Qué hace                                                                                            |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @archdraft/web dev`             | Servidor de desarrollo en `http://localhost:5173/archdraft/`                                        |
+| `pnpm --filter @archdraft/web build`           | Build de producción en `frontend/dist` y comprobación del presupuesto de tamaño (ver «Rendimiento») |
+| `pnpm --filter @archdraft/web preview`         | Sirve el build en `http://localhost:4173/archdraft/` para revisarlo                                 |
+| `pnpm --filter @archdraft/web test`            | Tests en jsdom                                                                                      |
+| `pnpm --filter @archdraft/web test:lighthouse` | Lighthouse CI contra el build ya hecho (ver «Rendimiento»)                                          |
 
 La `base` de Vite es `/archdraft/` también en desarrollo: GitHub Pages sirve el sitio del proyecto bajo el nombre del repositorio, y usar la misma ruta en local evita sorpresas con rutas de recursos que solo fallarían en producción.
 
@@ -477,7 +478,7 @@ Al abrir un enlace, que puede estar manipulado, `decodeDocument` rechaza caracte
 
 ### Ficheros
 
-«Download JSON» descarga el documento con el título como nombre (`three-tier-web-application.archdraft.json`). «Abrir o importar un fichero» (`openFileText`) distingue por el contenido un documento o grafo suelto de Archdraft (JSON, por ejemplo uno escrito a mano o exportado con `toJson`), un flowchart de Mermaid (`.mmd`, `.mermaid`, `.md`, `.txt`) y un fichero de draw.io (`.drawio`, `.xml`); ver «Importar de otras herramientas» en shared.md. Lo que no tiene disposición, como Mermaid, se coloca con ELK; el título sale del fichero o, si no lo trae, de su nombre. Si se omitió algo, un aviso lo cuenta («Importado. 2 connectors…»).
+«Download JSON» descarga el documento con el título como nombre (`three-tier-web-application.archdraft.json`). «Abrir o importar un fichero» (`openFileText`) distingue por el contenido un documento o grafo suelto de Archdraft (JSON, por ejemplo uno escrito a mano o exportado con `toJson`), un flowchart de Mermaid (`.mmd`, `.mermaid`, `.md`, `.txt`) y un fichero de draw.io (`.drawio`, `.xml`); ver «Importar de otras herramientas» en shared.md. Lo que no tiene disposición, como Mermaid, se coloca con ELK; el título sale del fichero o, si no lo trae, de su nombre. Si se omitió algo, un aviso lo cuenta («Importado. 2 connectors…»). Los lectores de Mermaid y draw.io (`editor/foreign-formats.ts`) se descargan al abrir un fichero de esos formatos, no con el editor (T22).
 
 ### Exportar
 
@@ -494,6 +495,8 @@ La sección Export del mismo menú (T12) ofrece:
 Las imágenes no son una captura de la pantalla: `diagramToSvg` (`export/diagram-svg.ts`) dibuja el documento como lo dibuja el lienzo en reposo, sin selección, resaltado ni partículas, y entero aunque la vista muestre solo una parte. Es una función pura; recibe los colores del tema en uso (`readPalette` lee los tokens de la página), los nombres en el idioma de la interfaz, los iconos de Lucide del lienzo (`iconMarkup` los pinta una vez en un elemento suelto) y una función que mide el texto con la fuente del editor (`OffscreenCanvas`). Así los nombres se parten en dos líneas y se recortan como en el lienzo. Orden: grupos, conexiones con sus puntas de flecha, componentes y figuras, y las etiquetas de las conexiones encima; una etiqueta que taparía un nodo (una curva que pasa por detrás de él, ver T30) se omite. El SVG lleva la fuente solo por nombre, para que pese poco y se pueda editar; el PNG se dibuja desde un SVG que la lleva dentro (`@font-face` con el fichero en base64), porque una imagen SVG no puede cargar fuentes de fuera. Si el PNG falla, el menú lo dice y propone el SVG.
 
 Los nombres de fichero salen del título (`fileNameFor(title, format)` en `export/files.ts`), sin tildes y con guiones.
+
+Los exportadores (`export/save.ts`, con `toMermaid`, `toDrawio` y el dibujo de imágenes) no forman parte de la carga inicial (T22): el menú los descarga la primera vez que se abre y mantiene los botones de exportar desactivados hasta que llegan, que suele ser al instante. Así la copia de Mermaid se escribe en el portapapeles dentro del mismo clic, como exigen los navegadores. Si la descarga falla, el menú muestra el error de exportación y se vuelve a intentar al abrirlo otra vez.
 
 ## Asistente de IA
 
@@ -591,6 +594,7 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 - `flow.test.ts`: padres antes que hijos, posiciones relativas, tamaños, profundidad, producto y distintivo de proveedor, conectores por dirección, orden de construcción, aristas asíncronas y categoría de origen, nombres accesibles, grupos fijos hasta seleccionarlos, tamaño medido en cada nodo, figuras genéricas, nodos sin disposición y diagrama vacío; estilo propio de cada arista o, si no, el del diagrama.
 - `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, profundidad de anidamiento, escala de dibujo con su mínimo y su máximo, límites vacíos, vista inicial que encaja o que empieza arriba y punta de flecha en los cuatro lados.
 - `brand.test.ts`: el logo tiene sus tres colores y título, y la página enlaza el icono de la pestaña y el de iOS (un PNG de 180 × 180).
+- `size-budget.test.ts`: recursos iniciales leídos de `index.html` (script de entrada, módulos precargados y hojas de estilo, sin scripts en línea ni otros enlaces) y suma por tipo frente al presupuesto.
 - `icons.test.ts`: cada icono de `KIND_ICONS` es el que nombra el catálogo de core. Detectó que Lucide renombró `waves` a `waves-horizontal`.
 
 Revisión visual: build servido con `vite preview` y capturado con Playwright en Chromium a 1440 × 900 en claro y oscuro, con la paleta abierta y cerrada, con un nodo resaltado y con varias plantillas, y a 390 × 844; además, un vídeo de 15 s del recorrido para revisar el movimiento. Sin errores en la consola. La skill `design-critique` (`.claude/skills`) guía la revisión de las capturas.
@@ -600,7 +604,20 @@ Revisión visual: build servido con `vite preview` y capturado con Playwright en
 Con Playwright en Chromium, contra el build de producción y la API simulada (ADR 0026, cómo ejecutarlos en `desarrollo.md`). `e2e/fixtures.ts` abre el editor sin nada guardado y hace fallar el test ante cualquier excepción o `console.error` de la página; los nombres accesibles son los selectores, así que un test roto suele señalar también un problema de accesibilidad.
 
 - `editor.spec.ts`: abrir una plantilla desde el menú New; en un diagrama en blanco, añadir un usuario con el ratón (el mosaico sigue al puntero hasta el clic en el lienzo) y un servicio con el teclado (en el centro), conectarlos con Connect y ver el hallazgo en la revisión; descargar y copiar Mermaid (mismo texto, nombre de fichero del título); un enlace abierto en otro navegador sin nada guardado muestra el mismo diagrama y se quita de la dirección; generar desde la barra de descripción con la API simulada (petición `generate`, diagrama abierto y deshacer de vuelta al blanco) y el aviso de límite de uso con `Retry-After`.
+- `performance.spec.ts`: abre como fichero sin disposición el diagrama más grande que admite el esquema (20 redes con 9 servicios cada una, 200 nodos), espera a que ELK lo coloque y la tarjeta cuente 180 componentes y 179 conexiones, y renombra un componente. Falla si abrir tarda más de 15 s o renombrar más de 2 s, márgenes amplios para una máquina de CI lenta: detectan un editor que se cuelga o que se vuelve mucho más lento, no pequeñas regresiones. En local, abrir tarda unos 2 s.
 - `accessibility.spec.ts`: axe con WCAG 2.1 A y AA, sin violaciones `serious` ni `critical`, en el editor en claro y en oscuro, con la paleta abierta, con un componente en el inspector, con la revisión abierta, en el menú de compartir, en la galería de plantillas y en un móvil de 390 × 844 con la hoja de componentes. Antes de analizar espera a que terminen las animaciones finitas: a mitad del fundido del tema, los textos atenuados pasan por colores sin contraste suficiente que no son los de la página.
+
+## Rendimiento
+
+T22, ADR 0027. Tres comprobaciones en CI cuidan lo que tarda el editor en estar listo:
+
+- Presupuesto de tamaño. `pnpm --filter @archdraft/web build` ejecuta después de `vite build` `scripts/check-size.ts`, que lee `dist/index.html`, toma el script de entrada, los módulos que precarga y las hojas de estilo, y suma su tamaño comprimido con gzip. Falla si el JavaScript inicial pasa de 280 KiB o el CSS de 15 KiB (`scripts/size-budget.ts`). Lo que se carga bajo demanda no cuenta. Con T22 quedan 267 KiB de JavaScript y 12 KiB de CSS: el margen es pequeño a propósito, para que cualquier dependencia grande nueva obligue a cargarla bajo demanda o a subir el presupuesto con un motivo.
+- Lighthouse CI. El job `lighthouse` hace el build y ejecuta `test:lighthouse` (`pnpm dlx @lhci/cli`, versión fijada en `package.json`), que sirve el build con `vite preview` en el puerto 4174 y pasa Lighthouse tres veces con su configuración por defecto (móvil con limitación simulada). Con la mediana de las tres, falla si el rendimiento baja de 0,75, la accesibilidad o las buenas prácticas de 0,95, el SEO de 0,9, el LCP pasa de 2,5 s o el CLS de 0,1 (`lighthouserc.json`). Los informes se suben como artefacto `lighthouse`. En local, el 2026-11-12, el rendimiento salió entre 0,82 y 0,97 (lo que varía es el tiempo de bloqueo) y las otras tres categorías, 1.
+- Diagrama de 200 nodos. `e2e/performance.spec.ts` (ver «Tests de extremo a extremo»).
+
+Fuera de la carga inicial quedan ELK, que va en el worker de disposición (unos 440 KB comprimidos), los exportadores del menú de compartir, los lectores de Mermaid y draw.io y las animaciones de Motion (`motion-features.ts`). React DOM, React Flow, Zod y el núcleo de Motion son la mayor parte de lo que sí se carga (medido con los sourcemaps del build): el editor los necesita para dibujar y validar el primer diagrama.
+
+Para pasar Lighthouse en local, `CHROME_PATH` apunta a Chrome o Chromium; como root hace falta además `--collect.settings.chromeFlags="--no-sandbox"`.
 
 ## Despliegue
 

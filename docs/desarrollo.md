@@ -12,18 +12,19 @@ pnpm check
 
 ## Scripts
 
-| Script                                       | Qué hace                                                                                                   |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `pnpm check`                                 | Todo lo que ejecuta CI, en el mismo orden: formato, lint, typecheck, tests con cobertura y build           |
-| `pnpm test`                                  | Tests de todos los paquetes                                                                                |
-| `pnpm test:coverage`                         | Tests con umbrales de cobertura                                                                            |
-| `pnpm lint`                                  | ESLint con información de tipos                                                                            |
-| `pnpm typecheck`                             | `tsc --noEmit` en cada paquete                                                                             |
-| `pnpm format` / `pnpm format:check`          | Prettier                                                                                                   |
-| `pnpm test:e2e`                              | Tests de extremo a extremo y de accesibilidad del editor con Playwright (ver «Tests de extremo a extremo») |
-| `pnpm --filter @archdraft/shared test:watch` | Tests de un paquete en modo observación                                                                    |
-| `pnpm --filter @archdraft/web dev`           | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)                     |
-| `pnpm --filter @archdraft/api eval`          | Banco de evaluación del agente contra un modelo; con `--provider ideal`, sin clave (ver `evaluacion.md`)   |
+| Script                                         | Qué hace                                                                                                   |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `pnpm check`                                   | Todo lo que ejecuta CI, en el mismo orden: formato, lint, typecheck, tests con cobertura y build           |
+| `pnpm test`                                    | Tests de todos los paquetes                                                                                |
+| `pnpm test:coverage`                           | Tests con umbrales de cobertura                                                                            |
+| `pnpm lint`                                    | ESLint con información de tipos                                                                            |
+| `pnpm typecheck`                               | `tsc --noEmit` en cada paquete                                                                             |
+| `pnpm format` / `pnpm format:check`            | Prettier                                                                                                   |
+| `pnpm test:e2e`                                | Tests de extremo a extremo y de accesibilidad del editor con Playwright (ver «Tests de extremo a extremo») |
+| `pnpm --filter @archdraft/web test:lighthouse` | Lighthouse CI contra el build del editor, ya construido (ver `modulos/web.md`, Rendimiento)                |
+| `pnpm --filter @archdraft/shared test:watch`   | Tests de un paquete en modo observación                                                                    |
+| `pnpm --filter @archdraft/web dev`             | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)                     |
+| `pnpm --filter @archdraft/api eval`            | Banco de evaluación del agente contra un modelo; con `--provider ideal`, sin clave (ver `evaluacion.md`)   |
 
 ## Herramientas y por qué
 
@@ -64,7 +65,7 @@ Cada paquete tiene su `tsconfig.json`, que extiende la base y define sus `types`
 1. Instala con `pnpm install --frozen-lockfile`: si el lockfile no corresponde con `package.json`, falla.
 2. Ejecuta formato, lint, typecheck, tests con cobertura y build.
 
-Un segundo job, `e2e`, instala Chromium con `playwright install --with-deps` y ejecuta `pnpm test:e2e`; si falla, sube el informe HTML y las trazas como artefacto `e2e-report`. Los dos jobs corren en paralelo, tienen permisos de solo lectura, cancelan ejecuciones anteriores de la misma rama y un tiempo máximo de 15 minutos. El despliegue de Pages espera a que terminen los dos en verde.
+Un segundo job, `e2e`, instala Chromium con `playwright install --with-deps` y ejecuta `pnpm test:e2e`; si falla, sube el informe HTML y las trazas como artefacto `e2e-report`. Un tercero, `lighthouse`, construye el editor y pasa Lighthouse CI con el Chrome del runner; sube siempre los informes como artefacto `lighthouse` (umbrales en `modulos/web.md`, Rendimiento). El build de `pnpm check` ya comprueba el presupuesto de tamaño del JavaScript y el CSS iniciales. Los tres jobs corren en paralelo, tienen permisos de solo lectura, cancelan ejecuciones anteriores de la misma rama y un tiempo máximo de 15 minutos. El despliegue de Pages espera a que terminen todos en verde.
 
 ## Tests de extremo a extremo
 
