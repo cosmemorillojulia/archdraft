@@ -1,4 +1,4 @@
-import { type DiagramDocument, documentToJson, toDrawio, toMermaid } from '@archdraft/shared';
+import type { DiagramDocument } from '@archdraft/shared';
 import {
   Check,
   Copy,
@@ -13,44 +13,29 @@ import {
 import { AnimatePresence, m } from 'motion/react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { openFileText } from '../editor/open-document.ts';
-import { type Snapshot, useEditor } from '../editor/store.ts';
-import { drawingToPng, drawSnapshot } from '../export/browser.ts';
-import { type ExportFormat, fileNameFor, saveFile } from '../export/files.ts';
+import { useEditor } from '../editor/store.ts';
+import type { ExportFormat } from '../export/files.ts';
+import type * as SaveModule from '../export/save.ts';
 import { useMediaQuery, WIDE_SCREEN } from '../media.ts';
 import { EASE_OUT } from '../motion.ts';
 import { LONG_LINK_CHARS, shareLink } from '../persist/share-link.ts';
-import type { Strings } from '../i18n/en.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { Button } from './Button.tsx';
 
+type Exporters = typeof SaveModule;
+
+let exportersLoad: Promise<Exporters> | undefined;
+
 /**
- * Saves the diagram in one of the formats of the editor. Images are drawn
- * from the document (export/diagram-svg.ts), not captured from the screen,
- * so they show the whole diagram at rest, without selection or particles.
+ * The exporters, downloaded when the panel first opens rather than with the
+ * editor (T22). A failed download is tried again the next time.
  */
-async function exportAs(format: ExportFormat, snapshot: Snapshot, strings: Strings): Promise<void> {
-  const { document, direction } = snapshot;
-  const name = fileNameFor(document.graph.title, format);
-  switch (format) {
-    case 'json':
-      saveFile(documentToJson(document), name, 'application/json');
-      return;
-    case 'mermaid':
-      saveFile(toMermaid(document.graph, { direction }), name);
-      return;
-    case 'drawio':
-      saveFile(toDrawio(document.graph, document.layout), name, 'application/xml');
-      return;
-    case 'svg':
-      saveFile((await drawSnapshot(snapshot, strings)).svg, name, 'image/svg+xml');
-      return;
-    case 'png':
-      saveFile(
-        await drawingToPng(await drawSnapshot(snapshot, strings, { embedFont: true })),
-        name,
-      );
-      return;
-  }
+function loadExporters(): Promise<Exporters> {
+  exportersLoad ??= import('../export/save.ts').catch((error: unknown) => {
+    exportersLoad = undefined;
+    throw error;
+  });
+  return exportersLoad;
 }
 
 /** Formats offered as downloads in the export section, in order. */
@@ -154,6 +139,23 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
   const fileRef = useRef<HTMLInputElement>(null);
   const linkId = useId();
   const noteId = useId();
+  const [exporters, setExporters] = useState<Exporters | null>(null);
+
+  // Ready before the first click, so that copying stays within the click, as browsers require.
+  useEffect(() => {
+    let current = true;
+    loadExporters()
+      .then((loaded) => {
+        if (current) setExporters(loaded);
+      })
+      .catch((error: unknown) => {
+        console.error('Could not load the exporters', error);
+        if (current) setExportFailed(true);
+      });
+    return () => {
+      current = false;
+    };
+  }, []);
 
   // A new link for every version of the diagram while the panel is open.
   useEffect(() => {
@@ -185,11 +187,9 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
   };
 
   const copyMermaid = async () => {
-    if (!snapshot) return;
+    if (!snapshot || !exporters) return;
     try {
-      await navigator.clipboard.writeText(
-        toMermaid(snapshot.document.graph, { direction: snapshot.direction }),
-      );
+      await navigator.clipboard.writeText(exporters.mermaidText(snapshot));
       setMermaidCopied(snapshot.document);
       setExportFailed(false);
     } catch (error) {
@@ -199,11 +199,11 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
   };
 
   const save = async (format: ExportFormat) => {
-    if (!snapshot) return;
+    if (!snapshot || !exporters) return;
     setExporting(format);
     setExportFailed(false);
     try {
-      await exportAs(format, snapshot, strings);
+      await exporters.exportAs(format, snapshot, strings);
     } catch (error) {
       console.error(`Could not export the diagram as ${format}`, error);
       setExportFailed(true);
@@ -286,7 +286,11 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
           <FileDown size={13} aria-hidden="true" />
           {strings.share.export}
         </h3>
-        <Button disabled={!snapshot} onClick={() => void copyMermaid()} className="self-start">
+        <Button
+          disabled={!snapshot || !exporters}
+          onClick={() => void copyMermaid()}
+          className="self-start"
+        >
           {mermaidCopied !== null && mermaidCopied === document ? (
             <Check size={15} aria-hidden="true" />
           ) : (
@@ -301,7 +305,7 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
           {DOWNLOADS.map((format) => (
             <Button
               key={format}
-              disabled={!snapshot || exporting !== null}
+              disabled={!snapshot || !exporters || exporting !== null}
               aria-label={strings.share.downloadAs(strings.share.formats[format])}
               title={strings.share.downloadAs(strings.share.formats[format])}
               onClick={() => void save(format)}
@@ -320,7 +324,7 @@ function SharePanelContent({ headingId, onDone }: { headingId: string; onDone: (
       <section className="flex flex-col gap-2 border-t border-line px-4 pt-3 pb-4">
         <h3 className="text-xs font-medium text-muted">{strings.share.file}</h3>
         <div className="flex flex-wrap gap-1.5">
-          <Button disabled={!snapshot} onClick={() => void save('json')}>
+          <Button disabled={!snapshot || !exporters} onClick={() => void save('json')}>
             <Download size={15} aria-hidden="true" />
             {strings.share.download}
           </Button>
