@@ -26,12 +26,12 @@ const sizes = assets.map((asset) => {
   return { ...asset, bytes: gzipSync(readFileSync(file)).length };
 });
 
-const kb = (bytes: number) => `${(bytes / 1024).toFixed(1)} kB`;
+const kib = (bytes: number) => `${(bytes / 1024).toFixed(1)} KiB`;
 let over = false;
 for (const line of checkBudget(sizes)) {
   const fits = line.bytes <= line.budget;
   over ||= !fits;
-  const report = `Initial ${line.kind}: ${kb(line.bytes)} gzip of ${kb(line.budget)}`;
+  const report = `Initial ${line.kind}: ${kib(line.bytes)} gzip of ${kib(line.budget)}`;
   if (fits) process.stdout.write(`${report}\n`);
   else console.error(`${report}. Load the new code on demand or raise the budget with a reason.`);
 }

@@ -496,7 +496,7 @@ Las imágenes no son una captura de la pantalla: `diagramToSvg` (`export/diagram
 
 Los nombres de fichero salen del título (`fileNameFor(title, format)` en `export/files.ts`), sin tildes y con guiones.
 
-Los exportadores (`export/save.ts`, con `toMermaid`, `toDrawio` y el dibujo de imágenes) no forman parte de la carga inicial (T22): el menú los descarga la primera vez que se abre y mantiene los botones de exportar desactivados hasta que llegan, que suele ser al instante. Así la copia de Mermaid se escribe en el portapapeles dentro del mismo clic, como exigen los navegadores. Si la descarga falla, el menú muestra el error de exportación y se vuelve a intentar al abrirlo otra vez.
+Los exportadores (`export/save.ts`, con `toMermaid`, `toDrawio` y el dibujo de imágenes) no forman parte de la carga inicial (T22): el menú los descarga la primera vez que se abre y mantiene los botones de exportar desactivados hasta que llegan, que suele ser al instante. Así la copia de Mermaid se escribe en el portapapeles dentro del mismo clic, como exigen los navegadores. Si la descarga falla, el menú lo dice («The export formats could not be downloaded…») y se vuelve a intentar al abrirlo otra vez; si falla la de los lectores, el aviso de fichero no abierto dice que no se pudo descargar una parte del editor.
 
 ## Asistente de IA
 
@@ -594,6 +594,7 @@ Medido en Chromium sin GPU con la plantilla por defecto: con el fundido de color
 - `flow.test.ts`: padres antes que hijos, posiciones relativas, tamaños, profundidad, producto y distintivo de proveedor, conectores por dirección, orden de construcción, aristas asíncronas y categoría de origen, nombres accesibles, grupos fijos hasta seleccionarlos, tamaño medido en cada nodo, figuras genéricas, nodos sin disposición y diagrama vacío; estilo propio de cada arista o, si no, el del diagrama.
 - `geometry.test.ts`: coordenadas absolutas con contenedores anidados, nodos sin disposición, profundidad de anidamiento, escala de dibujo con su mínimo y su máximo, límites vacíos, vista inicial que encaja o que empieza arriba y punta de flecha en los cuatro lados.
 - `brand.test.ts`: el logo tiene sus tres colores y título, y la página enlaza el icono de la pestaña y el de iOS (un PNG de 180 × 180).
+- `on-demand.test.tsx`: con los exportadores y los lectores de otros formatos sin poder descargarse, el menú de compartir deja desactivadas las exportaciones y lo explica, y abrir un fichero de Mermaid avisa sin cambiar el diagrama.
 - `size-budget.test.ts`: recursos iniciales leídos de `index.html` (script de entrada, módulos precargados y hojas de estilo, sin scripts en línea ni otros enlaces) y suma por tipo frente al presupuesto.
 - `icons.test.ts`: cada icono de `KIND_ICONS` es el que nombra el catálogo de core. Detectó que Lucide renombró `waves` a `waves-horizontal`.
 
