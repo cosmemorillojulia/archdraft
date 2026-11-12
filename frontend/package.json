@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/check-size.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p e2e",
     "test": "vitest run",
