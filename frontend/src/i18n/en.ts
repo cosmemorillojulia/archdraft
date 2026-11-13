@@ -245,7 +245,8 @@ export const en = {
     search: 'Search components',
     noMatches: (query: string) => `No components match “${query}”.`,
     add: (label: string) => `Add ${label}`,
-    hintWide: 'Click a component to pick it up and click again to place it, or drag it onto the diagram.',
+    hintWide:
+      'Click a component to pick it up and click again to place it, or drag it onto the diagram.',
     hintNarrow: 'Tap to add to the diagram, or hold and drag to place it.',
     categories: {
       actor: 'People and clients',
