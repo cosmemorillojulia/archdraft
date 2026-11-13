@@ -28,13 +28,33 @@ export default defineConfig({
     locale: 'en-US',
     trace: 'retain-on-failure',
   },
+  expect: {
+    // Text and anti-aliasing differ a little between machines; a moved or missing panel does not.
+    toHaveScreenshot: { maxDiffPixelRatio: 0.02 },
+  },
+  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
   projects: [
     {
       name: 'chromium',
+      testIgnore: 'visual.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
-        ...(executablePath === undefined ? {} : { launchOptions: { executablePath } }),
+        launchOptions: { executablePath },
+      },
+    },
+    {
+      // Visual regression (visual.spec.ts): no motion, and text drawn the same on every machine.
+      name: 'visual',
+      testMatch: 'visual.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        contextOptions: { reducedMotion: 'reduce' },
+        launchOptions: {
+          executablePath,
+          args: ['--font-render-hinting=none', '--disable-lcd-text', '--force-color-profile=srgb'],
+        },
       },
     },
   ],
