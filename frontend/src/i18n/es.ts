@@ -477,7 +477,7 @@ export const es: Strings = {
     search: 'Buscar componentes',
     noMatches: (query: string) => `Ningún componente coincide con «${query}».`,
     add: (label: string) => `Añadir ${label}`,
-    hintWide: 'Haz clic para añadir en el centro, o arrastra al diagrama.',
+    hintWide: 'Haz clic en un componente para cogerlo y otra vez para colocarlo, o arrástralo al diagrama.',
     hintNarrow: 'Toca para añadir al diagrama, o mantén pulsado y arrastra para colocarlo.',
     categories: {
       actor: 'Personas y clientes',
