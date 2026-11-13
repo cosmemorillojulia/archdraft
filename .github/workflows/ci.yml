@@ -44,7 +44,7 @@ jobs:
       - run: pnpm build
 
   e2e:
-    name: End-to-end and accessibility tests
+    name: End-to-end, accessibility and visual tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
