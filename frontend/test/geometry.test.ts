@@ -14,6 +14,7 @@ import {
   OUTWARD,
   sidePoint,
   straightened,
+  wholeInSight,
 } from '../src/canvas/geometry.ts';
 
 const graph: ArchitectureGraph = {
@@ -135,6 +136,31 @@ describe('initialViewport', () => {
     expect(viewport.zoom).toBe(0.9);
     expect(viewport.y).toBe(100 - 60 * 0.9);
     expect(viewport.x).toBe(20 + (350 - 1000 * 0.9) / 2 - 40 * 0.9);
+  });
+});
+
+describe('wholeInSight', () => {
+  const canvas = { width: 1000, height: 800 };
+  const insets = { top: 20, right: 300, bottom: 100, left: 20 };
+  const content = { x: 0, y: 0, width: 600, height: 400 };
+
+  it('is true when the diagram fits in the free part of the canvas', () => {
+    expect(wholeInSight(content, { x: 20, y: 20, zoom: 1 }, canvas, insets)).toBe(true);
+    // At the right edge of the free part, with a pixel of rounding.
+    expect(wholeInSight(content, { x: 100.5, y: 20, zoom: 1 }, canvas, insets)).toBe(true);
+  });
+
+  it('is false when a side of the diagram is under the interface or off the canvas', () => {
+    expect(wholeInSight(content, { x: 120, y: 20, zoom: 1 }, canvas, insets)).toBe(false);
+    expect(wholeInSight(content, { x: 10, y: 20, zoom: 1 }, canvas, insets)).toBe(false);
+    expect(wholeInSight(content, { x: 20, y: 0, zoom: 1 }, canvas, insets)).toBe(false);
+    expect(wholeInSight(content, { x: 20, y: 20, zoom: 1.5 }, canvas, insets)).toBe(false);
+  });
+
+  it('takes the zoom and the origin of the content into account', () => {
+    const shifted = { x: 100, y: 50, width: 600, height: 400 };
+    expect(wholeInSight(shifted, { x: -30, y: -5, zoom: 0.5 }, canvas, insets)).toBe(true);
+    expect(wholeInSight(shifted, { x: -60, y: -5, zoom: 0.5 }, canvas, insets)).toBe(false);
   });
 });
 
