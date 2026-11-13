@@ -9,7 +9,7 @@ import { useDialog } from './onboarding/dialog-store.ts';
 import { Dialogs } from './onboarding/Dialogs.tsx';
 import { EmptyState } from './onboarding/EmptyState.tsx';
 import { DiagramCanvas } from './canvas/DiagramCanvas.tsx';
-import type { Insets } from './canvas/geometry.ts';
+import { type Insets, SIDE_PANEL_COVER } from './canvas/geometry.ts';
 import {
   ComponentsPanel,
   ComponentsSheet,
@@ -61,10 +61,19 @@ async function openFirstDiagram(direction: LayoutDirection): Promise<void> {
   await openTemplate(DEFAULT_TEMPLATE, direction);
 }
 
-/** Space taken by the floating interface around the canvas, in pixels. */
-function canvasInsets(wide: boolean, paletteOpen: boolean): Insets {
+/**
+ * Space taken by the floating interface around the canvas, in pixels. On wide screens the design
+ * review and the assistant's proposals take the right column; the inspector does too, but it
+ * only keeps the selected component clear of it (DiagramCanvas.tsx).
+ */
+function canvasInsets(wide: boolean, paletteOpen: boolean, sidePanelOpen: boolean): Insets {
   return wide
-    ? { top: 24, right: 24, bottom: 100, left: paletteOpen ? PALETTE_WIDTH + 16 : 24 }
+    ? {
+        top: 24,
+        right: sidePanelOpen ? SIDE_PANEL_COVER : 24,
+        bottom: 100,
+        left: paletteOpen ? PALETTE_WIDTH + 16 : 24,
+      }
     : { top: 150, right: 16, bottom: 140, left: 16 };
 }
 
@@ -113,7 +122,10 @@ function Editor() {
   // On narrow screens a panel takes the place of the prompt.
   const panelOpen = selecting || reviewing || offering;
   const flow = useReactFlow();
-  const insets = useMemo(() => canvasInsets(wide, paletteOpen), [wide, paletteOpen]);
+  const insets = useMemo(
+    () => canvasInsets(wide, paletteOpen, reviewing || offering),
+    [wide, paletteOpen, reviewing, offering],
+  );
 
   useEditorShortcuts(!sheetOpen);
 

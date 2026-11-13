@@ -78,6 +78,8 @@ pnpm test:e2e
 
 Si el navegador no se puede descargar, `PLAYWRIGHT_CHROMIUM_PATH` apunta a un Chromium ya instalado. Fuera de CI se reutiliza un servidor que ya escuche en el puerto 4173; si se cambia el editor, hay que pararlo para que se vuelva a construir. Los resultados quedan en `frontend/e2e/.results` (trazas de los tests fallidos), ignorados por git. No forman parte de `pnpm check`.
 
+Las pruebas de regresión visual (`frontend/e2e/visual.spec.ts`, ADR 0028) comparan capturas con las de `frontend/e2e/__screenshots__`. Tras un cambio de diseño intencionado se regeneran con `pnpm test:e2e --project visual --update-snapshots` y las imágenes nuevas se revisan en el diff antes de hacer commit. Se generan en Linux, como CI.
+
 `.github/workflows/evals.yml` pasa el banco de evaluación contra modelos de Groq cada semana y bajo demanda (`docs/evaluacion.md`).
 
 Dependabot (`.github/dependabot.yml`) propone actualizaciones semanales de npm, agrupando las de desarrollo, y mensuales de las acciones de GitHub.

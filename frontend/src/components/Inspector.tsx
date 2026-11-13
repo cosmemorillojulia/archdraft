@@ -236,7 +236,10 @@ interface PanelTitleProps {
   icon: ReactNode;
 }
 
-/** Icon, title and subtitle at the top of a panel. */
+/**
+ * Icon, title and subtitle at the top of a panel. The subtitle wraps to a second line rather
+ * than cut a hint short.
+ */
 function PanelTitle({ headingId, title, subtitle, icon }: PanelTitleProps) {
   return (
     <>
@@ -245,7 +248,7 @@ function PanelTitle({ headingId, title, subtitle, icon }: PanelTitleProps) {
         <h2 id={headingId} className="truncate leading-tight font-semibold">
           {title}
         </h2>
-        {subtitle !== undefined && <p className="truncate text-xs text-muted">{subtitle}</p>}
+        {subtitle !== undefined && <p className="line-clamp-2 text-xs text-muted">{subtitle}</p>}
       </div>
     </>
   );

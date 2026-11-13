@@ -117,6 +117,12 @@ export function boundsOf(boxes: Iterable<Box>): Box | null {
   return minX === Infinity ? null : { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+/**
+ * Room the panels in the right column take on wide screens (Inspector.tsx, ReviewPanel.tsx,
+ * AssistantPanel.tsx): 320 px with their margins.
+ */
+export const SIDE_PANEL_COVER = 356;
+
 /** Space taken by the floating interface on each side of the canvas, in pixels. */
 export interface Insets {
   readonly top: number;
@@ -154,6 +160,28 @@ export function initialViewport(
     y: insets.top + Math.max(spareHeight / 2, 0) - content.y * zoom,
     zoom,
   };
+}
+
+/**
+ * Whether the viewport shows all of `content` inside the part of the canvas not covered by the
+ * floating interface, allowing one pixel for rounding.
+ */
+export function wholeInSight(
+  content: Box,
+  viewport: Viewport,
+  canvas: { width: number; height: number },
+  insets: Insets,
+): boolean {
+  const left = viewport.x + content.x * viewport.zoom;
+  const top = viewport.y + content.y * viewport.zoom;
+  const right = left + content.width * viewport.zoom;
+  const bottom = top + content.height * viewport.zoom;
+  return (
+    left >= insets.left - 1 &&
+    top >= insets.top - 1 &&
+    right <= canvas.width - insets.right + 1 &&
+    bottom <= canvas.height - insets.bottom + 1
+  );
 }
 
 /** Side of a node an edge connects to. Same values as React Flow's `Position`. */

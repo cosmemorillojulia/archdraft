@@ -15,6 +15,7 @@ const CI = process.env.CI !== undefined;
  * `playwright install` downloads, for environments that cannot download it.
  */
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH;
+const chromium = executablePath === undefined ? {} : { executablePath };
 
 export default defineConfig({
   testDir: 'e2e',
@@ -28,13 +29,33 @@ export default defineConfig({
     locale: 'en-US',
     trace: 'retain-on-failure',
   },
+  expect: {
+    // Text and anti-aliasing differ a little between machines; a moved or missing panel does not.
+    toHaveScreenshot: { maxDiffPixelRatio: 0.02 },
+  },
+  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
   projects: [
     {
       name: 'chromium',
+      testIgnore: 'visual.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
-        ...(executablePath === undefined ? {} : { launchOptions: { executablePath } }),
+        launchOptions: chromium,
+      },
+    },
+    {
+      // Visual regression (visual.spec.ts): no motion, and text drawn the same on every machine.
+      name: 'visual',
+      testMatch: 'visual.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        contextOptions: { reducedMotion: 'reduce' },
+        launchOptions: {
+          ...chromium,
+          args: ['--font-render-hinting=none', '--disable-lcd-text', '--force-color-profile=srgb'],
+        },
       },
     },
   ],

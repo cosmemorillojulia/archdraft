@@ -82,30 +82,33 @@ export function ReviewPanel({ placement }: { placement: PanelPlacement }) {
         }
       />
 
-      <div
-        role="group"
-        aria-label={strings.review.filters}
-        className="flex flex-wrap gap-1 border-b border-line px-3 py-2.5"
-      >
-        {LINT_SEVERITIES.map((severity) => {
-          const Icon = SEVERITY_ICON[severity];
-          const shown = !hidden.has(severity);
-          return (
-            <button
-              key={severity}
-              type="button"
-              aria-pressed={shown}
-              onClick={() => toggle(severity)}
-              style={severityStyle(severity)}
-              className="inline-flex h-7 items-center gap-1 rounded-full border border-line px-2 text-xs font-medium text-muted transition-colors hover:text-ink aria-pressed:border-transparent aria-pressed:bg-[color-mix(in_srgb,var(--severity)_12%,transparent)] aria-pressed:text-ink"
-            >
-              <Icon size={12} aria-hidden="true" style={{ color: 'var(--severity)' }} />
-              {strings.review.groups[severity]}
-              <span className="tabular-nums">{countOf(severity)}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* With nothing to report, filters of three zeros would only repeat the empty message. */}
+      {findings.length > 0 && (
+        <div
+          role="group"
+          aria-label={strings.review.filters}
+          className="flex flex-wrap gap-1 border-b border-line px-3 py-2.5"
+        >
+          {LINT_SEVERITIES.map((severity) => {
+            const Icon = SEVERITY_ICON[severity];
+            const shown = !hidden.has(severity);
+            return (
+              <button
+                key={severity}
+                type="button"
+                aria-pressed={shown}
+                onClick={() => toggle(severity)}
+                style={severityStyle(severity)}
+                className="inline-flex h-7 items-center gap-1 rounded-full border border-line px-2 text-xs font-medium text-muted transition-colors hover:text-ink aria-pressed:border-transparent aria-pressed:bg-[color-mix(in_srgb,var(--severity)_12%,transparent)] aria-pressed:text-ink"
+              >
+                <Icon size={12} aria-hidden="true" style={{ color: 'var(--severity)' }} />
+                {strings.review.groups[severity]}
+                <span className="tabular-nums">{countOf(severity)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
         {findings.length === 0 ? (
