@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- `@archdraft/web`: opening or closing the design review or the assistant's proposals on a wide screen fits a diagram that was in sight as a whole into the space beside the panel, so the panel no longer hides part of it. Panel subtitles wrap to a second line instead of being cut, the design review leaves out its filters when there is nothing to report, and the desktop palette hint says that a click picks a component up and another places it.
 - `@archdraft/web`: connections between boxes that are nearly level are drawn straight instead of with a small step, and a dragged box falls level with the boxes it connects to when it comes within 8 px of them.
 - `@archdraft/web`: a proposal of the assistant is shown and applied with the whole diagram laid out again (Reorder the whole diagram on), unless it removes components, which keeps the layout so that what goes is shown where it was.
 - `@archdraft/web`: the legend that says a proposal is only a preview sits above the prompt (above the panel on phones) instead of at the top of the canvas, where the diagram card covered it.
@@ -19,6 +20,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@archdraft/web`: visual regression tests (ADR 0028). Eight key screens, on desktop and phone, light and dark, are compared with reference images in `frontend/e2e/__screenshots__` in the `e2e` job of CI.
 - `@archdraft/web`: performance checks (ADR 0027). The build fails when the initial JavaScript is over 280 KiB or the CSS over 15 KiB gzipped; a `lighthouse` job in CI runs Lighthouse CI three times on the production build with thresholds on the scores, LCP and CLS; an end-to-end test opens, lays out and edits a diagram of 200 components. The exporters of the share menu and the readers of Mermaid and draw.io files load on demand, which takes about 9 kB gzipped off the initial JavaScript.
 - `@archdraft/web`: end-to-end tests with Playwright against the production build (ADR 0026): opening a template, adding and connecting components, the design review, exporting Mermaid, sharing a link, and generating with a simulated API, plus axe checks for serious WCAG 2.1 AA violations on the main screens in light, dark and phone layouts. `pnpm test:e2e` runs them, and a new `e2e` job in CI runs them on every push.
 - `@archdraft/api`: a daily limit of requests to `POST /v1/assist` per address (ADR 0025), 10 by default (`DAILY_ASSIST_LIMIT`). Each IPv4 address or IPv6 /64 is counted in a SQLite Durable Object named by a hash of it, deleted at midnight UTC; past the limit the API answers `429 rate-limited` with `Retry-After` until then, before calling the model or opening a stream. Requests the contract rejects do not count, and a failing counter lets requests through and logs it. The privacy notes of the editor say so.

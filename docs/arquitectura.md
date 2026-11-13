@@ -221,6 +221,7 @@ El documento, con su disposición, se serializa, se comprime y se codifica en el
 - Tests unitarios con Vitest en los tres paquetes y cobertura mínima en `shared` y `frontend/src/layout` (ADR 0010).
 - Tests de extremo a extremo con Playwright y axe contra el build del editor, con la API simulada, en un job propio de CI (T21, ADR 0026).
 - Presupuesto de tamaño en el build y Lighthouse CI en un job propio (T22, ADR 0027).
+- Regresión visual de las pantallas clave con capturas de Playwright de referencia, en el job de extremo a extremo (T26, ADR 0028).
 - Banco de evaluación del agente, fuera de CI de cada push ([evaluacion.md](evaluacion.md)).
 
 ## 8. Despliegue

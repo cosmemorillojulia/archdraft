@@ -40,7 +40,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | hecha (2026-11-06) |
 | T24 | Lanzamiento 1.0                                                  | T22, T23, T26 | pendiente          |
 | T25 | Editor: rediseño centrado en el lienzo                           | T07           | hecha (2026-10-24) |
-| T26 | Revisión de diseño y pulido visual                               | T20, T23      | pendiente          |
+| T26 | Revisión de diseño y pulido visual                               | T20, T23      | en curso           |
 | T27 | Editor: cabecera fija y animaciones                              | T25           | hecha (2026-10-24) |
 | T28 | Editor: paleta de componentes en móvil                           | T27           | hecha (2026-10-25) |
 | T29 | Editor: diagrama legible en móvil y ajustes visuales             | T28           | hecha (2026-10-25) |
@@ -530,6 +530,16 @@ Entregables: estado vacío con ejemplos de prompt, galería de plantillas, ayuda
 Entregables: README final con capturas generadas con Playwright, revisión completa de la documentación, versión 1.0.0 en todos los paquetes, sección de lanzamiento en CHANGELOG, etiqueta anotada `v1.0.0` y notas de la versión.
 
 ### T26. Revisión de diseño y pulido visual
+
+Estado: en curso. Primera pasada (2026-11-13): capturas con Playwright de doce flujos (editor, paleta, inspector, revisión, compartir, menú New, galería, diagrama vacío, menú del asistente, propuestas, propuesta aplicada, error del asistente y atajos) en escritorio y móvil, claro y oscuro, revisadas con la skill `design-critique`. Corregido: la indicación de la paleta en escritorio (un clic coge el componente y otro lo coloca); el subtítulo de los paneles pasa a una segunda línea en lugar de cortarse; al abrir o cerrar la revisión o las propuestas en escritorio, un diagrama que se veía entero se vuelve a encajar junto al panel en lugar de quedar en parte debajo; la revisión sin hallazgos ya no muestra tres filtros a cero. Pruebas de regresión visual de ocho pantallas en el job `e2e` de CI (ADR 0028). Documentado en `docs/modulos/web.md` y `docs/desarrollo.md`.
+
+Pendiente:
+
+- Moderado: en móvil, la columna de controles del lienzo (zoom y accesos directos) tapa el borde derecho del diagrama; en la plantilla por defecto, «Secrets» queda debajo. Valorar plegarla o reservar su ancho al encajar.
+- Menor: en móvil, la leyenda de la vista previa queda pegada al borde superior del panel de propuestas, y los controles del lienzo se transparentan bajo la cabecera de la hoja de revisión.
+- Revisar estados de hover, foco, carga y error de todos los paneles con capturas de cerca (progreso del asistente con razonamiento, aviso de error, menús abiertos) y las microinteracciones de los flujos principales, con un vídeo del recorrido.
+- Revisión con hallazgos de las tres severidades y con el inspector de un componente en móvil.
+- Confirmar en varias ejecuciones de CI que la regresión visual es estable con el Chromium del runner (ADR 0028, Revisar si).
 
 Objetivo: que el editor completo se sienta premium antes del lanzamiento, revisado como lo haría un diseñador.
 
