@@ -225,7 +225,7 @@ describe('review panel', () => {
     expect(loadDisabledRules()).toEqual([]);
   });
 
-  it('says when the design follows every rule', async () => {
+  it('says when the design follows every rule, without filters', async () => {
     const user = renderPanel();
     act(() =>
       editorStore
@@ -237,6 +237,9 @@ describe('review panel', () => {
     );
     await user.click(screen.getByRole('button', { name: strings.review.clean }));
     expect(within(panel()).getByText(strings.review.empty)).toBeInTheDocument();
+    expect(
+      within(panel()).queryByRole('group', { name: strings.review.filters }),
+    ).not.toBeInTheDocument();
   });
 });
 
