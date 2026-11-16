@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- `@archdraft/web`: the particles that travel along connections move smoothly. They follow the line with a CSS motion path instead of SVG's `animateMotion`, so they keep their place when the line changes, as while a node is dragged; they fade in as they leave and out as they arrive instead of jumping back to the start; and all of them move at the same speed, measured along the whole line.
 - `@archdraft/web`: opening or closing the design review or the assistant's proposals on a wide screen fits a diagram that was in sight as a whole into the space beside the panel, so the panel no longer hides part of it. Panel subtitles wrap to a second line instead of being cut, the design review leaves out its filters when there is nothing to report, and the desktop palette hint says that a click picks a component up and another places it.
 - `@archdraft/web`: connections between boxes that are nearly level are drawn straight instead of with a small step, and a dragged box falls level with the boxes it connects to when it comes within 8 px of them.
 - `@archdraft/web`: a proposal of the assistant is shown and applied with the whole diagram laid out again (Reorder the whole diagram on), unless it removes components, which keeps the layout so that what goes is shown where it was.
