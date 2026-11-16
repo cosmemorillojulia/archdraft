@@ -51,21 +51,22 @@ flowchart LR
   n_api -.->|"amqp"| n_orders_queue
 ```
 
-| Elemento del grafo   | Representación en Mermaid                                                    |
-| -------------------- | ---------------------------------------------------------------------------- |
-| Título               | Cabecera YAML `title`                                                        |
-| Contenedor           | `subgraph id ["etiqueta"]` ... `end`, anidado según `parentId`               |
-| Componente de datos  | Cilindro `id[("etiqueta")]`                                                  |
-| Actor                | Estadio `id(["etiqueta"])`                                                   |
-| Resto de componentes | Rectángulo `id["etiqueta"]`                                                  |
-| Caja                 | Rectángulo `id["etiqueta"]`                                                  |
-| Círculo              | Círculo `id(("etiqueta"))`                                                   |
-| Rombo                | Rombo `id{"etiqueta"}`                                                       |
-| Nota                 | Bandera `id>"etiqueta"]`, la figura de Mermaid más parecida a una nota       |
-| Producto             | Segunda línea de la etiqueta, solo si aporta algo (ver abajo)                |
-| Arista síncrona      | Línea continua `-->`                                                         |
-| Arista asíncrona     | Línea discontinua `-.->`                                                     |
-| Etiqueta y protocolo | Texto de la arista: `"Reads · grpc"`, o solo uno de los dos si falta el otro |
+| Elemento del grafo     | Representación en Mermaid                                                    |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| Título                 | Cabecera YAML `title`                                                        |
+| Contenedor             | `subgraph id ["etiqueta"]` ... `end`, anidado según `parentId`               |
+| Componente de datos    | Cilindro `id[("etiqueta")]`                                                  |
+| Actor                  | Estadio `id(["etiqueta"])`                                                   |
+| Resto de componentes   | Rectángulo `id["etiqueta"]`                                                  |
+| Caja                   | Rectángulo `id["etiqueta"]`                                                  |
+| Círculo                | Círculo `id(("etiqueta"))`                                                   |
+| Rombo                  | Rombo `id{"etiqueta"}`                                                       |
+| Nota                   | Bandera `id>"etiqueta"]`, la figura de Mermaid más parecida a una nota       |
+| Producto               | Segunda línea de la etiqueta, solo si aporta algo (ver abajo)                |
+| Arista síncrona        | Línea continua `-->`                                                         |
+| Arista asíncrona       | Línea discontinua `-.->`                                                     |
+| Arista en dos sentidos | Punta también al principio: `<-->` o `<-.->`                                 |
+| Etiqueta y protocolo   | Texto de la arista: `"Reads · grpc"`, o solo uno de los dos si falta el otro |
 
 Decisiones:
 
@@ -136,7 +137,7 @@ Ejemplo abreviado:
 | Componente         | Rectángulo redondeado con el color de su categoría; cilindro (`cylinder3`) para datos, estadio para actores, borde discontinuo para sistemas externos |
 | Figura genérica    | Gris neutro: rectángulo redondeado, `ellipse`, `rhombus` o `shape=note`, sin segunda línea de producto                                                |
 | Etiqueta           | Nombre y, en una segunda línea, el producto con la misma regla que Mermaid (`nodeSubtitle`)                                                           |
-| Arista             | Celda `edge="1"` con estilo ortogonal; discontinua si el modo efectivo es asíncrono                                                                   |
+| Arista             | Celda `edge="1"` con estilo ortogonal; discontinua si el modo efectivo es asíncrono; con `startArrow=block;startFill=1;` si va en los dos sentidos    |
 | Texto de arista    | El mismo que en Mermaid (`edgeText`): `"Reads · grpc"`                                                                                                |
 
 Decisiones:
@@ -187,6 +188,8 @@ XML 1.0 no admite algunos caracteres ni siquiera como referencia: controles C0 s
 1. `JSON.parse` dentro de un `try`. Un texto que no es JSON produce `INVALID_JSON` con el mensaje del parser.
 2. `migrateDocument` lleva el documento a la versión actual (ver abajo).
 3. `parseArchitectureGraph` aplica el esquema y la validación estructural.
+
+Al importar Mermaid, una flecha con punta en los dos extremos (`<-->`, `<-.->` o `<-- texto -->`) es una arista en dos sentidos; una con punta solo al principio (`<--`) no. Al importar draw.io, lo es un conector con `startArrow` distinto de `none`. Así, las dos exportaciones conservan el sentido al volver a abrirse.
 
 Un `__proto__` en el JSON es una propiedad propia del objeto resultante, no modifica prototipos, y el esquema estricto lo rechaza como clave desconocida.
 

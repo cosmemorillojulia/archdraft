@@ -69,6 +69,7 @@ export interface EdgePatch {
   readonly label?: string | undefined;
   readonly protocol?: ArchEdge['protocol'];
   readonly mode?: ArchEdge['mode'];
+  readonly bidirectional?: ArchEdge['bidirectional'];
 }
 
 /** Offset of a duplicate from its original. */

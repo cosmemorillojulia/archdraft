@@ -52,6 +52,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T35 | Backend: tareas improve, simplify y extend del agente            | T18           | hecha (2026-10-31) |
 | T36 | Catálogo ampliado y plantillas de referencia                     | T06           | hecha (2026-11-06) |
 | T37 | Editor: partículas del flujo fluidas                             | T31           | hecha (2026-11-16) |
+| T38 | Conexiones en los dos sentidos                                   | T09, T03      | hecha (2026-11-16) |
 
 ## Fase 0: fundamentos
 
@@ -350,6 +351,16 @@ Objetivo: a petición del propietario, que las partículas que recorren las cone
 Entregables: partícula con una trayectoria de CSS en lugar de `animateMotion`, que conserva su avance cuando la línea cambia; fundido al salir y al llegar para que no se vea el salto de vuelta al origen; misma velocidad en todas las conexiones, con la duración calculada sobre la longitud real de la línea y estable mientras se arrastra.
 
 Criterios de aceptación: tests de la duración; medida en Chromium sin saltos visibles en reposo.
+
+### T38. Conexiones en los dos sentidos
+
+Estado: hecha (2026-11-16). Documentado en `docs/modelo-de-dominio.md`, `docs/modulos/exportacion.md` y `docs/modulos/web.md` (Inspector).
+
+Objetivo: a petición del propietario, poder dibujar una flecha bidireccional.
+
+Entregables: campo opcional `bidirectional` en las aristas y en `updateEdge`; punta en cada extremo en el lienzo y en las imágenes, con una segunda partícula de vuelta; control «Direction» en el inspector; exportación e importación con Mermaid (`<-->`) y draw.io (`startArrow`); indicación en el prompt del agente.
+
+Criterios de aceptación: tests del esquema, el parche, las exportaciones, las importaciones, el inspector, el lienzo y el SVG.
 
 ## Fase 3: inteligencia artificial
 

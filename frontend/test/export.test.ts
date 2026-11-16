@@ -124,6 +124,25 @@ describe('diagram as SVG', () => {
     expect(texts).toEqual(expect.arrayContaining(['HTTPS', 'Enqueue']));
   });
 
+  it('puts an arrowhead at each end of a two-way connection', () => {
+    const twoWay = {
+      ...document,
+      graph: {
+        ...document.graph,
+        edges: document.graph.edges.map((edge) =>
+          edge.id === 'user-api' ? { ...edge, bidirectional: true } : edge,
+        ),
+      },
+    };
+    const heads = (svg: string) =>
+      [...parse(svg).querySelectorAll('path')].filter((path) =>
+        (path.getAttribute('d') ?? '').endsWith('Z'),
+      ).length;
+    expect(heads(diagramToSvg(twoWay, options).svg)).toBe(
+      heads(diagramToSvg(document, options).svg) + 1,
+    );
+  });
+
   it('draws connections with right angles, as curves when the layout asks for it', () => {
     const lines = (laid: DiagramDocument['layout']) =>
       [

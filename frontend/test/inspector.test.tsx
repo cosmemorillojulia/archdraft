@@ -163,6 +163,24 @@ describe('Inspector', () => {
     });
   });
 
+  it('makes a connection two-way and back to one way', async () => {
+    const user = userEvent.setup();
+    render(<PanelSlot placement="side" />);
+    inspect('edge', 'api-db');
+    const panel = screen.getByRole('region', { name: strings.inspector.connection });
+    expect(within(panel).getByText(strings.inspector.directionHint(false))).toBeInTheDocument();
+
+    await user.click(within(panel).getByLabelText(strings.inspector.directions.both));
+    expect(edgeOf('api-db')?.bidirectional).toBe(true);
+    expect(within(panel).getByText(strings.inspector.directionHint(true))).toBeInTheDocument();
+
+    await user.click(within(panel).getByLabelText(strings.inspector.directions.one));
+    expect(edgeOf('api-db')).not.toHaveProperty('bidirectional');
+    // Each change is one step to undo.
+    act(() => editorStore.getState().undo());
+    expect(edgeOf('api-db')?.bidirectional).toBe(true);
+  });
+
   it('draws a connection as the diagram does until it is given a style of its own', async () => {
     const user = userEvent.setup();
     render(<PanelSlot placement="side" />);

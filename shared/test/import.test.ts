@@ -86,6 +86,59 @@ const PAGE = `<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>
   <mxCell id="e2" style="endArrow=block;" edge="1" parent="1" source="a"><mxGeometry relative="1" as="geometry"/></mxCell>
 </root></mxGraphModel>`;
 
+describe('two-way arrows', () => {
+  it('reads Mermaid arrows with a head at each end, labelled or not', () => {
+    const { edges } = ok(
+      importMermaid(`flowchart LR
+  a <--> b
+  b <-.->|copy| c
+  c <-- both --> d
+  d <-- e`),
+    ).document.graph;
+    const twoWay = (source: string, target: string) =>
+      edges.find((edge) => edge.source === source && edge.target === target)?.bidirectional;
+    expect(twoWay('a', 'b')).toBe(true);
+    expect(twoWay('b', 'c')).toBe(true);
+    expect(edges.find((edge) => edge.source === 'b')).toMatchObject({
+      mode: 'async',
+      label: 'copy',
+    });
+    expect(twoWay('c', 'd')).toBe(true);
+    // A head only at the start is not two-way.
+    expect(twoWay('d', 'e')).toBeUndefined();
+  });
+
+  it('reads draw.io connectors with a start arrow, and writes them back the same', async () => {
+    const page = `<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>
+  <mxCell id="a" value="A" style="rounded=1;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="80" height="40" as="geometry"/></mxCell>
+  <mxCell id="b" value="B" style="rounded=1;" vertex="1" parent="1"><mxGeometry x="200" y="0" width="80" height="40" as="geometry"/></mxCell>
+  <mxCell id="c" value="C" style="rounded=1;" vertex="1" parent="1"><mxGeometry x="400" y="0" width="80" height="40" as="geometry"/></mxCell>
+  <mxCell id="e1" style="startArrow=classic;endArrow=classic;" edge="1" parent="1" source="a" target="b"><mxGeometry relative="1" as="geometry"/></mxCell>
+  <mxCell id="e2" style="startArrow=none;endArrow=block;" edge="1" parent="1" source="b" target="c"><mxGeometry relative="1" as="geometry"/></mxCell>
+</root></mxGraphModel>`;
+    const result = await importDrawio(`<mxfile><diagram name="P">${page}</diagram></mxfile>`);
+    if (!result.success) throw new Error(result.message);
+    const { graph, layout } = result.document;
+    expect(graph.edges.map((edge) => edge.bidirectional)).toEqual([true, undefined]);
+
+    const again = await importDrawio(toDrawio(graph, layout));
+    if (!again.success) throw new Error(again.message);
+    expect(again.document.graph.edges.map((edge) => edge.bidirectional)).toEqual([true, undefined]);
+  });
+
+  it('round-trips through Mermaid', () => {
+    const graph = threeTierGraph();
+    const [first] = graph.edges;
+    if (first === undefined) throw new Error('The fixture has no edges.');
+    const twoWay = {
+      ...graph,
+      edges: [{ ...first, bidirectional: true }, ...graph.edges.slice(1)],
+    };
+    const read = ok(importMermaid(toMermaid(twoWay))).document.graph.edges;
+    expect(read.filter((edge) => edge.bidirectional === true)).toHaveLength(1);
+  });
+});
+
 describe('importDrawio', () => {
   it('reads shapes, groups, positions, text and connectors', async () => {
     const result = await importDrawio(

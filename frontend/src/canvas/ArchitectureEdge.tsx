@@ -43,8 +43,9 @@ function away(point: { x: number; y: number }, rest: { x: number; y: number }): 
 
 /**
  * A connection: a smooth curve, or a line of right angles, that draws itself in when the
- * diagram builds, dashed when asynchronous, ending in an arrowhead, with a particle in the
- * colour of its source that travels along it. When it is selected, or either
+ * diagram builds, dashed when asynchronous, ending in an arrowhead (one at each end when it
+ * is two-way), with a particle in the colour of its source that travels along it, and one in
+ * the colour of its target that comes back on a two-way connection. When it is selected, or either
  * end is in focus, it turns to the accent colour. Its label shows always or
  * never, as it was set, not when it is pointed at.
  *
@@ -88,6 +89,7 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
     targetBox,
     direction,
     sourceCategory,
+    targetCategory,
     appearDelay,
   } = data;
   // The sides come from the handles React Flow measured, except while another side, or another
@@ -117,9 +119,12 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   // dragged or the end is taken to another node, the line takes its plain course instead.
   const moving = dragged || reconnecting !== null;
   const arrow = arrowhead(tip.x, tip.y, sides.target);
+  // A two-way connection has a head into its source too, and the line starts at its base.
+  const backArrow = edge.bidirectional === true ? arrowhead(start.x, start.y, sides.source) : null;
+  const lineStart = backArrow?.base ?? start;
   const ends = {
-    sourceX: start.x,
-    sourceY: start.y,
+    sourceX: lineStart.x,
+    sourceY: lineStart.y,
     targetX: arrow.base.x,
     targetY: arrow.base.y,
     sourcePosition: sides.source,
@@ -178,33 +183,49 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
             onAnimationComplete={() => setDrawn(true)}
           />
         )}
-        <m.path
-          d={arrow.outline}
-          strokeWidth={1.5}
-          strokeLinejoin="round"
-          className="transition-[fill,stroke] duration-200"
-          style={{ fill: colour, stroke: colour }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.15, delay: delay + (canvas.building ? DRAW_S * 0.8 : 0) }}
-        />
+        {[arrow, backArrow].map(
+          (head, index) =>
+            head && (
+              <m.path
+                key={index}
+                d={head.outline}
+                strokeWidth={1.5}
+                strokeLinejoin="round"
+                className="transition-[fill,stroke] duration-200"
+                style={{ fill: colour, stroke: colour }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                // The head at the target waits for the line to draw in; the one at the source does not.
+                transition={{
+                  duration: 0.15,
+                  delay: delay + (canvas.building && index === 0 ? DRAW_S * 0.8 : 0),
+                }}
+              />
+            ),
+        )}
         {canvas.particles && !removed && (
           <m.g
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: canvas.building ? appearDelay + 0.6 : 0.3 }}
           >
-            <circle
-              r={async ? 2.25 : 2.5}
-              className="flow-particle"
-              style={
-                {
-                  fill: `var(--cat-${sourceCategory})`,
-                  offsetPath: `path('${path}')`,
-                  '--travel': `${travel ?? restingTravel}s`,
-                } as CSSProperties
-              }
-            />
+            {/* A two-way connection carries a second particle the other way, half a lap behind. */}
+            {(backArrow ? [sourceCategory, targetCategory] : [sourceCategory]).map(
+              (category, index) => (
+                <circle
+                  key={index}
+                  r={async ? 2.25 : 2.5}
+                  className={index === 0 ? 'flow-particle' : 'flow-particle flow-particle-back'}
+                  style={
+                    {
+                      fill: `var(--cat-${category})`,
+                      offsetPath: `path('${path}')`,
+                      '--travel': `${travel ?? restingTravel}s`,
+                    } as CSSProperties
+                  }
+                />
+              ),
+            )}
           </m.g>
         )}
       </g>

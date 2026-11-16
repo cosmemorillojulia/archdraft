@@ -91,6 +91,10 @@ export const ArchEdgeSchema = z.strictObject({
   label: z.string().trim().min(1).max(LIMITS.labelLength).optional(),
   protocol: EdgeProtocolSchema.optional(),
   mode: EdgeModeSchema.optional().describe('sync if the source waits for a response'),
+  bidirectional: z
+    .boolean()
+    .optional()
+    .describe('true if data flows both ways, drawn with an arrowhead at each end'),
 });
 
 export const ArchitectureGraphSchema = z.strictObject({

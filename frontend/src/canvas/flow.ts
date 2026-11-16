@@ -72,6 +72,8 @@ export interface ArchitectureEdgeData extends Record<string, unknown> {
   direction: LayoutDirection;
   /** Category of the component the edge starts from, for the colour of its flow particle. */
   sourceCategory: NodeCategory;
+  /** Category of the one it ends at, for the particle that comes back on a two-way edge. */
+  targetCategory: NodeCategory;
   appearDelay: number;
 }
 
@@ -173,10 +175,12 @@ export function toFlow(
   const { placements, obstacles } = placeEdges(graph, boxes, layout, direction);
   const edges = graph.edges.flatMap((edge): ArchitectureFlowEdge[] => {
     const sourceKind = kindOf.get(edge.source);
+    const targetKind = kindOf.get(edge.target);
     const from = boxes.get(edge.source);
     const to = boxes.get(edge.target);
     const placement = placements.get(edge.id);
-    if (sourceKind === undefined || !from || !to || !placement) return [];
+    if (sourceKind === undefined || targetKind === undefined || !from || !to || !placement)
+      return [];
     const route = ownEdgeRoute(layout, edge.id);
     const { sides } = placement;
     return [
@@ -200,6 +204,7 @@ export function toFlow(
           targetBox: to,
           direction,
           sourceCategory: getNodeDefinition(sourceKind).category,
+          targetCategory: getNodeDefinition(targetKind).category,
           appearDelay: Math.max(appearDelay(edge.source), appearDelay(edge.target)) + 0.15,
         },
       },

@@ -300,9 +300,12 @@ function connection(
   const { palette, measure } = options;
   const { sides, source: from, target: to } = placement;
   const arrow = arrowhead(to.x, to.y, sides.target);
+  // A two-way connection starts at the base of a second arrowhead, into its source.
+  const backArrow = edge.bidirectional === true ? arrowhead(from.x, from.y, sides.source) : null;
+  const start = backArrow?.base ?? from;
   const ends = {
-    sourceX: from.x,
-    sourceY: from.y,
+    sourceX: start.x,
+    sourceY: start.y,
     targetX: arrow.base.x,
     targetY: arrow.base.y,
     sourcePosition: sides.source,
@@ -315,9 +318,12 @@ function connection(
     edgeLayout.obstacles,
   );
   const dashed = resolveEdgeMode(edge) === 'async' ? ' stroke-dasharray="5 5"' : '';
+  const head = (outline: string) =>
+    `<path d="${outline}" fill="${palette.edge}" stroke="${palette.edge}" stroke-width="1.5" stroke-linejoin="round"/>`;
   const line =
     `<path d="${path}" fill="none" stroke="${palette.edge}" stroke-width="1.5"${dashed}/>` +
-    `<path d="${arrow.outline}" fill="${palette.edge}" stroke="${palette.edge}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    head(arrow.outline) +
+    (backArrow === null ? '' : head(backArrow.outline));
   const text =
     edge.label ?? (edge.protocol === undefined ? undefined : options.protocols[edge.protocol]);
   if (!showLabel || text === undefined) return { line, label: '' };

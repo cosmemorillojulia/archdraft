@@ -145,6 +145,17 @@ describe('toMermaid', () => {
     ]);
   });
 
+  it('draws two-way edges with an arrowhead at each end', () => {
+    const graph = graphOf(
+      [node('a', 'service'), node('b', 'service')],
+      [
+        { id: 'e1', source: 'a', target: 'b', bidirectional: true },
+        { id: 'e2', source: 'b', target: 'a', mode: 'async', bidirectional: true, label: 'sync' },
+      ],
+    );
+    expect(body(toMermaid(graph)).slice(2)).toEqual(['  n_a <--> n_b', '  n_b <-.->|"sync"| n_a']);
+  });
+
   it('labels edges with the label and the protocol', () => {
     const graph = graphOf(
       [node('a', 'service'), node('b', 'service')],

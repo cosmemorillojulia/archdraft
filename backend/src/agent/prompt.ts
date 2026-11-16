@@ -46,7 +46,7 @@ const MODELLING_RULES = `Modelling rules:
 - Every node has a "kind" from the catalog below and a short "label". Only shapes (box, circle, diamond, note, text) may have an empty label.
 - Containers (region, availability-zone, network, subnet, boundary) group other nodes through "parentId". They are never the source or target of an edge: connect the components inside them.
 - Components may sit at the top level or inside any container. Containers may only nest as listed below.
-- Edges go from the node that starts the interaction to the one that receives it. "mode" is "sync" when the caller waits for an answer, "async" otherwise. Give a "protocol" when it is clear.
+- Edges go from the node that starts the interaction to the one that receives it. "mode" is "sync" when the caller waits for an answer, "async" otherwise. Give a "protocol" when it is clear. Set "bidirectional" to true only when data really flows both ways between peers, such as replication between two databases; a request and its answer is one edge from the caller.
 - Set "attributes" (replicas, multiAz, autoscaling, publiclyAccessible, encryptedAtRest, managed) only when they are known or decided by the design; leave out what is unknown.
 - Use "service" for the concrete product only when it differs from the usual one for the provider (for example "Aurora" for a relational-db on AWS).
 - Do not add shapes, notes or text unless they are asked for.

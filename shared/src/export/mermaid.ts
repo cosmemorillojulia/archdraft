@@ -107,7 +107,8 @@ function nodeShape(node: ArchNode, graph: ArchitectureGraph): string {
 }
 
 function edgeLine(edge: ArchEdge, ids: ReadonlyMap<string, string>): string {
-  const arrow = resolveEdgeMode(edge) === 'async' ? '-.->' : '-->';
+  const line = resolveEdgeMode(edge) === 'async' ? '-.->' : '-->';
+  const arrow = edge.bidirectional === true ? `<${line}` : line;
   const text = edgeText(edge);
   const label = text === '' ? '' : `|"${escapeLabel(text)}"|`;
   return `${idOf(ids, edge.source)} ${arrow}${label} ${idOf(ids, edge.target)}`;

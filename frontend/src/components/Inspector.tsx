@@ -22,6 +22,7 @@ import {
 import {
   ArrowDown,
   ArrowDownToLine,
+  ArrowLeftRight,
   ArrowRight,
   ArrowUp,
   ArrowUpToLine,
@@ -564,6 +565,8 @@ function EdgeForm({
   const diagramStyle = layout?.edgeStyle ?? DEFAULT_EDGE_STYLE;
   const routed = layout !== undefined && ownEdgeRoute(layout, edge.id) !== undefined;
   const labelShown = layout !== undefined && showsEdgeLabel(layout, edge.id);
+  const twoWay = edge.bidirectional === true;
+  const Between = twoWay ? ArrowLeftRight : ArrowRight;
 
   const title = {
     headingId,
@@ -590,7 +593,7 @@ function EdgeForm({
     return (
       <PanelStrip
         {...title}
-        subtitle={`${labelOf(edge.source)} → ${labelOf(edge.target)}`}
+        subtitle={`${labelOf(edge.source)} ${twoWay ? '↔' : '→'} ${labelOf(edge.target)}`}
         actions={remove}
       />
     );
@@ -606,7 +609,7 @@ function EdgeForm({
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overscroll-contain px-3.5 py-3">
         <p className="flex items-center gap-2 text-sm">
           <span className="truncate font-medium">{labelOf(edge.source)}</span>
-          <ArrowRight size={14} aria-hidden="true" className="shrink-0 text-muted" />
+          <Between size={14} aria-hidden="true" className="shrink-0 text-muted" />
           <span className="truncate font-medium">{labelOf(edge.target)}</span>
         </p>
         <TextField
@@ -651,6 +654,20 @@ function EdgeForm({
             onChange={(mode) => update({ mode: mode === 'auto' ? undefined : mode })}
           />
           <p className="text-xs text-muted">{strings.inspector.modeHint(edge.mode ?? inferred)}</p>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <ChoiceField<'one' | 'both'>
+            label={strings.inspector.direction}
+            value={twoWay ? 'both' : 'one'}
+            options={[
+              { value: 'one', label: strings.inspector.directions.one },
+              { value: 'both', label: strings.inspector.directions.both },
+            ]}
+            onChange={(direction) =>
+              update({ bidirectional: direction === 'both' ? true : undefined })
+            }
+          />
+          <p className="text-xs text-muted">{strings.inspector.directionHint(twoWay)}</p>
         </div>
         <div className="flex flex-col gap-1.5">
           <ChoiceField<'auto' | EdgeStyle>

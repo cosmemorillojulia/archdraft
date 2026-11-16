@@ -35,8 +35,9 @@ const SHAPES: readonly { open: string; close: string; shape: Shape }[] = [
 ];
 
 const NODE_ID = /^[\wÀ-￿]+(?:-(?![->.=])[\wÀ-￿]+)*/;
-const ARROW = /^\s*<?(-{2,}[>xo]?|-\.+-?>?|={2,}>?|~~~)/;
-const LABELLED_ARROW = /^\s*(--|-\.|==)\s+(.+?)\s+(-{2,}[>xo]?|\.-+>?|={2,}>?)(?=\s|$|[\w"'[({>])/;
+const ARROW = /^\s*(<?)(-{2,}[>xo]?|-\.+-?>?|={2,}>?|~~~)/;
+const LABELLED_ARROW =
+  /^\s*(<?)(--|-\.|==)\s+(.+?)\s+(-{2,}[>xo]?|\.-+>?|={2,}>?)(?=\s|$|[\w"'[({>])/;
 const IGNORED = /^(direction|classDef|class|style|linkStyle|click|accTitle|accDescr|%%)\b|^%%/;
 
 /** Mermaid writes special characters as `#34;`; `<br/>` is a line break. */
@@ -118,6 +119,8 @@ function readGroup(text: string): { group: Reference[]; rest: string } | undefin
 
 interface ArrowInfo {
   readonly dashed: boolean;
+  /** Arrowheads at both ends, as in `A <--> B`. */
+  readonly bidirectional: boolean;
   readonly label: string | undefined;
   readonly rest: string;
 }
@@ -126,8 +129,9 @@ function readArrow(text: string): ArrowInfo | undefined {
   const labelled = LABELLED_ARROW.exec(text);
   if (labelled) {
     return {
-      dashed: labelled[1] === '-.',
-      label: readLabel(labelled[2] ?? ''),
+      dashed: labelled[2] === '-.',
+      bidirectional: labelled[1] === '<' && (labelled[4] ?? '').endsWith('>'),
+      label: readLabel(labelled[3] ?? ''),
       rest: text.slice(labelled[0].length),
     };
   }
@@ -140,7 +144,13 @@ function readArrow(text: string): ArrowInfo | undefined {
     label = readLabel(piped[1] ?? '');
     rest = rest.slice(piped[0].length);
   }
-  return { dashed: (plain[1] ?? '').includes('.'), label, rest };
+  const line = plain[2] ?? '';
+  return {
+    dashed: line.includes('.'),
+    bidirectional: plain[1] === '<' && line.endsWith('>'),
+    label,
+    rest,
+  };
 }
 
 /**
@@ -221,6 +231,7 @@ export function importMermaid(text: string): ImportResult {
           target,
           ...(arrow.label ? { label: arrow.label } : {}),
           ...(arrow.dashed ? { mode: 'async' as const } : {}),
+          ...(arrow.bidirectional ? { bidirectional: true } : {}),
         });
       }
     }
