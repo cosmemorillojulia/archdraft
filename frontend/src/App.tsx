@@ -74,8 +74,15 @@ function canvasInsets(wide: boolean, paletteOpen: boolean, sidePanelOpen: boolea
         bottom: 100,
         left: paletteOpen ? PALETTE_WIDTH + 16 : 24,
       }
-    : { top: 150, right: 16, bottom: 140, left: 16 };
+    : { top: 150, right: CANVAS_CONTROLS_COVER, bottom: 140, left: 16 };
 }
+
+/**
+ * Room the column of canvas controls takes on narrow screens (CanvasControls.tsx): 12 px from
+ * the edge, 48 px wide and an 8 px gap. Fitting keeps the diagram clear of it, as the empty
+ * state does with `max-md:pr-16`.
+ */
+const CANVAS_CONTROLS_COVER = 68;
 
 const loadMotionFeatures = () => import('./motion-features.ts').then((module) => module.default);
 
