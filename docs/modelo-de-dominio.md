@@ -32,6 +32,7 @@ classDiagram
     label?: string
     protocol?: EdgeProtocol
     mode?: sync | async
+    bidirectional?: boolean
   }
   class NodeAttributes {
     replicas?: int
@@ -128,6 +129,10 @@ La zona de disponibilidad puede ir dentro de la red o directamente de la región
 ## Modo de las aristas
 
 `mode` es opcional. Cuando falta, `resolveEdgeMode(edge)` lo deduce del protocolo: `amqp`, `kafka` y `event` implican `async`; cualquier otro protocolo, o ninguno, se lee como `sync`, porque una flecha sin anotar en un diagrama de arquitectura suele significar petición y respuesta. Las reglas de diseño, y más adelante los exportadores, usan siempre el modo efectivo.
+
+## Aristas en los dos sentidos
+
+`bidirectional: true` marca una arista por la que los datos van en los dos sentidos, como la replicación entre dos bases de datos o una sincronización entre pares; se dibuja con una punta en cada extremo. Sin el campo, la arista va del origen al destino. Una petición y su respuesta siguen siendo una sola arista en un sentido, desde quien llama: el sentido de una arista es quién inicia la interacción, no por dónde viajan los datos. El campo es opcional y no cambia la versión del esquema: los documentos anteriores siguen siendo válidos. `source` y `target` se conservan, porque el modo, el protocolo y las reglas de diseño siguen leyendo quién inicia. En un parche, `updateEdge` lo pone con `true` y lo quita con `null`. El prompt del agente pide usarlo solo cuando los datos van de verdad en los dos sentidos.
 
 ## Atributos operativos
 
