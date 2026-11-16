@@ -153,3 +153,22 @@ test('says how long to wait when the assistant reached its limit', async ({ edit
   await expect(editor.getByText('Try again in 2 minutes.')).toBeVisible();
   await expect(diagram(editor, 'Untitled diagram')).toBeVisible();
 });
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('opens the diagram clear of the canvas controls', async ({ editor }) => {
+    const controls = await editor.getByRole('group', { name: 'View' }).boundingBox();
+    if (controls === null) throw new Error('The canvas controls are not on the page.');
+    // Every component and group ends left of the column of controls on the right edge.
+    await expect
+      .poll(async () => {
+        // The controls are groups inside the diagram too; only React Flow's nodes count here.
+        const boxes = await diagram(editor)
+          .locator('.react-flow__node')
+          .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect()));
+        return boxes.length > 0 ? Math.max(...boxes.map((box) => box.right)) : Infinity;
+      })
+      .toBeLessThanOrEqual(controls.x);
+  });
+});
