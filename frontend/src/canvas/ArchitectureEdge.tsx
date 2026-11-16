@@ -1,6 +1,6 @@
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
 import { AnimatePresence, m } from 'motion/react';
-import { memo, useState } from 'react';
+import { type CSSProperties, memo, useState } from 'react';
 import { EASE_OUT } from '../motion.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { MARK_COLOR } from './appearance.ts';
@@ -13,7 +13,23 @@ import { arrowhead, type EdgeSides, sidePoint } from './geometry.ts';
 /** Speed of the flow particle, in diagram pixels per second, and its limits in seconds. */
 const PARTICLE_SPEED = 110;
 const PARTICLE_MIN_S = 1.2;
-const PARTICLE_MAX_S = 4;
+const PARTICLE_MAX_S = 6;
+
+/**
+ * Seconds a particle takes to travel the line through `corners` at an even speed, so that all
+ * particles move alike whatever the length of their line.
+ */
+export function particleTravel(corners: readonly { x: number; y: number }[]): number {
+  let length = 0;
+  for (let index = 1; index < corners.length; index++) {
+    const from = corners[index - 1];
+    const to = corners[index];
+    if (from && to) length += Math.hypot(to.x - from.x, to.y - from.y);
+  }
+  const seconds = Math.min(Math.max(length / PARTICLE_SPEED, PARTICLE_MIN_S), PARTICLE_MAX_S);
+  // Tenths of a second, so that a line that changes a little keeps its pace.
+  return Math.round(seconds * 10) / 10;
+}
 
 /** Seconds the line takes to draw in; the arrowhead appears as it arrives. */
 const DRAW_S = 0.55;
@@ -54,6 +70,9 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   const [drawn, setDrawn] = useState(false);
   // What a handle being dragged shows until it is let go.
   const [preview, setPreview] = useState<RoutePreview | null>(null);
+  // Changing the length of a lap moves the particle along the line, so it waits until an end
+  // stops moving.
+  const [travel, setTravel] = useState<number | null>(null);
   if (!data) return null;
 
   const {
@@ -122,10 +141,8 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
   // A connection that goes is dotted like no other, asynchronous or not.
   const dashes = removed ? '2 5' : async ? '5 5' : undefined;
   const delay = canvas.building ? appearDelay : 0;
-  const travel = Math.min(
-    Math.max(Math.hypot(tip.x - start.x, tip.y - start.y) / PARTICLE_SPEED, PARTICLE_MIN_S),
-    PARTICLE_MAX_S,
-  );
+  const restingTravel = particleTravel(shape.corners);
+  if (travel === null || (!moving && travel !== restingTravel)) setTravel(restingTravel);
   // Dashes and pathLength both use stroke-dasharray, so async edges fade in instead of drawing.
   const reveal = async
     ? { initial: { opacity: 0 }, animate: { opacity: 1 } }
@@ -172,15 +189,23 @@ export const ArchitectureEdge = memo(function ArchitectureEdge({
           transition={{ duration: 0.15, delay: delay + (canvas.building ? DRAW_S * 0.8 : 0) }}
         />
         {canvas.particles && !removed && (
-          <m.circle
-            r={async ? 2.25 : 2.5}
-            style={{ fill: `var(--cat-${sourceCategory})` }}
+          <m.g
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.9 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: canvas.building ? appearDelay + 0.6 : 0.3 }}
           >
-            <animateMotion dur={`${travel}s`} repeatCount="indefinite" path={path} />
-          </m.circle>
+            <circle
+              r={async ? 2.25 : 2.5}
+              className="flow-particle"
+              style={
+                {
+                  fill: `var(--cat-${sourceCategory})`,
+                  offsetPath: `path('${path}')`,
+                  '--travel': `${travel ?? restingTravel}s`,
+                } as CSSProperties
+              }
+            />
+          </m.g>
         )}
       </g>
       <EdgeLabelRenderer>

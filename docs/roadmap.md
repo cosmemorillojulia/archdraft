@@ -51,6 +51,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T34 | Repositorio en frontend, backend y shared                        | T33           | hecha (2026-10-31) |
 | T35 | Backend: tareas improve, simplify y extend del agente            | T18           | hecha (2026-10-31) |
 | T36 | Catálogo ampliado y plantillas de referencia                     | T06           | hecha (2026-11-06) |
+| T37 | Editor: partículas del flujo fluidas                             | T31           | hecha (2026-11-16) |
 
 ## Fase 0: fundamentos
 
@@ -339,6 +340,16 @@ Objetivo: a petición del propietario, que la estructura diga qué corre en el n
 Entregables: `apps/web` pasa a `frontend/`; `packages/core` pasa a `shared/` con el nombre `@archdraft/shared`; `packages/layout` se integra en `frontend/src/layout/`, con su umbral de cobertura por ruta; workspace, ESLint, Prettier y el workflow de Pages con las rutas nuevas; documentación viva actualizada. `backend/` se crea en T14.
 
 Criterios de aceptación: formato, lint, tipos y build en verde, y los mismos tests que antes; ninguna referencia a las rutas antiguas fuera del CHANGELOG y de los ADR anteriores.
+
+### T37. Partículas del flujo fluidas
+
+Estado: hecha (2026-11-16). Documentado en `docs/modulos/web.md` (Nodos y aristas).
+
+Objetivo: a petición del propietario, que las partículas que recorren las conexiones se muevan con fluidez; iban a saltos.
+
+Entregables: partícula con una trayectoria de CSS en lugar de `animateMotion`, que conserva su avance cuando la línea cambia; fundido al salir y al llegar para que no se vea el salto de vuelta al origen; misma velocidad en todas las conexiones, con la duración calculada sobre la longitud real de la línea y estable mientras se arrastra.
+
+Criterios de aceptación: tests de la duración; medida en Chromium sin saltos visibles en reposo.
 
 ## Fase 3: inteligencia artificial
 
