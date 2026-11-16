@@ -135,6 +135,12 @@ async function cellsOf(xml: string): Promise<Cell[] | undefined> {
   return cells.length > 0 ? cells : undefined;
 }
 
+/** Whether a connector has an arrowhead where it starts too; draw.io draws none by default. */
+function hasStartArrow(style: string): boolean {
+  const arrow = /(?:^|;)startArrow=([^;]*)/.exec(style)?.[1];
+  return arrow !== undefined && arrow !== '' && arrow !== 'none';
+}
+
 function kindOf(cell: Cell, holds: boolean): ArchNode['kind'] {
   const style = cell.style;
   if (holds) return 'boundary';
@@ -228,6 +234,7 @@ export async function importDrawio(xml: string): Promise<ImportResult> {
       target,
       ...(label === '' ? {} : { label }),
       ...(/dashed=1/.test(cell.style) ? { mode: 'async' as const } : {}),
+      ...(hasStartArrow(cell.style) ? { bidirectional: true } : {}),
     });
   }
   if (skipped > 0) {

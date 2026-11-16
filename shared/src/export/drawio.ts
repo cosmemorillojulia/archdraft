@@ -119,7 +119,10 @@ function vertexCell(
 }
 
 function edgeCell(edge: ArchEdge): string[] {
-  const style = EDGE_STYLE + (resolveEdgeMode(edge) === 'async' ? 'dashed=1;' : '');
+  const style =
+    EDGE_STYLE +
+    (resolveEdgeMode(edge) === 'async' ? 'dashed=1;' : '') +
+    (edge.bidirectional === true ? 'startArrow=block;startFill=1;' : '');
   // Edges live in the default layer: draw.io resolves the absolute position of
   // both ends, even when they sit in different containers.
   return [

@@ -135,6 +135,19 @@ describe('applyPatch', () => {
     expect(edgeOf(graph, 'e2')).toBeUndefined();
   });
 
+  it('makes an edge two-way and back', () => {
+    const twoWay = applied(
+      applyPatch(threeTierGraph(), [
+        { op: 'updateEdge', id: 'e1', changes: { bidirectional: true } },
+      ]),
+    );
+    expect(edgeOf(twoWay, 'e1')?.bidirectional).toBe(true);
+    const oneWay = applied(
+      applyPatch(twoWay, [{ op: 'updateEdge', id: 'e1', changes: { bidirectional: null } }]),
+    );
+    expect(edgeOf(oneWay, 'e1')).not.toHaveProperty('bidirectional');
+  });
+
   it('renames the diagram and changes its cloud', () => {
     const graph = applied(
       applyPatch(threeTierGraph(), [

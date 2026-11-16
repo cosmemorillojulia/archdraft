@@ -151,6 +151,21 @@ describe('toDrawio', () => {
     expect(style('n-svc')).not.toContain('container=1;');
   });
 
+  it('puts an arrowhead at the start of two-way edges only', () => {
+    const graph = graphOf(
+      [node('a', 'service'), node('b', 'service')],
+      [
+        { id: 'e1', source: 'a', target: 'b', bidirectional: true },
+        { id: 'e2', source: 'b', target: 'a' },
+      ],
+    );
+    const xml = toDrawio(graph, createEmptyLayout());
+    const style = (id: string) => cell(xml, `e-${id}`).getAttribute('style') ?? '';
+    expect(style('e1')).toContain('startArrow=block;startFill=1;');
+    expect(style('e1')).toContain('endArrow=block;');
+    expect(style('e2')).not.toContain('startArrow');
+  });
+
   it('draws async edges dashed using the effective mode and labels them', () => {
     const graph = graphOf(
       [node('a', 'service'), node('b', 'service'), node('q', 'queue')],

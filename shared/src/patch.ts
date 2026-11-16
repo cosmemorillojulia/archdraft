@@ -58,6 +58,7 @@ export const EdgeChangesSchema = z.strictObject({
   label: edge.label.unwrap().nullable().optional(),
   protocol: edge.protocol.unwrap().nullable().optional(),
   mode: edge.mode.unwrap().nullable().optional(),
+  bidirectional: edge.bidirectional.unwrap().nullable().optional(),
 });
 
 export const DiagramChangesSchema = z.strictObject({
