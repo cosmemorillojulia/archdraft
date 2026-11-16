@@ -158,6 +158,11 @@
       transition-duration: 0s !important;
       animation-duration: 0s !important;
     }
+
+    /* Someone who asks for reduced motion and still turns the particles on gets them. */
+    .flow-particle {
+      animation-duration: var(--travel) !important;
+    }
   }
 }
 
@@ -374,5 +379,34 @@ html[data-drawing] * {
   }
   to {
     background-position: -150% 0;
+  }
+}
+
+/*
+ * The particle that travels along a connection (ArchitectureEdge.tsx). It follows the line with
+ * a CSS motion path rather than SVG's animateMotion: when the line changes, as while a node is
+ * dragged, the particle keeps its place along it instead of starting over. It fades in as it
+ * leaves and out as it arrives, so the jump back to the start is not seen. `--travel` is the
+ * time a lap takes.
+ */
+.flow-particle {
+  offset-rotate: 0deg;
+  animation: flow-particle var(--travel) linear infinite;
+}
+
+@keyframes flow-particle {
+  from {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  to {
+    offset-distance: 100%;
+    opacity: 0;
   }
 }
