@@ -564,6 +564,12 @@ export const en = {
     modes: { auto: 'Auto', sync: 'Sync', async: 'Async' },
     modeHint: (mode: 'sync' | 'async') =>
       mode === 'sync' ? 'The source waits for a reply.' : 'The source does not wait for a reply.',
+    direction: 'Direction',
+    directions: { one: 'One way', both: 'Both ways' },
+    directionHint: (both: boolean) =>
+      both
+        ? 'Data flows both ways: an arrowhead at each end.'
+        : 'From the source to the target: one arrowhead.',
     edgeStyle: 'Line',
     edgeStyles: { auto: 'Auto', curved: 'Curved', square: 'Square' },
     edgeStyleFollows: (style: 'curved' | 'square') =>

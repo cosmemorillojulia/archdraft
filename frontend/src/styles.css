@@ -394,6 +394,12 @@ html[data-drawing] * {
   animation: flow-particle var(--travel) linear infinite;
 }
 
+/* The particle that comes back along a two-way connection, half a lap behind the other. */
+.flow-particle-back {
+  animation-direction: reverse;
+  animation-delay: calc(var(--travel) / -2);
+}
+
 @keyframes flow-particle {
   from {
     offset-distance: 0%;

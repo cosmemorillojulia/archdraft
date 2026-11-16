@@ -196,6 +196,31 @@ describe('connections', () => {
     }
   });
 
+  it('end in an arrowhead at each end when they are two-way, the line between the bases', async () => {
+    const diagram = await openFlowchart();
+    const [first] = flowchart.graph.edges;
+    if (first === undefined) throw new Error('The flowchart has no connections.');
+    act(() => editorStore.getState().updateEdge(first.id, { bidirectional: true }));
+    const edge = diagram.querySelector(`.react-flow__edge[data-id="${first.id}"]`);
+    await waitFor(() =>
+      expect(
+        [...(edge?.querySelectorAll('path') ?? [])].filter((path) =>
+          (path.getAttribute('d') ?? '').endsWith('Z'),
+        ),
+      ).toHaveLength(2),
+    );
+    const paths = [...(edge?.querySelectorAll('path') ?? [])].map((p) => p.getAttribute('d') ?? '');
+    const back = paths.filter((d) => d.endsWith('Z'))[1] ?? '';
+    const base = back.match(/^M ([\d.-]+) ([\d.-]+) L [\d.-]+ [\d.-]+ L ([\d.-]+) ([\d.-]+)/);
+    const start = (paths[0] ?? '').match(/^M\s*([\d.-]+)[ ,]([\d.-]+)/);
+    expect(base).not.toBeNull();
+    expect(start).not.toBeNull();
+    const [, x1, y1, x2, y2] = (base ?? []).map(Number);
+    // The line starts at the middle of the base of the arrowhead into the source.
+    expect(Number(start?.[1])).toBeCloseTo(((x1 ?? 0) + (x2 ?? 0)) / 2);
+    expect(Number(start?.[2])).toBeCloseTo(((y1 ?? 0) + (y2 ?? 0)) / 2);
+  });
+
   it('stay drawn when a node is selected', async () => {
     const diagram = await openFlowchart();
     await waitFor(() => expect(diagram.querySelectorAll('.react-flow__edge')).toHaveLength(3));

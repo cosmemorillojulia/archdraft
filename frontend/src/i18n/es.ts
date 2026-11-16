@@ -789,6 +789,12 @@ export const es: Strings = {
     modes: { auto: 'Auto', sync: 'Síncrono', async: 'Asíncrono' },
     modeHint: (mode: 'sync' | 'async') =>
       mode === 'sync' ? 'El origen espera una respuesta.' : 'El origen no espera respuesta.',
+    direction: 'Sentido',
+    directions: { one: 'Un sentido', both: 'Ambos sentidos' },
+    directionHint: (both: boolean) =>
+      both
+        ? 'Los datos van en los dos sentidos: una punta en cada extremo.'
+        : 'Del origen al destino: una sola punta.',
     edgeStyle: 'Línea',
     edgeStyles: { auto: 'Auto', curved: 'Curva', square: 'Cuadrada' },
     edgeStyleFollows: (style: 'curved' | 'square') =>
