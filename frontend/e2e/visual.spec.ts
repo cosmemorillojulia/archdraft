@@ -122,6 +122,14 @@ test.describe('on a phone', () => {
   test.describe('in the dark theme', () => {
     test.use({ colorScheme: 'dark' });
 
+    test('the design review sheet', async ({ editor }) => {
+      await card(editor)
+        .getByRole('button', { name: /design issues?$/ })
+        .click();
+      await expect(editor.getByRole('region', { name: 'Design review' })).toBeVisible();
+      await expectScreen(editor, 'phone-review-dark.png');
+    });
+
     test('the components sheet', async ({ editor }) => {
       await editor.getByRole('button', { name: 'Show components' }).click();
       await expect(editor.getByRole('searchbox', { name: 'Search components' })).toBeVisible();
