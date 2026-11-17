@@ -31,16 +31,19 @@ export function PreviewLegend() {
             <Eye size={14} aria-hidden="true" className="text-accent" />
             {strings.assistant.previewing}
           </span>
-          {MARKS.map((mark) => (
-            <span key={mark} className="flex items-center gap-1.5 text-muted">
-              <span
-                aria-hidden="true"
-                className="size-2.5 rounded-full"
-                style={{ backgroundColor: MARK_COLOR[mark] }}
-              />
-              {strings.assistant.marks[mark]}
-            </span>
-          ))}
+          {/* One piece, so that a narrow screen breaks the line before the colours, not among them. */}
+          <span className="flex items-center gap-x-3">
+            {MARKS.map((mark) => (
+              <span key={mark} className="flex items-center gap-1.5 text-muted">
+                <span
+                  aria-hidden="true"
+                  className="size-2.5 rounded-full"
+                  style={{ backgroundColor: MARK_COLOR[mark] }}
+                />
+                {strings.assistant.marks[mark]}
+              </span>
+            ))}
+          </span>
         </m.div>
       )}
     </AnimatePresence>

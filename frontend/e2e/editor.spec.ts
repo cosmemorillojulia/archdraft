@@ -171,4 +171,16 @@ test.describe('on a phone', () => {
       })
       .toBeLessThanOrEqual(controls.x);
   });
+
+  test('hides the canvas controls while the design review covers them', async ({ editor }) => {
+    const view = editor.getByRole('group', { name: 'View' });
+    const review = editor.getByRole('region', { name: 'Design review' });
+    await card(editor)
+      .getByRole('button', { name: /design issues?$/ })
+      .click();
+    await expect(review).toBeVisible();
+    await expect(view).toBeHidden();
+    await review.getByRole('button', { name: 'Close' }).click();
+    await expect(view).toBeVisible();
+  });
 });

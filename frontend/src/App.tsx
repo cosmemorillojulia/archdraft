@@ -32,7 +32,7 @@ import { PaletteDiscard } from './palette/PaletteDiscard.tsx';
 import { PaletteDragGhost } from './palette/PaletteDragGhost.tsx';
 import { linkPayload } from './persist/share-link.ts';
 import { useEditorShortcuts } from './editor/shortcuts.ts';
-import { editorStore, useEditor } from './editor/store.ts';
+import { editorStore, isInspectorExpanded, useEditor } from './editor/store.ts';
 import { useMediaQuery, WIDE_SCREEN } from './media.ts';
 import { useReview } from './review/review-store.ts';
 import { EASE_OUT } from './motion.ts';
@@ -128,6 +128,10 @@ function Editor() {
   const offering = useAssistant((state) => state.offer !== null || state.report !== null);
   // On narrow screens a panel takes the place of the prompt.
   const panelOpen = selecting || reviewing || offering;
+  // On narrow screens these panels reach over the column of canvas controls, which would show
+  // through them; only the inspector folded into its strip stays below it.
+  const inspectorExpanded = useEditor(isInspectorExpanded);
+  const controlsCovered = !wide && (reviewing || offering || inspectorExpanded);
   const flow = useReactFlow();
   const insets = useMemo(
     () => canvasInsets(wide, paletteOpen, reviewing || offering),
@@ -209,7 +213,11 @@ function Editor() {
             <DiagramCanvas
               insets={insets}
               showMiniMap={wide}
-              controlsClassName={wide ? 'right-3 bottom-3' : 'right-3 bottom-24'}
+              controlsClassName={
+                wide
+                  ? 'right-3 bottom-3'
+                  : `right-3 bottom-24 ${controlsCovered ? 'invisible' : ''}`
+              }
               inspectorPlacement={wide ? 'side' : 'bottom'}
             />
           </main>
