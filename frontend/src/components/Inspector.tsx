@@ -85,7 +85,6 @@ function cleanAttributes(attributes: NodeAttributes): NodeAttributes | undefined
   return entries.length === 0 ? undefined : Object.fromEntries(entries);
 }
 
-
 interface InspectorProps {
   placement: PanelPlacement;
   selection: Selection;
