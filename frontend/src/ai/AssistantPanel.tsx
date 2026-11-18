@@ -94,7 +94,7 @@ function OfferPanel({ placement, offer }: { placement: PanelPlacement; offer: Of
   const dragControls = useDragControls();
   const { task, expanded } = offer;
   const sheet = placement === 'bottom';
-  // `activated` keeps the open proposal within the list.
+  // Always there while the offer lasts (`activated` keeps it within the list).
   const open = offer.proposals[offer.active];
   const folded = sheet && !expanded && open !== undefined;
 
