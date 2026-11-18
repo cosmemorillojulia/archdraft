@@ -1,5 +1,5 @@
-import { type DragControls, m, type PanInfo } from 'motion/react';
-import type { ReactNode } from 'react';
+import { AnimatePresence, type DragControls, m, type PanInfo } from 'motion/react';
+import { type ReactNode, useRef } from 'react';
 import { EASE_OUT, SPRING_SLIDE } from '../motion.ts';
 
 export type PanelPlacement = 'side' | 'bottom';
@@ -9,6 +9,30 @@ export interface PanelDrag {
   controls: DragControls;
   /** How far and how fast the pointer moved when it was let go; negative is up. */
   onDragEnd: (info: PanInfo) => void;
+}
+
+/** Cross-fade between two contents of a panel, such as its strip and its full form. */
+const SWAP = { duration: 0.15, ease: EASE_OUT };
+
+/** Distance in pixels, or speed in pixels per second, that expands or collapses a sheet. */
+const SHEET_DRAG_DISTANCE = 40;
+const SHEET_DRAG_VELOCITY = 300;
+/** Pointer movement in pixels below which a press on the handle counts as a tap. */
+const TAP_SLOP = 6;
+
+/** The drag of a sheet that folds into a strip: up expands it, down collapses it. */
+export function sheetDrag(
+  controls: DragControls,
+  onExpand: (expanded: boolean) => void,
+): PanelDrag {
+  return {
+    controls,
+    onDragEnd: ({ offset, velocity }) => {
+      const up = offset.y < -SHEET_DRAG_DISTANCE || velocity.y < -SHEET_DRAG_VELOCITY;
+      const down = offset.y > SHEET_DRAG_DISTANCE || velocity.y > SHEET_DRAG_VELOCITY;
+      if (up !== down) onExpand(up);
+    },
+  };
 }
 
 interface FloatingPanelProps {
@@ -57,5 +81,79 @@ export function FloatingPanel({ placement, labelledBy, drag, children }: Floatin
     >
       {children}
     </m.section>
+  );
+}
+
+/**
+ * Grip at the top of a sheet that folds into a strip. Dragging it up or down
+ * moves the whole panel (`sheetDrag`); a tap, or Enter, toggles it.
+ */
+export function SheetHandle({
+  expanded,
+  controls,
+  label,
+  onExpand,
+}: {
+  expanded: boolean;
+  controls: DragControls;
+  /** What a tap does now: expand or collapse. */
+  label: string;
+  onExpand: (expanded: boolean) => void;
+}) {
+  const pressedAt = useRef(0);
+  return (
+    <m.button
+      type="button"
+      // Kept undistorted while the panel changes size.
+      layout="position"
+      aria-expanded={expanded}
+      aria-label={label}
+      title={label}
+      onPointerDown={(event) => {
+        pressedAt.current = event.clientY;
+        controls.start(event);
+      }}
+      onClick={(event) => {
+        // A drag ends with a click too; only a press that stayed put, or a key, toggles.
+        const tapped = event.detail === 0 || Math.abs(event.clientY - pressedAt.current) < TAP_SLOP;
+        if (tapped) onExpand(!expanded);
+      }}
+      className="group flex w-full shrink-0 cursor-grab touch-none justify-center rounded-t-panel pt-2 pb-1 focus-visible:-outline-offset-2 active:cursor-grabbing"
+    >
+      <span
+        aria-hidden="true"
+        className="h-1 w-9 rounded-full bg-line transition-colors group-hover:bg-muted"
+      />
+    </m.button>
+  );
+}
+
+/**
+ * The contents of a panel, which cross-fade when `contentKey` changes. In a
+ * sheet that changes size, the old content leaves at once and the new one
+ * follows.
+ */
+export function PanelContent({
+  contentKey,
+  sheet,
+  children,
+}: {
+  contentKey: string;
+  sheet: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <AnimatePresence mode="popLayout" initial={false}>
+      <m.div
+        key={contentKey}
+        layout={sheet ? 'position' : false}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { ...SWAP, ...(sheet && { delay: 0.06 }) } }}
+        exit={{ opacity: 0, transition: sheet ? { duration: 0.06 } : SWAP }}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        {children}
+      </m.div>
+    </AnimatePresence>
   );
 }

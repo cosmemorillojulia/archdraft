@@ -20,18 +20,24 @@ import {
   WandSparkles,
   X,
 } from 'lucide-react';
-import { AnimatePresence, m } from 'motion/react';
+import { AnimatePresence, m, useDragControls } from 'motion/react';
 import { type ReactNode, useId, useMemo, useState } from 'react';
 import { MARK_COLOR } from '../canvas/appearance.ts';
 import { Button } from '../components/Button.tsx';
-import { FloatingPanel, type PanelPlacement } from '../components/FloatingPanel.tsx';
-import { PanelHeader } from '../components/Inspector.tsx';
+import {
+  FloatingPanel,
+  PanelContent,
+  type PanelPlacement,
+  SheetHandle,
+  sheetDrag,
+} from '../components/FloatingPanel.tsx';
+import { PanelHeader, PanelStrip } from '../components/Inspector.tsx';
 import { useEditor } from '../editor/store.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { EASE_OUT } from '../motion.ts';
 import { findingsOf } from '../review/findings.ts';
 import { useReview } from '../review/review-store.ts';
-import { type Offer, type Report, useAssistant } from './assistant-store.ts';
+import { type ChangeMark, type Offer, type Report, useAssistant } from './assistant-store.ts';
 import { type ChangeDetail, type ChangeItem, changeItems } from './changes.ts';
 import {
   applyOffered,
@@ -39,6 +45,7 @@ import {
   closeOffer,
   closeReport,
   discardOffered,
+  expandOffer,
   focusChange,
   setTidy,
   showProposal,
@@ -84,33 +91,127 @@ export function AssistantPanel({ placement }: { placement: PanelPlacement }) {
 function OfferPanel({ placement, offer }: { placement: PanelPlacement; offer: Offer }) {
   const strings = useStrings();
   const headingId = useId();
-  const { task } = offer;
+  const dragControls = useDragControls();
+  const { task, expanded } = offer;
+  const sheet = placement === 'bottom';
+  // Always there while the offer lasts (`activated` keeps it within the list).
+  const open = offer.proposals[offer.active];
+  const folded = sheet && !expanded && open !== undefined;
 
   return (
-    <FloatingPanel placement={placement} labelledBy={headingId}>
-      <PanelHeader
-        headingId={headingId}
-        title={strings.assistant.titles[task]}
-        subtitle={strings.assistant.actionHints[task]}
-        closeLabel={strings.assistant.close}
-        onClose={closeOffer}
-        icon={PANEL_ICON}
-      />
-      <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-2">
-        <AnimatePresence initial={false}>
-          {offer.proposals.map((proposal, index) => (
-            <ProposalRow
-              key={keyOf(proposal)}
-              proposal={proposal}
-              index={index}
-              open={index === offer.active}
-              offer={offer}
+    <FloatingPanel
+      placement={placement}
+      labelledBy={headingId}
+      {...(sheet && { drag: sheetDrag(dragControls, expandOffer) })}
+    >
+      {sheet && (
+        <SheetHandle
+          expanded={expanded}
+          controls={dragControls}
+          label={expanded ? strings.assistant.collapse : strings.assistant.expand}
+          onExpand={expandOffer}
+        />
+      )}
+      <PanelContent contentKey={folded ? 'strip' : 'list'} sheet={sheet}>
+        {folded ? (
+          <OfferStrip proposal={open} offer={offer} headingId={headingId} />
+        ) : (
+          <>
+            <PanelHeader
+              headingId={headingId}
+              title={strings.assistant.titles[task]}
+              subtitle={strings.assistant.actionHints[task]}
+              closeLabel={strings.assistant.close}
+              onClose={closeOffer}
+              icon={PANEL_ICON}
             />
-          ))}
-        </AnimatePresence>
-      </ul>
+            <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-2">
+              <AnimatePresence initial={false}>
+                {offer.proposals.map((proposal, index) => (
+                  <ProposalRow
+                    key={keyOf(proposal)}
+                    proposal={proposal}
+                    index={index}
+                    open={index === offer.active}
+                    offer={offer}
+                  />
+                ))}
+              </AnimatePresence>
+            </ul>
+          </>
+        )}
+      </PanelContent>
     </FloatingPanel>
   );
+}
+
+/**
+ * The panel folded on narrow screens, so that the preview stays in view: the
+ * open proposal, what it changes, and applying it or closing them all.
+ */
+function OfferStrip({
+  proposal,
+  offer,
+  headingId,
+}: {
+  proposal: Proposal;
+  offer: Offer;
+  headingId: string;
+}) {
+  const strings = useStrings();
+  const { proposals, active } = offer;
+  const candidate = useCandidate(proposal, offer.basedOn);
+  const [applying, apply] = useApply(active);
+  const stale = candidate !== null && candidate.after === null;
+  const changes = stale
+    ? strings.assistant.staleProposal
+    : strings.assistant.changes(countChanges(proposal.changes));
+  const subtitle =
+    proposals.length > 1
+      ? `${strings.assistant.proposalOf(active + 1, proposals.length)} · ${changes}`
+      : changes;
+
+  return (
+    <PanelStrip
+      headingId={headingId}
+      title={proposal.title}
+      subtitle={subtitle}
+      icon={PANEL_ICON}
+      actions={
+        <>
+          <Button
+            variant="primary"
+            size="icon"
+            aria-label={strings.assistant.applyLabel(proposal.title)}
+            title={strings.assistant.apply}
+            disabled={applying || stale}
+            onClick={apply}
+          >
+            <Check size={18} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={strings.assistant.close}
+            title={strings.assistant.close}
+            onClick={closeOffer}
+          >
+            <X size={18} aria-hidden="true" />
+          </Button>
+        </>
+      }
+    />
+  );
+}
+
+/** Applies the proposal at `index`, once at a time: whether it is being applied, and how. */
+function useApply(index: number): [boolean, () => void] {
+  const [applying, setApplying] = useState(false);
+  const apply = () => {
+    setApplying(true);
+    void applyOffered(index).finally(() => setApplying(false));
+  };
+  return [applying, apply];
 }
 
 /** The diagram `proposal` gives on the open one now, or null when it no longer fits. */
@@ -134,7 +235,7 @@ function ProposalRow({
   offer: Offer;
 }) {
   const strings = useStrings();
-  const [applying, setApplying] = useState(false);
+  const [applying, apply] = useApply(index);
   const candidate = useCandidate(proposal, offer.basedOn);
   const bodyId = useId();
   const stale = candidate !== null && candidate.after === null;
@@ -197,10 +298,7 @@ function ProposalRow({
                   variant="primary"
                   aria-label={strings.assistant.applyLabel(proposal.title)}
                   disabled={applying || stale}
-                  onClick={() => {
-                    setApplying(true);
-                    void applyOffered(index).finally(() => setApplying(false));
-                  }}
+                  onClick={apply}
                   className="h-8 gap-1.5 px-3 text-[13px]"
                 >
                   <Check size={15} aria-hidden="true" />
@@ -278,15 +376,18 @@ function ReportPanel({ placement, report }: { placement: PanelPlacement; report:
   );
 }
 
-/** How many nodes and edges a proposal adds, changes and removes, in the colours of the canvas. */
-function ChangeCounts({ changes }: { changes: Proposal['changes'] }) {
-  const strings = useStrings();
-  const { nodes, edges } = changes;
-  const counts = {
+function countChanges({ nodes, edges }: Proposal['changes']): Record<ChangeMark, number> {
+  return {
     added: nodes.added.length + edges.added.length,
     updated: nodes.updated.length + edges.updated.length,
     removed: nodes.removed.length + edges.removed.length,
   };
+}
+
+/** How many nodes and edges a proposal adds, changes and removes, in the colours of the canvas. */
+function ChangeCounts({ changes }: { changes: Proposal['changes'] }) {
+  const strings = useStrings();
+  const counts = countChanges(changes);
   const marks = (['added', 'updated', 'removed'] as const).filter((mark) => counts[mark] > 0);
   return (
     <span className="mt-0.5 flex items-center gap-2 text-xs text-muted tabular-nums">

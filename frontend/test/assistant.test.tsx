@@ -9,7 +9,7 @@ import {
   type GraphOperation,
   type Proposal,
 } from '@archdraft/shared';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { assistantStore } from '../src/ai/assistant-store.ts';
@@ -290,6 +290,8 @@ describe('runAssistant', () => {
     const { bodies } = apiAnswering(ok(result('improve', proposals, ['more-findings'])));
     await runAssistant('improve', undefined, 'LR');
     expect(bodies[0]).toEqual({ task: 'improve', locale: 'en', graph: GRAPH });
+    // On narrow screens the panel opens folded, so that the preview stays in view.
+    expect(assistantStore.getState().offer).toMatchObject({ active: 0, expanded: false });
     expect(assistantStore.getState().offer?.proposals).toHaveLength(2);
     expect(reviewStore.getState().open).toBe(false);
     expect(currentGraph()).toBe(GRAPH);
@@ -514,6 +516,7 @@ describe('AssistantPanel', () => {
         warnings: [],
         active: 0,
         tidy: false,
+        expanded: false,
       },
     });
     const user = userEvent.setup();
@@ -546,6 +549,76 @@ describe('AssistantPanel', () => {
     expect(currentGraph()?.nodes.some((node) => node.id === 'cache')).toBe(true);
   });
 
+  it('folds into a strip on narrow screens, which applies the open proposal or expands', async () => {
+    openShop();
+    assistantStore.setState({
+      offer: {
+        task: 'improve',
+        proposals: [patchProposal('Add a cache', ADD_CACHE), patchProposal('Rename', RENAME_DB)],
+        basedOn: GRAPH,
+        warnings: [],
+        active: 1,
+        tidy: false,
+        expanded: false,
+      },
+    });
+    const user = userEvent.setup();
+    render(<PanelSlot placement="bottom" />);
+
+    const strip = screen.getByRole('region', { name: 'Rename' });
+    const counts = strings.assistant.changes({ added: 0, updated: 1, removed: 0 });
+    expect(
+      within(strip).getByText(`${strings.assistant.proposalOf(2, 2)} · ${counts}`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Why Rename')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: strings.assistant.discardLabel('Rename') }),
+    ).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: strings.assistant.expand }));
+    expect(assistantStore.getState().offer?.expanded).toBe(true);
+    expect(await screen.findByText('Why Rename')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: strings.assistant.collapse }));
+    expect(assistantStore.getState().offer?.expanded).toBe(false);
+
+    await user.click(
+      await screen.findByRole('button', { name: strings.assistant.applyLabel('Rename') }),
+    );
+    await waitFor(() => expect(assistantStore.getState().offer?.proposals).toHaveLength(1));
+    expect(currentGraph()?.nodes.find((node) => node.id === 'db')?.label).toBe('Orders DB');
+    // The proposal left shows in the strip, still folded.
+    expect(await screen.findByRole('region', { name: 'Add a cache' })).toBeInTheDocument();
+    closeOffer();
+  });
+
+  it('says in the strip when the open proposal no longer fits, and does not apply it', () => {
+    openShop();
+    const design = graphProposal('Redesign', patchProposal('Add', ADD_CACHE).graph);
+    editorStore
+      .getState()
+      .load(
+        { ...DOCUMENT, graph: { ...GRAPH, title: 'Changed' } },
+        { direction: 'LR', templateId: null },
+      );
+    assistantStore.setState({
+      offer: {
+        task: 'improve',
+        proposals: [design],
+        basedOn: GRAPH,
+        warnings: [],
+        active: 0,
+        tidy: false,
+        expanded: false,
+      },
+    });
+    render(<PanelSlot placement="bottom" />);
+    expect(screen.getByText(strings.assistant.staleProposal)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: strings.assistant.applyLabel('Redesign') }),
+    ).toBeDisabled();
+    closeOffer();
+  });
+
   it('closes without changing the diagram', async () => {
     openShop();
     assistantStore.setState({
@@ -556,6 +629,7 @@ describe('AssistantPanel', () => {
         warnings: [],
         active: 0,
         tidy: false,
+        expanded: false,
       },
     });
     const user = userEvent.setup();

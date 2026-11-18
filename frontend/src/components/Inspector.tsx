@@ -34,8 +34,8 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { AnimatePresence, type DragControls, m, type PanInfo, useDragControls } from 'motion/react';
-import { type ReactNode, useId, useRef } from 'react';
+import { useDragControls } from 'motion/react';
+import { type ReactNode, useId } from 'react';
 import {
   canStack,
   type EdgePatch,
@@ -45,13 +45,18 @@ import {
 } from '../editor/operations.ts';
 import { editorStore, useEditor } from '../editor/store.ts';
 import { KIND_ICONS } from '../icons.ts';
-import { EASE_OUT } from '../motion.ts';
 import type { Strings } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { Button, type ButtonProps } from './Button.tsx';
 import { ChoiceField, NumberField, SelectField, TextField } from './fields.tsx';
-import { FloatingPanel, type PanelDrag, type PanelPlacement } from './FloatingPanel.tsx';
+import {
+  FloatingPanel,
+  PanelContent,
+  type PanelPlacement,
+  SheetHandle,
+  sheetDrag,
+} from './FloatingPanel.tsx';
 
 type Flag = Exclude<keyof NodeAttributes, 'replicas'>;
 const FLAGS: readonly Flag[] = [
@@ -79,14 +84,6 @@ function cleanAttributes(attributes: NodeAttributes): NodeAttributes | undefined
   const entries = Object.entries(attributes).filter(([, value]) => value !== undefined);
   return entries.length === 0 ? undefined : Object.fromEntries(entries);
 }
-
-/** Distance in pixels, or speed in pixels per second, that expands or collapses the sheet. */
-const SHEET_DRAG_DISTANCE = 40;
-const SHEET_DRAG_VELOCITY = 300;
-/** Pointer movement in pixels below which a press on the handle counts as a tap. */
-const TAP_SLOP = 6;
-/** Cross-fade between the contents of two selections, or of the strip and the full panel. */
-const SWAP = { duration: 0.15, ease: EASE_OUT };
 
 interface InspectorProps {
   placement: PanelPlacement;
@@ -130,33 +127,27 @@ export function Inspector({ placement, selection, graph, expanded }: InspectorPr
     selection.type === 'edge' ? graph.edges.find((item) => item.id === selection.id) : undefined;
   const sheet = placement === 'bottom';
   const compact = sheet && !expanded;
-
-  const drag: PanelDrag = {
-    controls: dragControls,
-    onDragEnd: ({ offset, velocity }: PanInfo) => {
-      const up = offset.y < -SHEET_DRAG_DISTANCE || velocity.y < -SHEET_DRAG_VELOCITY;
-      const down = offset.y > SHEET_DRAG_DISTANCE || velocity.y > SHEET_DRAG_VELOCITY;
-      if (up !== down) editorStore.getState().expandInspector(up);
-    },
-  };
+  const strings = useStrings();
+  const expand = (value: boolean) => editorStore.getState().expandInspector(value);
 
   return (
-    <FloatingPanel placement={placement} labelledBy={headingId} {...(sheet && { drag })}>
-      {sheet && <SheetHandle expanded={expanded} controls={dragControls} />}
-      <AnimatePresence mode="popLayout" initial={false}>
-        <m.div
-          key={compact ? `${selection.id}:compact` : selection.id}
-          layout={sheet ? 'position' : false}
-          // While the sheet changes size, the old content leaves at once and the new one follows.
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { ...SWAP, ...(sheet && { delay: 0.06 }) } }}
-          exit={{ opacity: 0, transition: sheet ? { duration: 0.06 } : SWAP }}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          {node && <NodeForm node={node} graph={graph} headingId={headingId} compact={compact} />}
-          {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} compact={compact} />}
-        </m.div>
-      </AnimatePresence>
+    <FloatingPanel
+      placement={placement}
+      labelledBy={headingId}
+      {...(sheet && { drag: sheetDrag(dragControls, expand) })}
+    >
+      {sheet && (
+        <SheetHandle
+          expanded={expanded}
+          controls={dragControls}
+          label={expanded ? strings.inspector.collapse : strings.inspector.expand}
+          onExpand={expand}
+        />
+      )}
+      <PanelContent contentKey={compact ? `${selection.id}:compact` : selection.id} sheet={sheet}>
+        {node && <NodeForm node={node} graph={graph} headingId={headingId} compact={compact} />}
+        {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} compact={compact} />}
+      </PanelContent>
     </FloatingPanel>
   );
 }
@@ -192,41 +183,6 @@ export function GroupPanel({ placement, count }: { placement: PanelPlacement; co
         />
       </Actions>
     </FloatingPanel>
-  );
-}
-
-/**
- * Grip at the top of the inspector on narrow screens. Dragging it up or down
- * moves the whole panel (FloatingPanel.tsx); a tap, or Enter, toggles it.
- */
-function SheetHandle({ expanded, controls }: { expanded: boolean; controls: DragControls }) {
-  const strings = useStrings();
-  const pressedAt = useRef(0);
-  const label = expanded ? strings.inspector.collapse : strings.inspector.expand;
-  return (
-    <m.button
-      type="button"
-      // Kept undistorted while the panel changes size.
-      layout="position"
-      aria-expanded={expanded}
-      aria-label={label}
-      title={label}
-      onPointerDown={(event) => {
-        pressedAt.current = event.clientY;
-        controls.start(event);
-      }}
-      onClick={(event) => {
-        // A drag ends with a click too; only a press that stayed put, or a key, toggles.
-        const tapped = event.detail === 0 || Math.abs(event.clientY - pressedAt.current) < TAP_SLOP;
-        if (tapped) editorStore.getState().expandInspector(!expanded);
-      }}
-      className="group flex w-full shrink-0 cursor-grab touch-none justify-center rounded-t-panel pt-2 pb-1 focus-visible:-outline-offset-2 active:cursor-grabbing"
-    >
-      <span
-        aria-hidden="true"
-        className="h-1 w-9 rounded-full bg-line transition-colors group-hover:bg-muted"
-      />
-    </m.button>
   );
 }
 
@@ -279,8 +235,8 @@ export function PanelHeader({
   );
 }
 
-/** The collapsed inspector: the title of the selection beside its quick actions. */
-function PanelStrip({ actions, ...title }: PanelTitleProps & { actions: ReactNode }) {
+/** A sheet folded into a strip: its title beside its quick actions. */
+export function PanelStrip({ actions, ...title }: PanelTitleProps & { actions: ReactNode }) {
   return (
     <div className="flex items-center gap-3 pr-2 pb-2.5 pl-3.5">
       <PanelTitle {...title} />

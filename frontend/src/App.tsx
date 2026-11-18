@@ -129,9 +129,14 @@ function Editor() {
   // On narrow screens a panel takes the place of the prompt.
   const panelOpen = selecting || reviewing || offering;
   // On narrow screens these panels reach over the column of canvas controls, which would show
-  // through them; only the inspector folded into its strip stays below it.
+  // through them; the inspector and the proposals folded into their strips stay below it.
   const inspectorExpanded = useEditor(isInspectorExpanded);
-  const controlsCovered = !wide && (reviewing || offering || inspectorExpanded);
+  const assistantRaised = useAssistant(
+    (state) => state.report !== null || state.offer?.expanded === true,
+  );
+  const controlsCovered = !wide && (reviewing || assistantRaised || inspectorExpanded);
+  // The legend of a preview stands above the folded proposals; the controls rise clear of it.
+  const previewing = useAssistant((state) => state.preview !== null);
   const flow = useReactFlow();
   const insets = useMemo(
     () => canvasInsets(wide, paletteOpen, reviewing || offering),
@@ -216,7 +221,7 @@ function Editor() {
               controlsClassName={
                 wide
                   ? 'right-3 bottom-3'
-                  : `right-3 bottom-24 ${controlsCovered ? 'invisible' : ''}`
+                  : `right-3 ${previewing ? 'bottom-40' : 'bottom-24'} ${controlsCovered ? 'invisible' : ''}`
               }
               inspectorPlacement={wide ? 'side' : 'bottom'}
             />
