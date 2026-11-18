@@ -32,6 +32,11 @@ export interface Offer {
   readonly active: number;
   /** Whether applying lays the whole diagram out again, instead of keeping what stays in place. */
   readonly tidy: boolean;
+  /**
+   * On narrow screens, whether the panel shows the proposals or only a strip with the open one,
+   * which leaves the preview in view. Each new offer opens folded.
+   */
+  readonly expanded: boolean;
 }
 
 /** A proposal drawn over the open diagram before it is applied. */

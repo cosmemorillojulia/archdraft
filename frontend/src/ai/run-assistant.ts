@@ -258,6 +258,13 @@ export function setTidy(tidy: boolean): void {
   void refreshPreview();
 }
 
+/** On narrow screens, unfolds the panel to every proposal, or folds it into a strip. */
+export function expandOffer(expanded: boolean): void {
+  const offer = assistantStore.getState().offer;
+  if (!offer || offer.expanded === expanded) return;
+  assistantStore.setState({ offer: { ...offer, expanded } });
+}
+
 /** Makes one node or edge stand out on the canvas, from a list of changes; null stops. */
 export function focusChange(focus: AssistantState['focus']): void {
   assistantStore.setState({ focus });
@@ -273,7 +280,15 @@ function openOffer(
   watchEditor();
   // The proposals take the place of the review in the panel slot.
   reviewStore.getState().setOpen(false);
-  const offer: Offer = { task, proposals, basedOn, warnings, active: 0, tidy: false };
+  const offer: Offer = {
+    task,
+    proposals,
+    basedOn,
+    warnings,
+    active: 0,
+    tidy: false,
+    expanded: false,
+  };
   assistantStore.setState({ offer: activated(offer, 0), preview: null, focus: null });
   void refreshPreview();
 }
