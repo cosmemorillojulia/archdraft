@@ -34,7 +34,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { AnimatePresence, m, useDragControls } from 'motion/react';
+import { useDragControls } from 'motion/react';
 import { type ReactNode, useId } from 'react';
 import {
   canStack,
@@ -45,13 +45,18 @@ import {
 } from '../editor/operations.ts';
 import { editorStore, useEditor } from '../editor/store.ts';
 import { KIND_ICONS } from '../icons.ts';
-import { EASE_OUT } from '../motion.ts';
 import type { Strings } from '../i18n/en.ts';
 import { productName } from '../i18n/labels.ts';
 import { useStrings } from '../i18n/locale.ts';
 import { Button, type ButtonProps } from './Button.tsx';
 import { ChoiceField, NumberField, SelectField, TextField } from './fields.tsx';
-import { FloatingPanel, type PanelPlacement, SheetHandle, sheetDrag } from './FloatingPanel.tsx';
+import {
+  FloatingPanel,
+  PanelContent,
+  type PanelPlacement,
+  SheetHandle,
+  sheetDrag,
+} from './FloatingPanel.tsx';
 
 type Flag = Exclude<keyof NodeAttributes, 'replicas'>;
 const FLAGS: readonly Flag[] = [
@@ -80,8 +85,6 @@ function cleanAttributes(attributes: NodeAttributes): NodeAttributes | undefined
   return entries.length === 0 ? undefined : Object.fromEntries(entries);
 }
 
-/** Cross-fade between the contents of two selections, or of the strip and the full panel. */
-const SWAP = { duration: 0.15, ease: EASE_OUT };
 
 interface InspectorProps {
   placement: PanelPlacement;
@@ -125,7 +128,6 @@ export function Inspector({ placement, selection, graph, expanded }: InspectorPr
     selection.type === 'edge' ? graph.edges.find((item) => item.id === selection.id) : undefined;
   const sheet = placement === 'bottom';
   const compact = sheet && !expanded;
-
   const strings = useStrings();
   const expand = (value: boolean) => editorStore.getState().expandInspector(value);
 
@@ -143,20 +145,10 @@ export function Inspector({ placement, selection, graph, expanded }: InspectorPr
           onExpand={expand}
         />
       )}
-      <AnimatePresence mode="popLayout" initial={false}>
-        <m.div
-          key={compact ? `${selection.id}:compact` : selection.id}
-          layout={sheet ? 'position' : false}
-          // While the sheet changes size, the old content leaves at once and the new one follows.
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { ...SWAP, ...(sheet && { delay: 0.06 }) } }}
-          exit={{ opacity: 0, transition: sheet ? { duration: 0.06 } : SWAP }}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          {node && <NodeForm node={node} graph={graph} headingId={headingId} compact={compact} />}
-          {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} compact={compact} />}
-        </m.div>
-      </AnimatePresence>
+      <PanelContent contentKey={compact ? `${selection.id}:compact` : selection.id} sheet={sheet}>
+        {node && <NodeForm node={node} graph={graph} headingId={headingId} compact={compact} />}
+        {edge && <EdgeForm edge={edge} graph={graph} headingId={headingId} compact={compact} />}
+      </PanelContent>
     </FloatingPanel>
   );
 }
