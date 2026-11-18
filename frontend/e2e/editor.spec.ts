@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import {
+  type ArchitectureGraph,
   ARCHITECTURE_TEMPLATES,
   type AssistResult,
   AssistResultSchema,
@@ -181,6 +182,60 @@ test.describe('on a phone', () => {
     await expect(review).toBeVisible();
     await expect(view).toBeHidden();
     await review.getByRole('button', { name: 'Close' }).click();
+    await expect(view).toBeVisible();
+  });
+
+  test('folds the proposals into a strip that leaves the preview and the controls in view', async ({
+    editor,
+  }) => {
+    // One proposal that renames the first component of the diagram it is sent.
+    await editor.route('**/api/v1/assist', async (route) => {
+      const { graph } = route.request().postDataJSON() as { graph: ArchitectureGraph };
+      const [first, ...rest] = graph.nodes;
+      if (first === undefined) throw new Error('The diagram sent to the assistant is empty.');
+      await route.fulfill({
+        json: AssistResultSchema.parse({
+          task: 'improve',
+          proposals: [
+            {
+              title: 'Name the entry point',
+              rationale: 'Says who comes in.',
+              graph: { ...graph, nodes: [{ ...first, label: 'Visitors' }, ...rest] },
+              changes: {
+                diagram: false,
+                nodes: { added: [], updated: [first.id], removed: [] },
+                edges: { added: [], updated: [], removed: [] },
+              },
+            },
+          ],
+          attempts: 1,
+          warnings: [],
+        }),
+      });
+    });
+    await editor.getByRole('button', { name: 'Assistant' }).click();
+    await editor.getByRole('menuitem', { name: /Suggest improvements/ }).click();
+
+    const strip = editor.getByRole('region', { name: 'Name the entry point' });
+    const legend = editor.getByRole('status').filter({ hasText: 'Preview, not applied yet' });
+    const view = editor.getByRole('group', { name: 'View' });
+    await expect(strip.getByRole('button', { name: 'Apply Name the entry point' })).toBeVisible();
+    // The prompt, with a legend of its own, may still be on its way out.
+    await expect(legend).toHaveCount(1);
+    await expect(legend).toBeVisible();
+    await expect(view).toBeVisible();
+    // The controls end above the legend, which stands above the strip.
+    await expect
+      .poll(async () => {
+        const [controls, above] = await Promise.all([view.boundingBox(), legend.boundingBox()]);
+        return controls && above ? above.y - (controls.y + controls.height) : -1;
+      })
+      .toBeGreaterThanOrEqual(0);
+
+    await editor.getByRole('button', { name: 'Show every proposal' }).click();
+    await expect(editor.getByText('Says who comes in.')).toBeVisible();
+    await expect(view).toBeHidden();
+    await editor.getByRole('button', { name: 'Hide the proposals' }).click();
     await expect(view).toBeVisible();
   });
 });

@@ -119,6 +119,15 @@ test.describe('on a phone', () => {
     await expectScreen(editor, 'phone-editor.png');
   });
 
+  test('a proposal of the assistant, with the panel folded', async ({ editor }) => {
+    await editor.route('**/api/v1/assist', answerWithImprovement);
+    await editor.getByRole('button', { name: 'Assistant' }).click();
+    await editor.getByRole('menuitem', { name: /Suggest improvements/ }).click();
+    await expect(editor.getByRole('region', { name: 'Cache the hottest reads' })).toBeVisible();
+    await expect(editor.getByText('Preview, not applied yet')).toHaveCount(1);
+    await expectScreen(editor, 'phone-proposal.png');
+  });
+
   test.describe('in the dark theme', () => {
     test.use({ colorScheme: 'dark' });
 
