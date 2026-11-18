@@ -571,7 +571,9 @@ describe('AssistantPanel', () => {
       within(strip).getByText(`${strings.assistant.proposalOf(2, 2)} · ${counts}`),
     ).toBeInTheDocument();
     expect(screen.queryByText('Why Rename')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: strings.assistant.discardLabel('Rename') })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: strings.assistant.discardLabel('Rename') }),
+    ).toBeNull();
 
     await user.click(screen.getByRole('button', { name: strings.assistant.expand }));
     expect(assistantStore.getState().offer?.expanded).toBe(true);
@@ -592,10 +594,12 @@ describe('AssistantPanel', () => {
   it('says in the strip when the open proposal no longer fits, and does not apply it', () => {
     openShop();
     const design = graphProposal('Redesign', patchProposal('Add', ADD_CACHE).graph);
-    editorStore.getState().load(
-      { ...DOCUMENT, graph: { ...GRAPH, title: 'Changed' } },
-      { direction: 'LR', templateId: null },
-    );
+    editorStore
+      .getState()
+      .load(
+        { ...DOCUMENT, graph: { ...GRAPH, title: 'Changed' } },
+        { direction: 'LR', templateId: null },
+      );
     assistantStore.setState({
       offer: {
         task: 'improve',
