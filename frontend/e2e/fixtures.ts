@@ -1,3 +1,4 @@
+import type { ArchitectureGraph } from '@archdraft/shared';
 import { expect, test as base, type Page } from '@playwright/test';
 
 /**
@@ -54,4 +55,44 @@ export async function openTemplate(page: Page, name: string): Promise<void> {
 export async function openBlankDiagram(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await newMenu(page).getByRole('menuitem', { name: 'Blank diagram' }).click();
+}
+
+/**
+ * A small shop with findings of the three severities: a database called by its clients (error),
+ * a single replica, a direct entry, one zone and no encryption (warnings), and a cache of unknown
+ * zones and a component with no connections (notes).
+ */
+export const SHOP_WITH_ISSUES: ArchitectureGraph = {
+  schemaVersion: 1,
+  title: 'Shop with design issues',
+  provider: 'aws',
+  nodes: [
+    { id: 'shopper', kind: 'user', label: 'Shopper' },
+    { id: 'api', kind: 'service', label: 'Orders API', attributes: { replicas: 1 } },
+    {
+      id: 'db',
+      kind: 'relational-db',
+      label: 'Orders DB',
+      attributes: { multiAz: false, encryptedAtRest: false },
+    },
+    { id: 'cache', kind: 'cache', label: 'Session cache' },
+    { id: 'reports', kind: 'service', label: 'Reports job' },
+  ],
+  edges: [
+    { id: 'shopper-api', source: 'shopper', target: 'api', label: 'HTTPS' },
+    { id: 'api-db', source: 'api', target: 'db' },
+    { id: 'shopper-db', source: 'shopper', target: 'db' },
+    { id: 'api-cache', source: 'api', target: 'cache' },
+  ],
+};
+
+/** Opens `graph` as an Archdraft JSON file, from the share menu of the header. */
+export async function openGraph(page: Page, graph: ArchitectureGraph): Promise<void> {
+  await page.getByRole('button', { name: 'Share' }).click();
+  await page.getByLabel('Open or import a file').setInputFiles({
+    name: 'diagram.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(graph)),
+  });
+  await expect(diagram(page, graph.title)).toBeVisible();
 }

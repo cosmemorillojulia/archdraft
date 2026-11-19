@@ -1,5 +1,5 @@
 import type { Page, Route } from '@playwright/test';
-import { card, expect, openBlankDiagram, test } from './fixtures.ts';
+import { card, expect, openBlankDiagram, openGraph, SHOP_WITH_ISSUES, test } from './fixtures.ts';
 
 /**
  * Visual regression of the key screens (docs/modulos/web.md, Regresión visual). Each test
@@ -131,10 +131,9 @@ test.describe('on a phone', () => {
   test.describe('in the dark theme', () => {
     test.use({ colorScheme: 'dark' });
 
-    test('the design review sheet', async ({ editor }) => {
-      await card(editor)
-        .getByRole('button', { name: /design issues?$/ })
-        .click();
+    test('the design review sheet, with findings of every severity', async ({ editor }) => {
+      await openGraph(editor, SHOP_WITH_ISSUES);
+      await card(editor).getByRole('button', { name: '7 design issues' }).click();
       await expect(editor.getByRole('region', { name: 'Design review' })).toBeVisible();
       await expectScreen(editor, 'phone-review-dark.png');
     });
