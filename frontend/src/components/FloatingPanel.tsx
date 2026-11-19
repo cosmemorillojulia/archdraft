@@ -75,6 +75,7 @@ export function FloatingPanel({ placement, labelledBy, drag, children }: Floatin
         onDragEnd: (_event, info) => drag.onDragEnd(info),
         style: { borderRadius: PANEL_RADIUS },
       })}
+      // On narrow screens the canvas keeps the diagram clear of this height (bottomSheetCover).
       className={`floating pointer-events-auto flex min-h-0 w-full flex-col overflow-hidden rounded-panel ${
         placement === 'side' ? 'max-h-full' : 'max-h-[min(52dvh,480px)]'
       }`}
