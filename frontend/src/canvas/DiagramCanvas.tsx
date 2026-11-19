@@ -41,6 +41,7 @@ import {
   type Insets,
   absoluteBoxes,
   boundsOf,
+  bottomSheetCover,
   initialViewport,
   SIDE_PANEL_COVER,
   snapped,
@@ -69,13 +70,6 @@ const INSET_SHIFT_MS = 400;
 const BUILD_MS = 1200;
 /** Pixels a pointer moves before a press on a node becomes a drag, so taps stay taps. */
 const DRAG_THRESHOLD = 4;
-/**
- * Room the inspector can take at the bottom of narrow screens (Inspector.tsx): expanded, at most
- * 52 % of the screen height and 480 px, 12 px above the edge. Collapsed, the strip at the bottom
- * is lower than the room the insets already keep for the prompt. On wide screens it takes the
- * right column, `SIDE_PANEL_COVER`.
- */
-const bottomInspectorCover = () => Math.min(window.innerHeight * 0.52, 480) + 12;
 const REVEAL_MARGIN = 16;
 const REVEAL_MS = 300;
 /** Length of the glide to a finding chosen in the design review. */
@@ -430,21 +424,27 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
     void flow.setViewport({ ...viewport, x: viewport.x + delta / 2 }, { duration: INSET_SHIFT_MS });
   }, [flow, insets.left]);
 
-  // When a panel opens or closes in the right column, a diagram that was in sight as a whole is
-  // fitted again, so that the panel never hides part of it. A view moved to a detail stays.
+  // When a panel opens or closes in the right column, or rises over the bottom of a narrow
+  // screen, a diagram that was in sight as a whole is fitted again, so that the panel never hides
+  // part of it. A view moved to a detail stays.
   const previousInsets = useRef(insets);
   useEffect(() => {
     const before = previousInsets.current;
     previousInsets.current = insets;
     const element = containerRef.current;
-    if (insets.right === before.right || !content || !element) return;
+    const moved = insets.right !== before.right || insets.bottom !== before.bottom;
+    if (!moved || !content || !element) return;
     const canvas = { width: element.clientWidth, height: element.clientHeight };
     if (!wholeInSight(content, flow.getViewport(), canvas, before)) return;
     const viewport = fittedViewport();
     if (viewport) void flow.setViewport(viewport, { duration: INSET_SHIFT_MS });
   }, [content, fittedViewport, flow, insets]);
 
-  /** Part of the canvas left free by the floating interface, with a panel open. */
+  /**
+   * Part of the canvas left free by the floating interface, with a panel open. The inspector
+   * takes the right column on wide screens; on narrow ones, expanded, it rises across the bottom,
+   * and collapsed its strip is lower than the room the insets keep for the prompt.
+   */
   const freeArea = useCallback(() => {
     const element = containerRef.current;
     if (!element) return null;
@@ -454,7 +454,7 @@ function Flow({ snapshot, insets, showMiniMap, controlsClassName, inspectorPlace
       inspectorPlacement === 'side'
         ? { ...insets, right: Math.max(insets.right, SIDE_PANEL_COVER) }
         : inspectorExpanded
-          ? { ...insets, bottom: Math.max(insets.bottom, bottomInspectorCover()) }
+          ? { ...insets, bottom: Math.max(insets.bottom, bottomSheetCover(window.innerHeight)) }
           : insets;
     return {
       left: cover.left + REVEAL_MARGIN,

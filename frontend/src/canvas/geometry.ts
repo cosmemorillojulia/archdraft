@@ -123,6 +123,15 @@ export function boundsOf(boxes: Iterable<Box>): Box | null {
  */
 export const SIDE_PANEL_COVER = 356;
 
+/**
+ * Room a panel raised across the bottom of a narrow screen takes (FloatingPanel.tsx): at most
+ * 52 % of the screen height and 480 px, 12 px above the edge. A shorter panel takes less; the
+ * diagram is still kept clear of the most it can take, so it does not move as the panel grows.
+ */
+export function bottomSheetCover(screenHeight: number): number {
+  return Math.min(screenHeight * 0.52, 480) + 12;
+}
+
 /** Space taken by the floating interface on each side of the canvas, in pixels. */
 export interface Insets {
   readonly top: number;

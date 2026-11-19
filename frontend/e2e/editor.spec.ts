@@ -6,7 +6,17 @@ import {
   AssistResultSchema,
   problemType,
 } from '@archdraft/shared';
-import { card, diagram, expect, node, openBlankDiagram, openTemplate, test } from './fixtures.ts';
+import {
+  card,
+  diagram,
+  expect,
+  node,
+  openBlankDiagram,
+  openGraph,
+  openTemplate,
+  SHOP_WITH_ISSUES,
+  test,
+} from './fixtures.ts';
 
 test('opens a template from the New menu', async ({ editor }) => {
   await openTemplate(editor, 'Serverless API');
@@ -183,6 +193,26 @@ test.describe('on a phone', () => {
     await expect(view).toBeHidden();
     await review.getByRole('button', { name: 'Close' }).click();
     await expect(view).toBeVisible();
+  });
+
+  test('keeps the diagram and a chosen finding above the design review sheet', async ({
+    editor,
+  }) => {
+    const review = editor.getByRole('region', { name: 'Design review' });
+    /** Space between the bottom of a box on the canvas and the top of the review sheet. */
+    const clearance = async (box: ReturnType<typeof node>) => {
+      const [drawn, sheet] = await Promise.all([box.boundingBox(), review.boundingBox()]);
+      return drawn && sheet ? sheet.y - (drawn.y + drawn.height) : -1;
+    };
+    await openGraph(editor, SHOP_WITH_ISSUES);
+    await card(editor).getByRole('button', { name: '7 design issues' }).click();
+    await expect(review).toBeVisible();
+    // The whole diagram is fitted again above the sheet; the lowest components show it.
+    await expect.poll(() => clearance(node(editor, 'Orders DB, Amazon RDS'))).toBeGreaterThan(0);
+
+    // A finding further down the list brings its component into view, above the sheet too.
+    await review.getByText('"Reports job" has no connections').click();
+    await expect.poll(() => clearance(node(editor, 'Reports job, Amazon ECS'))).toBeGreaterThan(0);
   });
 
   test('folds the proposals into a strip that leaves the preview and the controls in view', async ({

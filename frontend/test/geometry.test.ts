@@ -6,6 +6,7 @@ import {
   ARROW_WIDTH,
   arrowhead,
   boundsOf,
+  bottomSheetCover,
   drawingScale,
   edgeSides,
   initialViewport,
@@ -161,6 +162,16 @@ describe('wholeInSight', () => {
     const shifted = { x: 100, y: 50, width: 600, height: 400 };
     expect(wholeInSight(shifted, { x: -30, y: -5, zoom: 0.5 }, canvas, insets)).toBe(true);
     expect(wholeInSight(shifted, { x: -60, y: -5, zoom: 0.5 }, canvas, insets)).toBe(false);
+  });
+});
+
+describe('bottomSheetCover', () => {
+  it('keeps clear half the height of a phone and the margin under the sheet', () => {
+    expect(bottomSheetCover(844)).toBeCloseTo(844 * 0.52 + 12);
+  });
+
+  it('never keeps more than the tallest sheet on a tall screen', () => {
+    expect(bottomSheetCover(1200)).toBe(492);
   });
 });
 

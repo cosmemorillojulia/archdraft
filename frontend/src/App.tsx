@@ -9,7 +9,7 @@ import { useDialog } from './onboarding/dialog-store.ts';
 import { Dialogs } from './onboarding/Dialogs.tsx';
 import { EmptyState } from './onboarding/EmptyState.tsx';
 import { DiagramCanvas } from './canvas/DiagramCanvas.tsx';
-import { type Insets, SIDE_PANEL_COVER } from './canvas/geometry.ts';
+import { bottomSheetCover, type Insets, SIDE_PANEL_COVER } from './canvas/geometry.ts';
 import {
   ComponentsPanel,
   ComponentsSheet,
@@ -73,15 +73,27 @@ async function openFirstDiagram(direction: LayoutDirection): Promise<void> {
  * review and the assistant's proposals take the right column; the inspector does too, but it
  * only keeps the selected component clear of it (DiagramCanvas.tsx).
  */
-function canvasInsets(wide: boolean, paletteOpen: boolean, sidePanelOpen: boolean): Insets {
-  return wide
-    ? {
-        top: 24,
-        right: sidePanelOpen ? SIDE_PANEL_COVER : 24,
-        bottom: 100,
-        left: paletteOpen ? PALETTE_WIDTH + 16 : 24,
-      }
-    : { top: 150, right: CANVAS_CONTROLS_COVER, bottom: 140, left: 16 };
+function wideInsets(paletteOpen: boolean, sidePanelOpen: boolean): Insets {
+  return {
+    top: 24,
+    right: sidePanelOpen ? SIDE_PANEL_COVER : 24,
+    bottom: 100,
+    left: paletteOpen ? PALETTE_WIDTH + 16 : 24,
+  };
+}
+
+/**
+ * On narrow screens the design review and the proposals unfolded rise across the bottom, and the
+ * diagram is kept above them; the inspector, like on wide screens, only keeps the selected
+ * component clear of it.
+ */
+function narrowInsets(sheetRaised: boolean): Insets {
+  return {
+    top: 150,
+    right: CANVAS_CONTROLS_COVER,
+    bottom: sheetRaised ? bottomSheetCover(window.innerHeight) : 140,
+    left: 16,
+  };
 }
 
 const loadMotionFeatures = () => import('./motion-features.ts').then((module) => module.default);
@@ -139,8 +151,11 @@ function Editor() {
   const previewing = useAssistant((state) => state.preview !== null);
   const flow = useReactFlow();
   const insets = useMemo(
-    () => canvasInsets(wide, paletteOpen, reviewing || offering),
-    [wide, paletteOpen, reviewing, offering],
+    () =>
+      wide
+        ? wideInsets(paletteOpen, reviewing || offering)
+        : narrowInsets(reviewing || assistantRaised),
+    [wide, paletteOpen, reviewing, offering, assistantRaised],
   );
 
   useEditorShortcuts(!sheetOpen);
