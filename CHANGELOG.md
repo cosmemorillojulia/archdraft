@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- `@archdraft/web`: while the assistant works, the card above the prompt is the only place that says so, with the task as its title and the stage under it, instead of the prompt and the card saying two different things at once. On phones, the components button rises with that card and the zoom and shortcut buttons hide while it is shown, instead of covering it. The groups of the design review no longer repeat the counts of the filters above them.
 - `@archdraft/web`: on phones, the diagram is fitted above the design review sheet and above the unfolded proposals, and a finding chosen in the review brings its components into view above the sheet instead of under it.
 - `@archdraft/web`: on phones, the assistant's proposals open folded into a strip with the open proposal, what it changes and Apply, so the preview of the diagram stays in view; the handle unfolds the full list, as in the inspector. While a preview is shown, the zoom and shortcut buttons stand above its legend.
 - `@archdraft/web`: on phones, the zoom and shortcut buttons hide while the design review, the assistant's proposals or the expanded inspector cover them, instead of showing through the panel, and the preview legend breaks its line before the three colours instead of leaving one alone on the second line.

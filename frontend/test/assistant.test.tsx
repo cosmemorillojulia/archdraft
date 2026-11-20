@@ -445,6 +445,31 @@ describe('PromptDock', () => {
     expect(bodies[1]).toMatchObject({ task: 'generate', prompt: 'Another shop' });
   });
 
+  it('says once what the assistant is doing, with its stage under the task', async () => {
+    openShop();
+    vi.stubEnv('VITE_API_URL', API);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise((_, reject) => {
+            init.signal?.addEventListener('abort', () =>
+              reject(new DOMException('Aborted', 'AbortError')),
+            );
+          }),
+      ),
+    );
+    render(<PromptDock direction="LR" />);
+    const running = runAssistant('generate', 'A shop', 'LR');
+
+    expect(await screen.findAllByText(strings.assistant.working.generate)).toHaveLength(1);
+    expect(screen.getByRole('status')).toHaveTextContent(strings.assistant.stages.thinking);
+
+    act(() => cancelAssistant());
+    await running;
+    expect(screen.queryByText(strings.assistant.working.generate)).not.toBeInTheDocument();
+  });
+
   it('says above the prompt that a proposal on the canvas is not applied yet', async () => {
     openShop();
     apiAnswering(ok(result('improve', [patchProposal('Cache', ADD_CACHE)])));

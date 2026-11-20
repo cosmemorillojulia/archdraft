@@ -11,9 +11,11 @@ const SHOWN_COMPONENTS = 6;
 const SHOWN_THOUGHT = 420;
 
 /**
- * The assistant at work, above the prompt: what it is doing and for how long, the end of its
- * reasoning as it thinks, for the models that show theirs, and the components of the answer
- * as it writes them. The reasoning can be folded away; only the stage is announced.
+ * The assistant at work, above the prompt: the task and for how long, the stage it is at
+ * under it, the end of its reasoning as it thinks, for the models that show theirs, and the
+ * components of the answer as it writes them. It is the only place that says the assistant
+ * is working, so the prompt and this card never say two things at once. The reasoning can be
+ * folded away; only the stage is announced.
  */
 export function AssistantProgress() {
   const strings = useStrings();
@@ -47,8 +49,8 @@ export function AssistantProgress() {
                 />
               ))}
             </span>
-            <p role="status" className="shimmer-text min-w-0 flex-1 truncate text-sm font-medium">
-              {strings.assistant.stages[progress.stage]}
+            <p className="shimmer-text min-w-0 flex-1 truncate text-sm font-medium">
+              {strings.assistant.working[working]}
             </p>
             <span className="shrink-0 text-xs text-muted tabular-nums">
               {strings.assistant.elapsed(seconds)}
@@ -69,6 +71,9 @@ export function AssistantProgress() {
               </button>
             )}
           </div>
+          <p role="status" className="-mt-1.5 truncate text-xs text-muted">
+            {strings.assistant.stages[progress.stage]}
+          </p>
           {thought !== '' && thoughtOpen && (
             // Its end stays in view as it grows; the lines before fade out at the top.
             <div
