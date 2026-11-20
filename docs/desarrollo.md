@@ -78,7 +78,9 @@ pnpm test:e2e
 
 Si el navegador no se puede descargar, `PLAYWRIGHT_CHROMIUM_PATH` apunta a un Chromium ya instalado. Fuera de CI se reutiliza un servidor que ya escuche en el puerto 4173; si se cambia el editor, hay que pararlo para que se vuelva a construir. Los resultados quedan en `frontend/e2e/.results` (trazas de los tests fallidos), ignorados por git. No forman parte de `pnpm check`.
 
-Las pruebas de regresión visual (`frontend/e2e/visual.spec.ts`, ADR 0028) comparan capturas con las de `frontend/e2e/__screenshots__`. Tras un cambio de diseño intencionado se regeneran con `pnpm test:e2e --project visual --update-snapshots` y las imágenes nuevas se revisan en el diff antes de hacer commit. Se generan en Linux, como CI.
+Las pruebas de regresión visual (`frontend/e2e/visual.spec.ts`, ADR 0028) comparan capturas con las de `frontend/e2e/__screenshots__`. Tras un cambio de diseño intencionado se regeneran con `pnpm test:e2e --project visual --update-snapshots` y las imágenes nuevas se revisan en el diff antes de hacer commit. Esa opción solo reescribe las que ya no coinciden; como la comparación tolera un 2 % de píxeles distintos, un cambio pequeño (quitar un número de un encabezado) puede pasar sin regenerarse, y entonces se fuerza con `--update-snapshots=all` y un filtro `-g` para no reescribir por ruido las demás. Se generan en Linux, como CI.
+
+Las microinteracciones se revisan con un vídeo del recorrido: un spec temporal, sin commit, con `test.use({ video: { mode: 'on', size } })` que recorre los flujos principales con pausas, y fotogramas extraídos con `ffmpeg` (por ejemplo, una hoja de contactos con `-vf "fps=1/1.5,scale=480:-1,tile=4x5"`). Playwright graba con su propio `ffmpeg`; si no se puede descargar, basta un directorio para `PLAYWRIGHT_BROWSERS_PATH` con enlaces a los navegadores instalados y `ffmpeg-<versión>/ffmpeg-linux` apuntando al `ffmpeg` del sistema (la versión la dice el error de Playwright).
 
 `.github/workflows/evals.yml` pasa el banco de evaluación contra modelos de Groq cada semana y bajo demanda (`docs/evaluacion.md`).
 
