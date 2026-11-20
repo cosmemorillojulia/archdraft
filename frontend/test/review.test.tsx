@@ -152,7 +152,8 @@ describe('review panel', () => {
     const headings = within(panel())
       .getAllByRole('heading', { level: 3 })
       .map((heading) => heading.textContent);
-    expect(headings).toEqual(['Errors1', 'Warnings1', 'Notes1']);
+    // The counts are in the filters, not repeated in the headings.
+    expect(headings).toEqual(['Errors', 'Warnings', 'Notes']);
     expect(within(panel()).getByText(/is called directly by clients/)).toBeInTheDocument();
   });
 

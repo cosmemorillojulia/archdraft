@@ -189,8 +189,8 @@ function FindingGroup({
           className="size-2 rounded-full"
           style={{ backgroundColor: SEVERITY_COLOR[severity] }}
         />
+        {/* Without a count: the filter above already says how many there are. */}
         {strings.review.groups[severity]}
-        <span className="font-normal tabular-nums">{findings.length}</span>
       </h3>
       <ul className="flex flex-col gap-0.5">
         <AnimatePresence initial={false}>
