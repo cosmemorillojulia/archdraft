@@ -1,7 +1,6 @@
 import {
   ArrowUp,
   FilePlus2,
-  LoaderCircle,
   type LucideIcon,
   Minimize2,
   ShieldCheck,
@@ -107,23 +106,10 @@ export function PromptDock({ direction }: { direction: LayoutDirection }) {
             aria-describedby={noteId}
             className="field-sizing-content block max-h-40 min-h-9 w-full resize-none bg-transparent py-2 leading-normal outline-none"
           />
-          {working !== null ? (
-            <p
-              role="status"
-              className="pointer-events-none absolute inset-0 flex items-center gap-2 py-2 text-muted"
-            >
-              <LoaderCircle
-                size={15}
-                aria-hidden="true"
-                className="shrink-0 motion-safe:animate-spin"
-              />
-              <span className="truncate">{strings.assistant.working[working]}</span>
-            </p>
-          ) : (
+          {/* While the assistant works, the card above says what it is doing. */}
+          {working === null && value === '' && (
             // A new key starts the examples of the other mode from the first.
-            value === '' && (
-              <ExamplePrompts key={creating ? 'create' : 'edit'} examples={examples} />
-            )
+            <ExamplePrompts key={creating ? 'create' : 'edit'} examples={examples} />
           )}
         </div>
         <span
