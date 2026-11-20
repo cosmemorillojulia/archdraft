@@ -146,10 +146,11 @@ function Editor() {
   const assistantRaised = useAssistant(
     (state) => state.report !== null || state.offer?.expanded === true,
   );
-  // The progress of the assistant rises over the lower end of the column while it works.
+  // The progress of the assistant rises over the lower end of the column while it works,
+  // above the prompt; a panel in place of the prompt takes the progress away with it.
   const working = useAssistant((state) => state.working !== null);
   const controlsCovered =
-    !wide && (reviewing || assistantRaised || inspectorExpanded || working);
+    !wide && (reviewing || assistantRaised || inspectorExpanded || (working && !panelOpen));
   // The legend of a preview stands above the folded proposals; the controls rise clear of it.
   const previewing = useAssistant((state) => state.preview !== null);
   const flow = useReactFlow();
