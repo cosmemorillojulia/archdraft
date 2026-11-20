@@ -146,7 +146,10 @@ function Editor() {
   const assistantRaised = useAssistant(
     (state) => state.report !== null || state.offer?.expanded === true,
   );
-  const controlsCovered = !wide && (reviewing || assistantRaised || inspectorExpanded);
+  // The progress of the assistant rises over the lower end of the column while it works.
+  const working = useAssistant((state) => state.working !== null);
+  const controlsCovered =
+    !wide && (reviewing || assistantRaised || inspectorExpanded || working);
   // The legend of a preview stands above the folded proposals; the controls rise clear of it.
   const previewing = useAssistant((state) => state.preview !== null);
   const flow = useReactFlow();
@@ -276,10 +279,11 @@ function Editor() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 16, transition: { duration: 0.16, ease: EASE_OUT } }}
                 transition={{ duration: 0.25, ease: EASE_OUT }}
-                className="pointer-events-none absolute inset-x-0 bottom-0 z-20"
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col"
               >
+                {/* Above the prompt, so it rises with the progress of the assistant over it. */}
                 {!wide && (
-                  <div className="pointer-events-none absolute bottom-24 left-3">
+                  <div className="pointer-events-none mb-6.5 self-start pl-3">
                     <ComponentsSheetToggle
                       open={paletteOpen}
                       onOpenChange={setPaletteOpen}

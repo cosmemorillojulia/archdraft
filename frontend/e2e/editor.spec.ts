@@ -195,6 +195,33 @@ test.describe('on a phone', () => {
     await expect(view).toBeVisible();
   });
 
+  test('keeps the components button and the canvas controls clear of the assistant at work', async ({
+    editor,
+  }) => {
+    // An answer that never comes: the assistant stays at work until it is stopped.
+    await editor.route('**/api/v1/assist', () => new Promise<void>(() => {}));
+    const view = editor.getByRole('group', { name: 'View' });
+    const toggle = editor.getByRole('button', { name: 'Show components' });
+    const prompt = editor.getByRole('textbox', { name: 'Describe a change to this diagram' });
+    await prompt.fill('Add a cache');
+    await prompt.press('Enter');
+
+    const progress = editor.getByText('Changing the diagram…');
+    await expect(progress).toBeVisible();
+    await expect(view).toBeHidden();
+    // The button rises with the progress of the assistant above the prompt.
+    await expect
+      .poll(async () => {
+        const [button, above] = await Promise.all([toggle.boundingBox(), progress.boundingBox()]);
+        return button && above ? above.y - (button.y + button.height) : -1;
+      })
+      .toBeGreaterThanOrEqual(0);
+
+    await editor.getByRole('button', { name: 'Stop' }).click();
+    await expect(progress).toBeHidden();
+    await expect(view).toBeVisible();
+  });
+
   test('keeps the diagram and a chosen finding above the design review sheet', async ({
     editor,
   }) => {
