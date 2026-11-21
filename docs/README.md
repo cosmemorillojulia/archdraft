@@ -47,5 +47,6 @@ Referencia:
 | [0026](adr/0026-tests-de-extremo-a-extremo-sobre-el-build.md)       | Tests de extremo a extremo sobre el build, con la API simulada y en un job propio   |
 | [0027](adr/0027-presupuesto-de-tamano-y-lighthouse-ci.md)           | Presupuesto de tamaño con un script propio y Lighthouse CI sin instalarlo           |
 | [0028](adr/0028-regresion-visual-con-capturas-de-playwright.md)     | Regresión visual con capturas de Playwright en el repositorio                       |
+| [0029](adr/0029-enrutado-propio-de-las-conexiones.md)               | Enrutado propio de las conexiones en el lienzo en lugar de las rutas de ELK         |
 
 Cada nueva página de módulo o ADR se añade a este índice.
