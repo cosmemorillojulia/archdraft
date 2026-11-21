@@ -82,11 +82,12 @@ export function connectionPath(
     if (around !== null && around.length > 2) {
       // Through corners that are far apart on one side and close on the other, as where a
       // route leaves a node by a short run, the spline swings wide of them and can swing into
-      // the node it goes round. Then the route itself, with wide round corners, stays clear.
+      // the node it goes round. Then the curve follows the route itself, with wide round
+      // corners, which cut each corner by a few pixels only.
       const parts = splineParts(ends, around);
       return partsCross(parts, obstacles)
         ? roundedShape(around, CURVE_RADIUS)
-        : throughPath(ends, around.slice(1, -1));
+        : splineShape(around, parts);
     }
   }
   return curvedPath(ends);
@@ -209,14 +210,23 @@ function curvedPath(ends: ConnectionEnds): ConnectionShape {
  * leaving the source and arriving at the target straight out of their sides.
  */
 function throughPath(ends: ConnectionEnds, points: readonly Point[]): ConnectionShape {
-  const source = { x: ends.sourceX, y: ends.sourceY };
-  const corners = [source, ...points, { x: ends.targetX, y: ends.targetY }];
-  const parts = splineParts(ends, corners);
+  const corners = [
+    { x: ends.sourceX, y: ends.sourceY },
+    ...points,
+    { x: ends.targetX, y: ends.targetY },
+  ];
+  return splineShape(corners, splineParts(ends, corners));
+}
+
+/** The curve made of the parts of the spline through the corners. */
+function splineShape(corners: readonly Point[], parts: readonly Cubic[]): ConnectionShape {
+  const source = corners[0] as Point;
   let path = `M ${source.x} ${source.y}`;
   const midpoints: Point[] = [];
-  for (const { from, first, second, to } of parts) {
+  for (const part of parts) {
+    const { first, second, to } = part;
     path += ` C ${first.x} ${first.y} ${second.x} ${second.y} ${to.x} ${to.y}`;
-    midpoints.push(cubicAt({ from, first, second, to }, 0.5));
+    midpoints.push(cubicAt(part, 0.5));
   }
   // The label goes at the middle point, or at the middle of the middle part.
   const last = corners.length - 1;
@@ -283,10 +293,21 @@ const CURVE_SAMPLES = 24;
 
 /** Whether the curve passes through the inside of one of the boxes. */
 function partsCross(parts: readonly Cubic[], boxes: readonly Box[]): boolean {
+  // A cubic part never leaves the bounds of its four points, so only the boxes there count.
+  const controls = parts.flatMap(({ from, first, second, to }) => [from, first, second, to]);
+  const xs = controls.map((point) => point.x);
+  const ys = controls.map((point) => point.y);
+  const [left, right] = [Math.min(...xs), Math.max(...xs)];
+  const [top, bottom] = [Math.min(...ys), Math.max(...ys)];
+  const near = boxes.filter(
+    (box) =>
+      box.x < right && box.x + box.width > left && box.y < bottom && box.y + box.height > top,
+  );
+  if (near.length === 0) return false;
   return parts.some((part) => {
     for (let step = 1; step < CURVE_SAMPLES; step++) {
       const point = cubicAt(part, step / CURVE_SAMPLES);
-      if (boxes.some((box) => insideBox(point, box))) return true;
+      if (near.some((box) => insideBox(point, box))) return true;
     }
     return false;
   });
