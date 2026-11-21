@@ -5,6 +5,8 @@ import { routeAround } from './router.ts';
 
 /** Radius of the corners of a right-angled connection, in diagram pixels. */
 export const CORNER_RADIUS = 6;
+/** Radius of the corners of a curved connection that has to follow its route round the nodes. */
+const CURVE_RADIUS = 24;
 
 /** Length of the straight run out of a side, and into the arrowhead, in a connection that has to turn back. */
 const STUB = 20;
@@ -72,21 +74,35 @@ export function connectionPath(
       points.length > 0
         ? orthogonal(ends, points)
         : ((obstacles.length > 0 ? routed(ends, obstacles) : null) ?? squarePoints(ends));
-    const label = labelPoint(corners);
-    return {
-      path: rounded(corners),
-      labelX: label.x,
-      labelY: label.y,
-      corners,
-      midpoints: corners.slice(1).map((to, index) => middle(corners[index] as Point, to)),
-    };
+    return roundedShape(corners, CORNER_RADIUS);
   }
   if (points.length > 0) return throughPath(ends, points);
   if (obstacles.length > 0 && crossesAny(squarePoints(ends), obstacles)) {
     const around = routed(ends, obstacles);
-    if (around !== null && around.length > 2) return throughPath(ends, around.slice(1, -1));
+    if (around !== null && around.length > 2) {
+      // Through corners that are far apart on one side and close on the other, as where a
+      // route leaves a node by a short run, the spline swings wide of them and can swing into
+      // the node it goes round. Then the curve follows the route itself, with wide round
+      // corners, which cut each corner by a few pixels only.
+      const parts = splineParts(ends, around);
+      return partsCross(parts, obstacles)
+        ? roundedShape(around, CURVE_RADIUS)
+        : splineShape(around, parts);
+    }
   }
   return curvedPath(ends);
+}
+
+/** A right-angled line through the corners, each one rounded by up to `radius`. */
+function roundedShape(corners: Point[], radius: number): ConnectionShape {
+  const label = labelPoint(corners);
+  return {
+    path: rounded(corners, radius),
+    labelX: label.x,
+    labelY: label.y,
+    corners,
+    midpoints: corners.slice(1).map((to, index) => middle(corners[index] as Point, to)),
+  };
 }
 
 /** The corners of the right-angled route round the obstacles, ends included; null when boxed in. */
@@ -194,9 +210,41 @@ function curvedPath(ends: ConnectionEnds): ConnectionShape {
  * leaving the source and arriving at the target straight out of their sides.
  */
 function throughPath(ends: ConnectionEnds, points: readonly Point[]): ConnectionShape {
-  const source = { x: ends.sourceX, y: ends.sourceY };
-  const target = { x: ends.targetX, y: ends.targetY };
-  const corners = [source, ...points, target];
+  const corners = [
+    { x: ends.sourceX, y: ends.sourceY },
+    ...points,
+    { x: ends.targetX, y: ends.targetY },
+  ];
+  return splineShape(corners, splineParts(ends, corners));
+}
+
+/** The curve made of the parts of the spline through the corners. */
+function splineShape(corners: readonly Point[], parts: readonly Cubic[]): ConnectionShape {
+  const source = corners[0] as Point;
+  let path = `M ${source.x} ${source.y}`;
+  const midpoints: Point[] = [];
+  for (const part of parts) {
+    const { first, second, to } = part;
+    path += ` C ${first.x} ${first.y} ${second.x} ${second.y} ${to.x} ${to.y}`;
+    midpoints.push(cubicAt(part, 0.5));
+  }
+  // The label goes at the middle point, or at the middle of the middle part.
+  const last = corners.length - 1;
+  const label =
+    last % 2 === 0 ? (corners[last / 2] as Point) : (midpoints[(last - 1) / 2] as Point);
+  return { path, labelX: label.x, labelY: label.y, corners, midpoints };
+}
+
+/** One cubic part of a curve: its ends and its two control points. */
+interface Cubic {
+  readonly from: Point;
+  readonly first: Point;
+  readonly second: Point;
+  readonly to: Point;
+}
+
+/** The cubic parts of the Catmull-Rom spline through the corners, ends included. */
+function splineParts(ends: ConnectionEnds, corners: readonly Point[]): Cubic[] {
   const last = corners.length - 1;
   const out = OUTWARD[ends.sourcePosition];
   const into = OUTWARD[ends.targetPosition];
@@ -214,27 +262,64 @@ function throughPath(ends: ConnectionEnds, points: readonly Point[]): Connection
     const after = corners[index + 1] as Point;
     return { x: (after.x - before.x) / 6, y: (after.y - before.y) / 6 };
   });
-  let path = `M ${source.x} ${source.y}`;
-  const midpoints: Point[] = [];
-  for (let index = 0; index < last; index++) {
+  return corners.slice(1).map((to, index) => {
     const from = corners[index] as Point;
-    const to = corners[index + 1] as Point;
-    const first = { x: from.x + (pull[index] as Point).x, y: from.y + (pull[index] as Point).y };
-    const second = {
-      x: to.x - (pull[index + 1] as Point).x,
-      y: to.y - (pull[index + 1] as Point).y,
+    const leaving = pull[index] as Point;
+    const arriving = pull[index + 1] as Point;
+    return {
+      from,
+      first: { x: from.x + leaving.x, y: from.y + leaving.y },
+      second: { x: to.x - arriving.x, y: to.y - arriving.y },
+      to,
     };
-    path += ` C ${first.x} ${first.y} ${second.x} ${second.y} ${to.x} ${to.y}`;
-    // The point halfway along the parameter of a cubic curve.
-    midpoints.push({
-      x: (from.x + 3 * first.x + 3 * second.x + to.x) / 8,
-      y: (from.y + 3 * first.y + 3 * second.y + to.y) / 8,
-    });
-  }
-  // The label goes at the middle point, or at the middle of the middle part.
-  const label =
-    last % 2 === 0 ? (corners[last / 2] as Point) : (midpoints[(last - 1) / 2] as Point);
-  return { path, labelX: label.x, labelY: label.y, corners, midpoints };
+  });
+}
+
+/** The point of a cubic part at the parameter `t`, from 0 to 1. */
+function cubicAt({ from, first, second, to }: Cubic, t: number): Point {
+  const s = 1 - t;
+  const a = s * s * s;
+  const b = 3 * s * s * t;
+  const c = 3 * s * t * t;
+  const d = t * t * t;
+  return {
+    x: a * from.x + b * first.x + c * second.x + d * to.x,
+    y: a * from.y + b * first.y + c * second.y + d * to.y,
+  };
+}
+
+/** Samples along each part of a curve, enough to find where it passes through a node. */
+const CURVE_SAMPLES = 24;
+
+/** Whether the curve passes through the inside of one of the boxes. */
+function partsCross(parts: readonly Cubic[], boxes: readonly Box[]): boolean {
+  // A cubic part never leaves the bounds of its four points, so only the boxes there count.
+  const controls = parts.flatMap(({ from, first, second, to }) => [from, first, second, to]);
+  const xs = controls.map((point) => point.x);
+  const ys = controls.map((point) => point.y);
+  const [left, right] = [Math.min(...xs), Math.max(...xs)];
+  const [top, bottom] = [Math.min(...ys), Math.max(...ys)];
+  const near = boxes.filter(
+    (box) =>
+      box.x < right && box.x + box.width > left && box.y < bottom && box.y + box.height > top,
+  );
+  if (near.length === 0) return false;
+  return parts.some((part) => {
+    for (let step = 1; step < CURVE_SAMPLES; step++) {
+      const point = cubicAt(part, step / CURVE_SAMPLES);
+      if (near.some((box) => insideBox(point, box))) return true;
+    }
+    return false;
+  });
+}
+
+function insideBox(point: Point, box: Box): boolean {
+  return (
+    point.x > box.x + SAME &&
+    point.x < box.x + box.width - SAME &&
+    point.y > box.y + SAME &&
+    point.y < box.y + box.height - SAME
+  );
 }
 
 function distance(a: Point, b: Point): number {
@@ -381,8 +466,8 @@ function simplified(corners: readonly Point[]): Point[] {
   });
 }
 
-/** SVG path through the corners, with each one rounded. */
-function rounded(bends: readonly Point[]): string {
+/** SVG path through the corners, with each one rounded by up to `radius`. */
+function rounded(bends: readonly Point[], radius: number): string {
   const first = bends[0];
   const last = bends[bends.length - 1];
   if (first === undefined || last === undefined) return '';
@@ -391,13 +476,9 @@ function rounded(bends: readonly Point[]): string {
     const before = bends[index - 1] as Point;
     const corner = bends[index] as Point;
     const after = bends[index + 1] as Point;
-    const radius = Math.min(
-      CORNER_RADIUS,
-      distance(before, corner) / 2,
-      distance(corner, after) / 2,
-    );
-    const entry = toward(corner, before, radius);
-    const exit = toward(corner, after, radius);
+    const round = Math.min(radius, distance(before, corner) / 2, distance(corner, after) / 2);
+    const entry = toward(corner, before, round);
+    const exit = toward(corner, after, round);
     path += ` L ${entry.x} ${entry.y} Q ${corner.x} ${corner.y} ${exit.x} ${exit.y}`;
   }
   return `${path} L ${last.x} ${last.y}`;

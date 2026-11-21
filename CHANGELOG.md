@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- `@archdraft/web`: a curved connection that goes round a node no longer swings into it. Where the curve through the corners of its route would, it follows the route with wide round corners instead. A test draws every template in both styles and checks that no connection passes through a node it does not join.
 - `@archdraft/web`: while the assistant works, the card above the prompt is the only place that says so, with the task as its title and the stage under it, instead of the prompt and the card saying two different things at once. On phones, the components button rises with that card and the zoom and shortcut buttons hide while it is shown, instead of covering it. The groups of the design review no longer repeat the counts of the filters above them.
 - `@archdraft/web`: on phones, the diagram is fitted above the design review sheet and above the unfolded proposals, and a finding chosen in the review brings its components into view above the sheet instead of under it.
 - `@archdraft/web`: on phones, the assistant's proposals open folded into a strip with the open proposal, what it changes and Apply, so the preview of the diagram stays in view; the handle unfolds the full list, as in the inspector. While a preview is shown, the zoom and shortcut buttons stand above its legend.

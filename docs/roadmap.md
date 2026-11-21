@@ -44,7 +44,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T27 | Editor: cabecera fija y animaciones                              | T25           | hecha (2026-10-24) |
 | T28 | Editor: paleta de componentes en móvil                           | T27           | hecha (2026-10-25) |
 | T29 | Editor: diagrama legible en móvil y ajustes visuales             | T28           | hecha (2026-10-25) |
-| T30 | Editor: aristas que esquivan los nodos                           | T08           | pendiente          |
+| T30 | Editor: aristas que esquivan los nodos                           | T08           | hecha (2026-11-21) |
 | T31 | Editor: figuras genéricas, flechas y animación del flujo         | T09           | hecha (2026-10-25) |
 | T32 | Editor: interfaz en inglés y español                             | T10, T11      | hecha (2026-10-25) |
 | T33 | Editor: fluidez al mover, cambiar el tamaño y añadir             | T31           | hecha (2026-10-25) |
@@ -295,6 +295,8 @@ Entregables: disposición de arriba abajo y escala mínima con desplazamiento en
 Criterios de aceptación: tests de la escala de dibujo y de la profundidad de anidamiento; capturas en móvil y escritorio; muestreo de colores durante el cambio de tema.
 
 ### T30. Aristas que esquivan los nodos
+
+Estado: hecha (2026-11-21). Documentado en `docs/modulos/web.md` (Nodos y aristas) y ADR 0029. Las aristas ya rodeaban los nodos desde el 2026-11-02 con el enrutador del lienzo (`routeAround`), así que no se usan las rutas de ELK: el ADR explica por qué. Un test dibuja las dieciséis plantillas en los dos estilos a través del adaptador (`toFlow` y `connectionPath`) y comprueba, muestreando el trazo, que ninguna conexión entra en un nodo ajeno. Encontró una: en la plantilla MLOps, una curva que pasaba por las esquinas de su ruta se abría hacia el nodo que rodeaba; ahora, en ese caso, la curva sigue la ruta con esquinas redondeadas de 24 px. Capturas de las dieciséis plantillas en escritorio revisadas con la skill `design-critique`: ninguna arista cruza un nodo ajeno. Hallazgo menor sin corregir: en «Web app on VMs» varias aristas largas corren pegadas al borde superior de los grupos que atraviesan.
 
 Objetivo: que ninguna arista pase por detrás de un nodo que no es su origen ni su destino, algo que la revisión de diseño de T08 detectó en varias plantillas porque las aristas son curvas directas entre conectores.
 
