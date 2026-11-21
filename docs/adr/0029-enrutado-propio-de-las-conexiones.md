@@ -26,8 +26,8 @@ Las conexiones se enrutan en el lienzo con `routeAround`, a partir de las cajas 
 
 ## Consecuencias
 
-- Positivas: una sola forma de dibujar cada arista en el lienzo, en la exportación y mientras se edita; el documento no crece; el criterio de aceptación de T30 queda cubierto por un test que corre en `pnpm check`.
-- Negativas: el enrutador es código propio que hay que mantener; `elk.edgeRouting` sigue en `ORTHOGONAL` solo para que ELK deje hueco entre capas. En los pocos casos que usan el respaldo, una curva se ve como una línea de esquinas muy redondeadas.
+- Positivas: una sola forma de dibujar cada arista en el lienzo y en la exportación, correcta tras cada edición; el documento no crece; el criterio de aceptación de T30 queda cubierto por un test que corre en `pnpm check`.
+- Negativas: el enrutador es código propio que hay que mantener; `elk.edgeRouting` sigue en `ORTHOGONAL` solo para que ELK deje hueco entre capas. En los pocos casos que usan el respaldo, una curva se ve como una línea de esquinas muy redondeadas, y cada esquina recorta la ruta unos 8 px: si la ruta pasa a menos de esa distancia de la esquina de un nodo, porque los nodos están muy juntos, la curva puede rozarlo.
 
 ## Revisar si
 
