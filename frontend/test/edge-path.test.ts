@@ -6,7 +6,7 @@ import {
   moveSegment,
   routePoints,
 } from '../src/canvas/edge-path.ts';
-import { OUTWARD, type Side } from '../src/canvas/geometry.ts';
+import { type Box, OUTWARD, type Side } from '../src/canvas/geometry.ts';
 
 const ends = (source: [number, number, Side], target: [number, number, Side]): ConnectionEnds => ({
   sourceX: source[0],
@@ -45,6 +45,15 @@ function corners(path: string): { x: number; y: number }[] {
     }
   });
   return found;
+}
+
+function inside(point: { x: number; y: number }, box: Box): boolean {
+  return (
+    point.x > box.x &&
+    point.x < box.x + box.width &&
+    point.y > box.y &&
+    point.y < box.y + box.height
+  );
 }
 
 /** Whether every part of a line runs across or down. */
@@ -108,6 +117,39 @@ describe('connectionPath, curved', () => {
       expect(p[p.length - 2]?.y).toBeCloseTo(150);
       expect(p[p.length - 2]?.x).toBeLessThan(300);
     }
+  });
+
+  it('curves round a node in its way, through the corners of the route', () => {
+    const source = { x: 0, y: 0, width: 100, height: 100 };
+    const target = { x: 400, y: 100, width: 100, height: 100 };
+    const between = { x: 200, y: 0, width: 100, height: 200 };
+    const line = ends([100, 50, 'right'], [391, 150, 'left']);
+    const shape = connectionPath('curved', line, [], [source, target, between]);
+    expect(shape.path).toContain(' C ');
+    expect(shape.corners.length).toBeGreaterThan(2);
+    expect(pointsOf(shape.path).some((point) => inside(point, between))).toBe(false);
+  });
+
+  it('follows the route with wide round corners where the curve would swing into a node', () => {
+    // Nodes just past both ends make the route leave and arrive by short runs and turn along
+    // a column of nodes: the spline through its corners swings back into the one above the
+    // source. These are the boxes of a connection in the MLOps template.
+    const box = (x: number, y: number) => ({ x, y, width: 180, height: 64 });
+    const source = box(868, 209);
+    const above = box(868, 125);
+    const boxes = [source, box(0, 0), above, box(868, 41), box(658, 193), box(200, 0)];
+    const line = ends([868, 233, 'left'], [189, 40, 'right']);
+    expect(pointsOf(connectionPath('curved', line, [], []).path)).toHaveLength(4);
+    const shape = connectionPath('curved', line, [], boxes);
+    expect(shape.path).not.toContain(' C ');
+    expect(rightAngled(shape.corners)).toBe(true);
+    expect(corners(shape.path)).toEqual(shape.corners);
+    // Rounder than a right-angled connection: the first corner starts well before it.
+    const [, entry] = pointsOf(shape.path);
+    const corner = shape.corners[1] as { x: number; y: number };
+    expect(Math.hypot((entry?.x ?? 0) - corner.x, (entry?.y ?? 0) - corner.y)).toBeGreaterThan(
+      CORNER_RADIUS,
+    );
   });
 
   it('copes with a point on top of an end', () => {
