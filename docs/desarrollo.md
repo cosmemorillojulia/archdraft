@@ -23,6 +23,7 @@ pnpm check
 | `pnpm test:e2e`                                | Tests de extremo a extremo y de accesibilidad del editor con Playwright (ver «Tests de extremo a extremo») |
 | `pnpm --filter @archdraft/web test:lighthouse` | Lighthouse CI contra el build del editor, ya construido (ver `modulos/web.md`, Rendimiento)                |
 | `pnpm --filter @archdraft/shared test:watch`   | Tests de un paquete en modo observación                                                                    |
+| `pnpm --filter @archdraft/web screenshots`     | Regenera las capturas del README en `docs/capturas` (ver «Capturas del README»)                            |
 | `pnpm --filter @archdraft/web dev`             | Editor en modo desarrollo en `http://localhost:5173/archdraft/` (ver `modulos/web.md`)                     |
 | `pnpm --filter @archdraft/api eval`            | Banco de evaluación del agente contra un modelo; con `--provider ideal`, sin clave (ver `evaluacion.md`)   |
 
@@ -85,6 +86,10 @@ Las microinteracciones se revisan con un vídeo del recorrido: un spec temporal,
 `.github/workflows/evals.yml` pasa el banco de evaluación contra modelos de Groq cada semana y bajo demanda (`docs/evaluacion.md`).
 
 Dependabot (`.github/dependabot.yml`) propone actualizaciones semanales de npm, agrupando las de desarrollo, y mensuales de las acciones de GitHub.
+
+### Capturas del README
+
+Las capturas del README (`docs/capturas/*.png`) salen del build de producción con `pnpm --filter @archdraft/web screenshots`, que ejecuta `frontend/e2e/readme.spec.ts` en el proyecto `readme` de Playwright. Ese proyecto solo existe con la variable `README_SCREENSHOTS`, que el script pone, así que `pnpm test:e2e` y CI no lo ejecutan. Usa la configuración de la regresión visual (sin movimiento, texto sin hinting, 1440 × 900) y el asistente se contesta con `page.route`. Se regeneran a mano antes de una versión o tras un cambio visible del editor, y se revisan como cualquier imagen del diff.
 
 ## Flujo de trabajo
 
