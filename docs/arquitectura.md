@@ -86,7 +86,7 @@ La regla de dependencias es estricta: `frontend` y `backend` dependen de `shared
 | `export/`        | Mermaid y JSON (T03), draw.io (T05)                                                          | Hecho  |
 | `migrations.ts`  | Cadena de migraciones por `schemaVersion`, aplicada por `importJson`                         | Hecho  |
 | `document.ts`    | Esquemas de `DiagramLayout` y `DiagramDocument`: grafo más posiciones y tamaños              | Hecho  |
-| `templates/`     | Seis arquitecturas de referencia para la galería y el prompt                                 | Hecho  |
+| `templates/`     | Dieciséis arquitecturas de referencia para la galería y el prompt                            | Hecho  |
 | `patch.ts`       | Operaciones de edición (añadir, quitar, modificar) y su aplicación                           | Hecho  |
 | `assist/`        | Contrato de `POST /v1/assist`, compartido por el backend y el editor                         | Hecho  |
 

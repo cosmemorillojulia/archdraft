@@ -33,7 +33,7 @@ pnpm check
 | TypeScript                 | 6.0         | Modo estricto; la 7.0 aún no la soporta `typescript-eslint` (ADR 0003)                                                          |
 | ESLint + typescript-eslint | 10 / 8.72   | Configuración plana con `recommendedTypeChecked`: detecta promesas sin esperar, uso inseguro de `any` y aserciones innecesarias |
 | Prettier                   | 3           | Formato sin discusiones; ESLint no se ocupa del estilo                                                                          |
-| Vitest                     | 5           | Rápido, compatible con Vite (que usará el editor) y con cobertura V8 integrada                                                  |
+| Vitest                     | 5           | Rápido, compatible con Vite (el del editor) y con cobertura V8 integrada                                                        |
 | pnpm workspaces            | 10          | ADR 0002                                                                                                                        |
 | Playwright + axe-core      | 1.64 / 4.14 | Tests de extremo a extremo del editor en Chromium y comprobaciones de accesibilidad (ADR 0026)                                  |
 
