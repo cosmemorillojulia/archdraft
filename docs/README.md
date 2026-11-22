@@ -13,6 +13,7 @@ Referencia:
 - [Guía de desarrollo](desarrollo.md): herramientas, configuración, CI y convenciones.
 - [Operaciones](operaciones.md): entornos, acciones manuales, límites de los planes gratuitos y secretos.
 - [Banco de evaluación](evaluacion.md): casos, métricas y uso para medir la calidad del agente.
+- Notas de la versión: [1.0.0](notas-de-version/1.0.0.md).
 - Módulos: [shared](modulos/shared.md), [motor de reglas de diseño](modulos/lint.md), [exportación e importación](modulos/exportacion.md), [disposición automática](modulos/layout.md), [plantillas de arquitectura](modulos/plantillas.md), [editor web](modulos/web.md), [backend y agente de IA](modulos/backend.md).
 
 ## Decisiones registradas
