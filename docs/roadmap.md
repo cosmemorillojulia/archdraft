@@ -38,7 +38,7 @@ Plan de implementación hasta la versión 1.0. Cada tarea es una iteración: una
 | T21 | Tests de extremo a extremo y accesibilidad                       | T20           | hecha (2026-11-11) |
 | T22 | Rendimiento y presupuesto de tamaño                              | T21           | hecha (2026-11-12) |
 | T23 | Galería de plantillas, estado vacío y onboarding                 | T20           | hecha (2026-11-06) |
-| T24 | Lanzamiento 1.0                                                  | T22, T23, T26 | hecha (2026-11-22) |
+| T24 | Lanzamiento 1.0                                                  | T22, T23, T26 | en curso           |
 | T25 | Editor: rediseño centrado en el lienzo                           | T07           | hecha (2026-10-24) |
 | T26 | Revisión de diseño y pulido visual                               | T20, T23      | hecha (2026-11-20) |
 | T27 | Editor: cabecera fija y animaciones                              | T25           | hecha (2026-10-24) |
@@ -551,7 +551,11 @@ Entregables: estado vacío con ejemplos de prompt, galería de plantillas, ayuda
 
 ### T24. Lanzamiento 1.0
 
-Estado: hecha (2026-11-22). README con cinco capturas del build de producción generadas con Playwright (`pnpm --filter @archdraft/web screenshots`, documentado en `docs/desarrollo.md`), versión 1.0.0 en los cuatro paquetes, sección `[1.0.0]` en CHANGELOG (que reúne en un solo apartado Added, Changed y Fixed lo que se había acumulado en `[Unreleased]`), notas de la versión en `docs/notas-de-version/1.0.0.md` y etiqueta anotada `v1.0.0` sobre el merge. Revisión de la documentación: se corrigieron el número de plantillas (dieciséis, no seis), el menú de plantillas, las cifras de tests de `shared` y el estado del editor, y `vision.md` dice qué objetivos salen sin medir. La release de GitHub con las notas queda como acción manual en `docs/operaciones.md`, porque desde la automatización no se pueden crear releases. La versión sale con T17 en curso: la calidad del agente con un modelo real está sin medir, y así lo dicen las notas.
+Estado: en curso. Todo lo que se puede hacer desde la automatización está integrado (2026-11-22): README con cinco capturas del build de producción generadas con Playwright (`pnpm --filter @archdraft/web screenshots`, documentado en `docs/desarrollo.md`), versión 1.0.0 en los cuatro paquetes, sección `[1.0.0]` en CHANGELOG (que reúne en un solo apartado Added, Changed y Fixed lo que se había acumulado en `[Unreleased]`), notas de la versión en `docs/notas-de-version/1.0.0.md` y la etiqueta anotada `v1.0.0` creada en local sobre el merge `5c5bdd0`, que no se pudo publicar: el proxy de la automatización rechaza el envío de etiquetas con un 403. Revisión de la documentación: se corrigieron el número de plantillas (dieciséis, no seis), el menú de plantillas, las cifras de tests de `shared` y el estado del editor, y `vision.md` dice qué objetivos salen sin medir. La etiqueta y la release de GitHub quedan como acción manual en `docs/operaciones.md`. La versión sale con T17 en curso: la calidad del agente con un modelo real está sin medir, y así lo dicen las notas.
+
+Pendiente:
+
+- Crear la etiqueta `v1.0.0` sobre `5c5bdd0` y publicar la release con las notas (acción manual en `docs/operaciones.md`). Es lo único que falta: hasta entonces se trabaja en la siguiente tarea pendiente.
 
 Entregables: README final con capturas generadas con Playwright, revisión completa de la documentación, versión 1.0.0 en todos los paquetes, sección de lanzamiento en CHANGELOG, etiqueta anotada `v1.0.0` y notas de la versión.
 
