@@ -1,6 +1,6 @@
 {
   "name": "@archdraft/api",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Cloudflare Worker with the Archdraft AI agent: creates, edits, improves and redesigns diagrams.",
   "license": "MIT",
