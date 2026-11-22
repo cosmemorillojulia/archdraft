@@ -4,7 +4,9 @@
 
 Describe a cloud architecture in plain language and get an editable, reviewable diagram.
 
-> **Status:** early development. The domain model, the editor and the AI assistant are in place; usage limits, the evaluation suite and the 1.0 polish come next, in the order described in the [roadmap](docs/roadmap.md).
+**Try it:** [cosmemorillojulia.github.io/archdraft](https://cosmemorillojulia.github.io/archdraft/). No account needed; diagrams stay in your browser.
+
+![The editor with the three-tier web application template](docs/capturas/editor.png)
 
 ## What it does
 
@@ -14,7 +16,21 @@ Describe a cloud architecture in plain language and get an editable, reviewable 
 4. **Review**: a rule engine flags design risks as you edit: single points of failure, databases exposed to the internet, long synchronous call chains.
 5. **Export**: Mermaid, draw.io, PNG/SVG or JSON. Share a diagram with a link; nothing is stored on a server.
 
-Diagrams are provider-agnostic and can be rendered for AWS, Google Cloud or Azure. The editor is available in English and Spanish.
+Diagrams are provider-agnostic and can be rendered for AWS, Google Cloud or Azure. The editor is available in English and Spanish, in light and dark themes, on desktop and on phones.
+
+The assistant runs on free tiers, so each address can ask it 10 times a day; everything else works without it.
+
+## Screenshots
+
+| The assistant shows its proposal on the diagram before you apply it                  | The design review explains each finding and how to fix it                        |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| ![A proposal of the assistant previewed on the diagram](docs/capturas/propuesta.png) | ![The design review with errors, warnings and notes](docs/capturas/revision.png) |
+
+| Dark theme                                                | On a phone                                                                    |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| ![The editor in the dark theme](docs/capturas/oscuro.png) | <img src="docs/capturas/movil.png" alt="The editor on a phone" width="260" /> |
+
+The screenshots are generated with Playwright from the production build: `pnpm --filter @archdraft/web screenshots`.
 
 ## Architecture
 
@@ -22,7 +38,7 @@ Diagrams are provider-agnostic and can be rendered for AWS, Google Cloud or Azur
 flowchart LR
   user([User]) --> web["frontend<br/>React + React Flow<br/>GitHub Pages"]
   web -- "POST /v1/assist" --> api["backend<br/>Hono on Cloudflare Workers<br/>AI agent"]
-  api --> llm["LLM<br/>Workers AI"]
+  api --> llm["LLM<br/>Groq or Workers AI"]
   shared[["shared<br/>schema · validation · lint · exporters"]]
   web -. uses .-> shared
   api -. uses .-> shared
@@ -38,7 +54,7 @@ Everything runs on free tiers, with no credit card involved. The full design is 
 | Language     | TypeScript (strict) across the stack                                 |
 | Domain model | Zod 4: types, runtime validation and JSON Schema from one definition |
 | Frontend     | React, Vite, Tailwind CSS, React Flow, ELK.js                        |
-| Backend      | Hono on Cloudflare Workers, Workers AI                               |
+| Backend      | Hono on Cloudflare Workers; Groq or Workers AI as the model          |
 | Quality      | Vitest, Playwright, ESLint (type-aware), Prettier, GitHub Actions    |
 | Hosting      | GitHub Pages (web), Cloudflare Workers (API)                         |
 
@@ -61,13 +77,14 @@ pnpm install
 pnpm check      # format, lint, typecheck, tests with coverage, build
 ```
 
-| Script               | Purpose                         |
-| -------------------- | ------------------------------- |
-| `pnpm test`          | Run all unit tests              |
-| `pnpm test:coverage` | Tests with coverage thresholds  |
-| `pnpm lint`          | Type-aware ESLint               |
-| `pnpm typecheck`     | `tsc --noEmit` in every package |
-| `pnpm format`        | Format with Prettier            |
+| Script               | Purpose                          |
+| -------------------- | -------------------------------- |
+| `pnpm test`          | Run all unit tests               |
+| `pnpm test:coverage` | Tests with coverage thresholds   |
+| `pnpm lint`          | Type-aware ESLint                |
+| `pnpm typecheck`     | `tsc --noEmit` in every package  |
+| `pnpm format`        | Format with Prettier             |
+| `pnpm test:e2e`      | End-to-end tests with Playwright |
 
 To try the AI assistant locally, copy `.env.secrets.example` to `.env.secrets` and put a Groq API key in it, then start the API with `make api` and the editor with `make run`. Shared, non-secret settings live in `.env.defaults`. Builds without `VITE_API_URL` work without AI. Details in [docs/modulos/backend.md](docs/modulos/backend.md).
 

@@ -50,7 +50,7 @@ Fuera de alcance:
 | Carga inicial del editor                                | menos de 2,5 s de LCP en móvil medio | Lighthouse en CI               |
 | Coste de operación                                      | 0 €                                  | Facturación de los proveedores |
 
-Los objetivos de calidad se revisarán con los primeros resultados reales del banco de evaluación (tarea T17).
+Los objetivos de calidad se revisarán con los primeros resultados reales del banco de evaluación (tarea T17). La versión 1.0 sale sin ellos: no hay resultados del banco con un modelo real, porque falta la clave de Groq en Actions (`operaciones.md`), así que las dos primeras métricas no están medidas.
 
 ## Riesgos principales
 

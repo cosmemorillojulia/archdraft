@@ -1,5 +1,14 @@
-import type { Page, Route } from '@playwright/test';
-import { card, expect, openBlankDiagram, openGraph, SHOP_WITH_ISSUES, test } from './fixtures.ts';
+import type { Page } from '@playwright/test';
+import {
+  answerWithImprovement,
+  card,
+  expect,
+  openBlankDiagram,
+  openGraph,
+  settled,
+  SHOP_WITH_ISSUES,
+  test,
+} from './fixtures.ts';
 
 /**
  * Visual regression of the key screens (docs/modulos/web.md, Regresión visual). Each test
@@ -11,56 +20,6 @@ import { card, expect, openBlankDiagram, openGraph, SHOP_WITH_ISSUES, test } fro
  * at once and the connections carry no particles, and renders text without hinting, so that
  * small differences between machines stay below the tolerance.
  */
-
-/** Answers "Suggest improvements" with one proposal that adds a cache next to the first component. */
-async function answerWithImprovement(route: Route): Promise<void> {
-  const { graph } = route.request().postDataJSON() as {
-    graph: { nodes: { id: string }[]; edges: object[] };
-  };
-  const [first] = graph.nodes;
-  if (first === undefined) throw new Error('The diagram sent to the assistant has no components.');
-  const improved = {
-    ...graph,
-    nodes: [...graph.nodes, { id: 'cache-1', kind: 'cache', label: 'Cache' }],
-    edges: [...graph.edges, { id: 'cache-edge', source: first.id, target: 'cache-1' }],
-  };
-  await route.fulfill({
-    json: {
-      task: 'improve',
-      attempts: 1,
-      warnings: [],
-      proposals: [
-        {
-          title: 'Cache the hottest reads',
-          rationale: 'Most requests read the same records; a cache cuts latency and load.',
-          assumptions: ['The data can be a few seconds stale.'],
-          graph: improved,
-          changes: {
-            diagram: false,
-            nodes: { added: ['cache-1'], updated: [], removed: [] },
-            edges: { added: ['cache-edge'], updated: [], removed: [] },
-          },
-        },
-      ],
-    },
-  });
-}
-
-/** Waits for the glides of the view and the entrances of panels to end before comparing. */
-async function settled(page: Page): Promise<void> {
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      .every(
-        (animation) =>
-          animation.playState !== 'running' ||
-          animation.effect?.getComputedTiming().endTime === Infinity,
-      ),
-  );
-  // React Flow glides the view with a timer, not with the Web Animations API.
-  await page.waitForTimeout(600);
-}
 
 async function expectScreen(page: Page, name: string): Promise<void> {
   await settled(page);

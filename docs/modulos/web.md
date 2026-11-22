@@ -2,7 +2,7 @@
 
 Editor visual de Archdraft. Es una aplicación de una sola página con Vite, React 19, TypeScript y Tailwind CSS 4, publicada en GitHub Pages en `https://cosmemorillojulia.github.io/archdraft/`. Depende de `@archdraft/shared`, nunca al revés; la disposición automática vive dentro, en `src/layout/` ([layout.md](layout.md)) (ver [arquitectura](../arquitectura.md)).
 
-Estado: estructura y despliegue (T07), lienzo con React Flow y zoom (T08), rediseño centrado en el lienzo (T25), cabecera fija con animaciones (T27), paleta en móvil (T28) y ajustes visuales (T29). La edición llegó en T09, la revisión en T10 y el asistente de IA en T20.
+Estado: completo para la versión 1.0 (2026-11-22). Estructura y despliegue (T07), lienzo con React Flow y zoom (T08), rediseño centrado en el lienzo (T25), cabecera fija con animaciones (T27), paleta en móvil (T28) y ajustes visuales (T29). La edición llegó en T09, la revisión en T10 y el asistente de IA en T20.
 
 ## Estructura
 
@@ -314,7 +314,7 @@ La entrada «Diagrama en blanco» del menú + de la cabecera, que también reún
 
 ### Cambio de plantilla
 
-La plantilla elegida en el menú de la cabecera (`TemplatesMenu`: botón «Plantillas» con un menú `role="menu"` de seis `menuitemradio`, flechas, Inicio y Fin, Escape devuelve el foco al botón) se marca en cuanto se pulsa (`opening` en el store). El diagrama anterior se mantiene hasta que la nueva disposición está lista; entonces sale con un fundido y el nuevo lienzo se monta y se construye (`AnimatePresence` en modo `wait`, con la clave del documento). Si se eligen varias plantillas seguidas, solo se abre la última. Si la disposición falla, un aviso lo dice y el error va a la consola. Abrir una plantilla es un paso del historial: deshacer devuelve el diagrama anterior, con lo editado.
+La plantilla elegida en el menú New de la cabecera (`TemplatesMenu`: un menú `role="menu"` con las plantillas en `menuitemradio` agrupadas, flechas, Inicio y Fin, Escape devuelve el foco al botón) se marca en cuanto se pulsa (`opening` en el store). El diagrama anterior se mantiene hasta que la nueva disposición está lista; entonces sale con un fundido y el nuevo lienzo se monta y se construye (`AnimatePresence` en modo `wait`, con la clave del documento). Si se eligen varias plantillas seguidas, solo se abre la última. Si la disposición falla, un aviso lo dice y el error va a la consola. Abrir una plantilla es un paso del historial: deshacer devuelve el diagrama anterior, con lo editado.
 
 ### Revisión de diseño de T08
 

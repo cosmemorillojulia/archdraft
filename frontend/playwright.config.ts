@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices, type Project } from '@playwright/test';
 
 const PORT = 4173;
 const ORIGIN = `http://localhost:${PORT}`;
@@ -16,6 +16,25 @@ const CI = process.env.CI !== undefined;
  */
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH;
 const chromium = executablePath === undefined ? {} : { executablePath };
+
+const README_SCREENSHOTS = process.env.README_SCREENSHOTS !== undefined;
+
+/** A project that takes screenshots: no motion, and text drawn the same on every machine. */
+function visualProject(name: string, testMatch: string): Project {
+  return {
+    name,
+    testMatch,
+    use: {
+      ...devices['Desktop Chrome'],
+      viewport: { width: 1440, height: 900 },
+      contextOptions: { reducedMotion: 'reduce' },
+      launchOptions: {
+        ...chromium,
+        args: ['--font-render-hinting=none', '--disable-lcd-text', '--force-color-profile=srgb'],
+      },
+    },
+  };
+}
 
 export default defineConfig({
   testDir: 'e2e',
@@ -37,27 +56,17 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: 'visual.spec.ts',
+      testIgnore: ['visual.spec.ts', 'readme.spec.ts'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
         launchOptions: chromium,
       },
     },
-    {
-      // Visual regression (visual.spec.ts): no motion, and text drawn the same on every machine.
-      name: 'visual',
-      testMatch: 'visual.spec.ts',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1440, height: 900 },
-        contextOptions: { reducedMotion: 'reduce' },
-        launchOptions: {
-          ...chromium,
-          args: ['--font-render-hinting=none', '--disable-lcd-text', '--force-color-profile=srgb'],
-        },
-      },
-    },
+    // Visual regression (visual.spec.ts).
+    visualProject('visual', 'visual.spec.ts'),
+    // Screenshots of the README (readme.spec.ts), only on demand: `pnpm screenshots`.
+    ...(README_SCREENSHOTS ? [visualProject('readme', 'readme.spec.ts')] : []),
   ],
   webServer: {
     command: `vite build --outDir e2e/.dist && vite preview --outDir e2e/.dist --port ${PORT} --strictPort`,

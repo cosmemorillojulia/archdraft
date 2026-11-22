@@ -18,7 +18,7 @@ shared/
     document.ts     # DiagramLayout y DiagramDocument
     lint/           # motor de reglas de diseño, ver modulos/lint.md
     export/         # Mermaid, JSON y draw.io, ver modulos/exportacion.md
-    templates/      # seis arquitecturas de referencia, ver modulos/plantillas.md
+    templates/      # dieciséis arquitecturas de referencia, ver modulos/plantillas.md
     patch.ts        # operaciones de edición: applyPatch, diffGraphs, hasChanges
     assist/
       contract.ts   # contrato de POST /v1/assist, que usan el backend y el editor
@@ -93,6 +93,6 @@ Añadir un código de validación:
 
 ## Tests
 
-- 219 tests en doce ficheros a fecha de T06; cobertura del 100 % de líneas y funciones y por encima del 99 % de ramas.
+- 355 tests en dieciséis ficheros a fecha de la versión 1.0 (2026-11-22); cobertura del 98 % de líneas, 98,5 % de funciones y 90,7 % de ramas.
 - Umbrales mínimos en `vitest.config.ts`: 90 % de líneas, funciones y sentencias y 85 % de ramas. CI falla si se incumplen.
 - `parseArchitectureGraph` se prueba con entradas arbitrarias (`null`, números, arrays) para garantizar que nunca lanza.
