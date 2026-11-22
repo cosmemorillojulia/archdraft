@@ -1,5 +1,5 @@
 import type { ArchitectureGraph } from '@archdraft/shared';
-import { expect, test as base, type Page } from '@playwright/test';
+import { expect, test as base, type Page, type Route } from '@playwright/test';
 
 /**
  * `test` with a page that fails the test on any uncaught error or `console.error`, and opens
@@ -95,4 +95,54 @@ export async function openGraph(page: Page, graph: ArchitectureGraph): Promise<v
     buffer: Buffer.from(JSON.stringify(graph)),
   });
   await expect(diagram(page, graph.title)).toBeVisible();
+}
+
+/** Answers "Suggest improvements" with one proposal that adds a cache next to the first component. */
+export async function answerWithImprovement(route: Route): Promise<void> {
+  const { graph } = route.request().postDataJSON() as {
+    graph: { nodes: { id: string }[]; edges: object[] };
+  };
+  const [first] = graph.nodes;
+  if (first === undefined) throw new Error('The diagram sent to the assistant has no components.');
+  const improved = {
+    ...graph,
+    nodes: [...graph.nodes, { id: 'cache-1', kind: 'cache', label: 'Cache' }],
+    edges: [...graph.edges, { id: 'cache-edge', source: first.id, target: 'cache-1' }],
+  };
+  await route.fulfill({
+    json: {
+      task: 'improve',
+      attempts: 1,
+      warnings: [],
+      proposals: [
+        {
+          title: 'Cache the hottest reads',
+          rationale: 'Most requests read the same records; a cache cuts latency and load.',
+          assumptions: ['The data can be a few seconds stale.'],
+          graph: improved,
+          changes: {
+            diagram: false,
+            nodes: { added: ['cache-1'], updated: [], removed: [] },
+            edges: { added: ['cache-edge'], updated: [], removed: [] },
+          },
+        },
+      ],
+    },
+  });
+}
+
+/** Waits for the glides of the view and the entrances of panels to end before comparing. */
+export async function settled(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (animation) =>
+          animation.playState !== 'running' ||
+          animation.effect?.getComputedTiming().endTime === Infinity,
+      ),
+  );
+  // React Flow glides the view with a timer, not with the Web Animations API.
+  await page.waitForTimeout(600);
 }
