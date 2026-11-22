@@ -14,6 +14,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "screenshots": "README_SCREENSHOTS=1 playwright test --project readme",
     "test:lighthouse": "pnpm dlx @lhci/cli@0.16.1 autorun"
   },
   "dependencies": {
