@@ -131,7 +131,7 @@ export async function answerWithImprovement(route: Route): Promise<void> {
   });
 }
 
-/** Waits for the glides of the view and the entrances of panels to end before comparing. */
+/** Waits for the glides of the view and the entrances of panels to end before a screenshot. */
 export async function settled(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() =>
